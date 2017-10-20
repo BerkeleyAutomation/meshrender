@@ -1,12 +1,41 @@
 '''Shaders for pairing with the renderer.
 '''
 
-simple_vertex_shader = '''#version 330 core
+depth_vertex_shader = '''#version 330 core
+
+// Input vertex data
+layout(location = 0) in vec3 vertex_position_m;
+
+// Output data
+out vec4 color;
+
+// Values that stay constant for the whole mesh.
+uniform mat4 MVP;
+
+void main(){
+    gl_Position =  MVP * vec4(vertex_position_m, 1);
+
+    color = vec4(1.0);
+}
+'''
+
+depth_fragment_shader = '''#version 330 core
+
+// Interpolated values from the vertex shaders
+in vec4 color;
+
+out vec4 frag_color;
+
+void main(){
+    frag_color = color;
+}
+'''
+
+vertex_shader = '''#version 330 core
 
 // Input vertex data
 layout(location = 0) in vec3 vertex_position_m;
 layout(location = 1) in vec3 vertex_normal_m;
-//layout(location = 2) in vec3 vertex_color;
 
 // Output data
 out vec4 color;
@@ -16,18 +45,18 @@ out vec3 normal;
 // Values that stay constant for the whole mesh.
 uniform mat4 MVP;
 uniform mat4 MV;
+uniform vec3 object_color;
 
 void main(){
     gl_Position =  MVP * vec4(vertex_position_m, 1);
 
-    //color = vec4(vertex_color, 1.0);
-    color = vec4(0.1, 0.1, 0.1, 1.0);
+    color = vec4(object_color, 1.0);
     position = MV * vec4(vertex_position_m, 1);
     normal = normalize(MV * vec4(vertex_normal_m, 0)).xyz;
 }
 '''
 
-simple_fragment_shader = '''#version 330 core
+fragment_shader = '''#version 330 core
 
 const int MAX_N_LIGHTS = 10;
 
