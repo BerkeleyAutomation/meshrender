@@ -226,7 +226,7 @@ class OpenGLRenderer(object):
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._framebuf)
         glViewport(0, 0, width, height)
 
-        glClearColor(0.5, 0.5, 0.5, 1.0)
+        glClearColor(0.0, 0.0, 0.0, 1.0)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         glUseProgram(self._depth_shader)
@@ -279,7 +279,7 @@ class OpenGLRenderer(object):
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._framebuf)
         glViewport(0, 0, width, height)
 
-        glClearColor(0.0, 0.0, 0.0, 1.0)
+        glClearColor(.93, .93, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         glUseProgram(self._full_shader)

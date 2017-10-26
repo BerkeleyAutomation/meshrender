@@ -26,7 +26,7 @@ but an example of using the library to render color and depth images is shown be
 
     # Begin by loading meshes
     cube_mesh = trimesh.load_mesh('cube.obj')
-    sphere_mesh = trimesh.load_mesh('cube.obj')
+    sphere_mesh = trimesh.load_mesh('sphere.obj')
 
     # Set up each object's pose in the world
     cube_pose = RigidTransform(
@@ -80,7 +80,7 @@ but an example of using the library to render color and depth images is shown be
 
     # Create a point light
     point = PointLight(
-        position=np.array([1.0, 2.0, 3.0]),
+        location=np.array([1.0, 2.0, 3.0]),
         color=np.array([1.0, 1.0, 1.0]),
         strength=10.0
     )

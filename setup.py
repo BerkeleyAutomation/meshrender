@@ -12,11 +12,10 @@ requirements = [
     'numpy',
     'scipy',
     'trimesh',
-    'ctypes',
     'PyOpenGL',
     'PyOpenGL_accelerate',
-    'autolab_core',
-    'perception'
+    #'autolab_core',
+    #'perception',
 ]
 
 setup(
