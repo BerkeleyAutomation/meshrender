@@ -1,0 +1,385 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Example Usage &mdash; meshrender 0.0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="meshrender 0.0.1 documentation" href="../index.html"/>
+        <link rel="prev" title="Scene Objects" href="../api/sceneobject.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> meshrender
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Installation Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html">Python Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html#documentation">Documentation</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../api/camera.html">Camera</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/lighting.html">Lighting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/material.html">Material</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/random_variables.html">Random Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/scene.html">Scene</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/sceneobject.html">Scene Objects</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Examples</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Example Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#simple-example">Simple Example</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">meshrender</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Example Usage</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/examples/example.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="example-usage">
+<h1>Example Usage<a class="headerlink" href="#example-usage" title="Permalink to this headline">¶</a></h1>
+<p>Everything in the <cite>meshrender</cite> model revolves around the <cite>Scene</cite> object,
+which manages the lights, objects, and camera in the world.</p>
+<div class="section" id="simple-example">
+<h2>Simple Example<a class="headerlink" href="#simple-example" title="Permalink to this headline">¶</a></h2>
+<p>In this example, we will render a pair of triangular meshes, illuminated by a point light source.</p>
+<div class="highlight-python"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">trimesh</span>
+<span class="kn">from</span> <span class="nn">autolab_core</span> <span class="kn">import</span> <span class="n">RigidTransform</span>
+<span class="kn">from</span> <span class="nn">perception</span> <span class="kn">import</span> <span class="n">CameraIntrinsics</span><span class="p">,</span> <span class="n">RenderMode</span>
+
+<span class="kn">from</span> <span class="nn">meshrender</span> <span class="kn">import</span> <span class="n">Scene</span><span class="p">,</span> <span class="n">MaterialProperties</span><span class="p">,</span> <span class="n">AmbientLight</span><span class="p">,</span> <span class="n">PointLight</span><span class="p">,</span> <span class="n">SceneObject</span><span class="p">,</span> <span class="n">VirtualCamera</span>
+
+<span class="c1"># Start with an empty scene</span>
+<span class="n">scene</span> <span class="o">=</span> <span class="n">Scene</span><span class="p">()</span>
+
+<span class="c1">#====================================</span>
+<span class="c1"># Add objects to the scene</span>
+<span class="c1">#====================================</span>
+
+<span class="c1"># Begin by loading meshes</span>
+<span class="n">cube_mesh</span> <span class="o">=</span> <span class="n">trimesh</span><span class="o">.</span><span class="n">load_mesh</span><span class="p">(</span><span class="s1">&#39;cube.obj&#39;</span><span class="p">)</span>
+<span class="n">sphere_mesh</span> <span class="o">=</span> <span class="n">trimesh</span><span class="o">.</span><span class="n">load_mesh</span><span class="p">(</span><span class="s1">&#39;cube.obj&#39;</span><span class="p">)</span>
+
+<span class="c1"># Set up each object&#39;s pose in the world</span>
+<span class="n">cube_pose</span> <span class="o">=</span> <span class="n">RigidTransform</span><span class="p">(</span>
+    <span class="n">rotation</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>
+    <span class="n">translation</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+    <span class="n">from_frame</span><span class="o">=</span><span class="s1">&#39;obj&#39;</span><span class="p">,</span>
+    <span class="n">to_frame</span><span class="o">=</span><span class="s1">&#39;world&#39;</span>
+<span class="p">)</span>
+<span class="n">sphere_pose</span> <span class="o">=</span> <span class="n">RigidTransform</span><span class="p">(</span>
+    <span class="n">rotation</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span class="p">),</span>
+    <span class="n">translation</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+    <span class="n">from_frame</span><span class="o">=</span><span class="s1">&#39;obj&#39;</span><span class="p">,</span>
+    <span class="n">to_frame</span><span class="o">=</span><span class="s1">&#39;world&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># Set up each object&#39;s material properties</span>
+<span class="n">cube_material</span> <span class="o">=</span> <span class="n">MaterialProperties</span><span class="p">(</span>
+    <span class="n">color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]),</span>
+    <span class="n">k_a</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span>
+    <span class="n">k_d</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">k_s</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span>
+    <span class="n">smooth</span><span class="o">=</span><span class="bp">False</span>
+<span class="p">)</span>
+<span class="n">sphere_material</span> <span class="o">=</span> <span class="n">MaterialProperties</span><span class="p">(</span>
+    <span class="n">color</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]),</span>
+    <span class="n">k_a</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span>
+    <span class="n">k_d</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">k_s</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="mf">10.0</span><span class="p">,</span>
+    <span class="n">smooth</span><span class="o">=</span><span class="bp">True</span>
+<span class="p">)</span>
+
+<span class="c1"># Create SceneObjects for each object</span>
+<span class="n">cube_obj</span> <span class="o">=</span> <span class="n">SceneObject</span><span class="p">(</span><span class="n">cube_mesh</span><span class="p">,</span> <span class="n">cube_pose</span><span class="p">,</span> <span class="n">cube_material</span><span class="p">)</span>
+<span class="n">sphere_obj</span> <span class="o">=</span> <span class="n">SceneObject</span><span class="p">(</span><span class="n">sphere_mesh</span><span class="p">,</span> <span class="n">sphere_pose</span><span class="p">,</span> <span class="n">sphere_material</span><span class="p">)</span>
+
+<span class="c1"># Add the SceneObjects to the scene</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">add_object</span><span class="p">(</span><span class="s1">&#39;cube&#39;</span><span class="p">,</span> <span class="n">cube_obj</span><span class="p">)</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">add_object</span><span class="p">(</span><span class="s1">&#39;sphere&#39;</span><span class="p">,</span> <span class="n">sphere_obj</span><span class="p">)</span>
+
+<span class="c1">#====================================</span>
+<span class="c1"># Add lighting to the scene</span>
+<span class="c1">#====================================</span>
+
+<span class="c1"># Create an ambient light</span>
+<span class="n">ambient</span> <span class="o">=</span> <span class="n">AmbientLight</span><span class="p">(</span>
+    <span class="n">color</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]),</span>
+    <span class="n">strength</span><span class="o">=</span><span class="mf">1.0</span>
+<span class="p">)</span>
+
+<span class="c1"># Create a point light</span>
+<span class="n">point</span> <span class="o">=</span> <span class="n">PointLight</span><span class="p">(</span>
+    <span class="n">position</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">]),</span>
+    <span class="n">color</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]),</span>
+    <span class="n">strength</span><span class="o">=</span><span class="mf">10.0</span>
+<span class="p">)</span>
+
+<span class="c1"># Add the lights to the scene</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">ambient_light</span> <span class="o">=</span> <span class="n">ambient</span> <span class="c1"># only one ambient light per scene</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">add_light</span><span class="p">(</span><span class="s1">&#39;point_light_one&#39;</span><span class="p">,</span> <span class="n">point</span><span class="p">)</span>
+
+<span class="c1">#====================================</span>
+<span class="c1"># Add a camera to the scene</span>
+<span class="c1">#====================================</span>
+
+<span class="c1"># Set up camera intrinsics</span>
+<span class="n">ci</span> <span class="o">=</span> <span class="n">CameraIntrinsics</span><span class="p">(</span>
+    <span class="n">frame</span> <span class="o">=</span> <span class="s1">&#39;camera&#39;</span><span class="p">,</span>
+    <span class="n">fx</span> <span class="o">=</span> <span class="mf">525.0</span><span class="p">,</span>
+    <span class="n">fy</span> <span class="o">=</span> <span class="mf">525.0</span><span class="p">,</span>
+    <span class="n">cx</span> <span class="o">=</span> <span class="mf">319.5</span><span class="p">,</span>
+    <span class="n">cy</span> <span class="o">=</span> <span class="mf">239.5</span><span class="p">,</span>
+    <span class="n">skew</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+    <span class="n">height</span><span class="o">=</span><span class="mi">480</span><span class="p">,</span>
+    <span class="n">width</span><span class="o">=</span><span class="mi">640</span>
+<span class="p">)</span>
+
+<span class="c1"># Set up the camera pose (z axis faces away from scene, x to right, y up)</span>
+<span class="n">cp</span> <span class="o">=</span> <span class="n">RigidTransform</span><span class="p">(</span>
+    <span class="n">rotation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+        <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">]</span>
+    <span class="p">]),</span>
+    <span class="n">translation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]),</span>
+    <span class="n">from_frame</span><span class="o">=</span><span class="s1">&#39;camera&#39;</span><span class="p">,</span>
+    <span class="n">to_frame</span><span class="o">=</span><span class="s1">&#39;world&#39;</span>
+<span class="p">)</span>
+
+<span class="c1"># Create a VirtualCamera</span>
+<span class="n">camera</span> <span class="o">=</span> <span class="n">VirtualCamera</span><span class="p">(</span><span class="n">ci</span><span class="p">,</span> <span class="n">cp</span><span class="p">)</span>
+
+<span class="c1"># Add the camera to the scene</span>
+<span class="n">scene</span><span class="o">.</span><span class="n">camera</span> <span class="o">=</span> <span class="n">camera</span>
+
+<span class="c1">#====================================</span>
+<span class="c1"># Render images</span>
+<span class="c1">#====================================</span>
+
+<span class="c1"># Render raw numpy arrays containing color and depth</span>
+<span class="n">color_image_raw</span><span class="p">,</span> <span class="n">depth_image_raw</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">render_color</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+<span class="c1"># Alternatively, just render a depth image</span>
+<span class="n">depth_image_raw</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="n">render_color</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="c1"># Alternatively, collect wrapped images</span>
+<span class="n">wrapped_color</span><span class="p">,</span> <span class="n">wrapped_depth</span><span class="p">,</span> <span class="n">wrapped_segmask</span> <span class="o">=</span> <span class="n">scene</span><span class="o">.</span><span class="n">wrapped_render</span><span class="p">(</span>
+    <span class="p">[</span><span class="n">RenderMode</span><span class="o">.</span><span class="n">COLOR</span><span class="p">,</span> <span class="n">RenderMode</span><span class="o">.</span><span class="n">DEPTH</span><span class="p">,</span> <span class="n">RenderMode</span><span class="o">.</span><span class="n">SEGMASK</span><span class="p">]</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../api/sceneobject.html" class="btn btn-neutral" title="Scene Objects" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Matthew Matl.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

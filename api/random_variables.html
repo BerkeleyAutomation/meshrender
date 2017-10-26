@@ -1,0 +1,595 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Random Variables &mdash; meshrender 0.0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="meshrender 0.0.1 documentation" href="../index.html"/>
+        <link rel="next" title="Scene" href="scene.html"/>
+        <link rel="prev" title="Material" href="material.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> meshrender
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Installation Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html">Python Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html#documentation">Documentation</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="camera.html">Camera</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lighting.html">Lighting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="material.html">Material</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Random Variables</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#camerasample">CameraSample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#rendersample">RenderSample</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#uniformviewsphererandomvariable">UniformViewsphereRandomVariable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#uniformplanarworksurfacerandomvariable">UniformPlanarWorksurfaceRandomVariable</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#uniformplanarworksurfaceimagerandomvariable">UniformPlanarWorksurfaceImageRandomVariable</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="scene.html">Scene</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sceneobject.html">Scene Objects</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example.html">Example Usage</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">meshrender</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Random Variables</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/random_variables.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="random-variables">
+<h1>Random Variables<a class="headerlink" href="#random-variables" title="Permalink to this headline">¶</a></h1>
+<p>A set of random variables for sampling camera positions and rendering the scene from those positions.</p>
+<div class="section" id="camerasample">
+<h2>CameraSample<a class="headerlink" href="#camerasample" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="meshrender.CameraSample">
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">CameraSample</code><span class="sig-paren">(</span><em>object_to_camera_pose</em>, <em>camera_intr</em>, <em>radius</em>, <em>elev</em>, <em>az</em>, <em>roll</em>, <em>tx=0</em>, <em>ty=0</em>, <em>focal=0</em>, <em>cx=0</em>, <em>cy=0</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.CameraSample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Struct to encapsulate the results of sampling a camera and its pose.</p>
+<dl class="attribute">
+<dt id="CameraSample.object_to_camera_pose">
+<code class="descname">object_to_camera_pose</code><a class="headerlink" href="#CameraSample.object_to_camera_pose" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>autolab_core.RigidTransform</em> – A transfrom from the object frame to the camera frame.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="CameraSample.camera_intr">
+<code class="descname">camera_intr</code><a class="headerlink" href="#CameraSample.camera_intr" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>perception.CameraIntrinsics</em> – The camera’s intrinsics.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="CameraSample.radius">
+<code class="descname">radius</code><a class="headerlink" href="#CameraSample.radius" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em> – The distance from the center of the object’s frame to the camera’s eye.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="CameraSample.elev">
+<code class="descname">elev</code><a class="headerlink" href="#CameraSample.elev" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em> – The angle of elevation to the camera from the object frame.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="CameraSample.az">
+<code class="descname">az</code><a class="headerlink" href="#CameraSample.az" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em> – The angle of rotation of the camera’s eye about the object’s z axis, starting
+from the x axis.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="CameraSample.roll">
+<code class="descname">roll</code><a class="headerlink" href="#CameraSample.roll" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em> – The roll angle of the camera about its viewing axis.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="CameraSample.tx">
+<code class="descname">tx</code><a class="headerlink" href="#CameraSample.tx" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em> – The x-axis translation of the object.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="CameraSample.ty">
+<code class="descname">ty</code><a class="headerlink" href="#CameraSample.ty" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em> – The y-axis translation of the object.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="CameraSample.focal">
+<code class="descname">focal</code><a class="headerlink" href="#CameraSample.focal" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em> – The focal length of the camera.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="CameraSample.cx">
+<code class="descname">cx</code><a class="headerlink" href="#CameraSample.cx" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em> – The x-axis optical center of the camera.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="CameraSample.cy">
+<code class="descname">cy</code><a class="headerlink" href="#CameraSample.cy" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>float</em> – The y-axis optical center of the camera.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="rendersample">
+<h2>RenderSample<a class="headerlink" href="#rendersample" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="meshrender.RenderSample">
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">RenderSample</code><span class="sig-paren">(</span><em>renders</em>, <em>camera</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.RenderSample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>Struct to encapsulate the results of sampling rendered images from a camera.</p>
+<dl class="attribute">
+<dt id="RenderSample.renders">
+<code class="descname">renders</code><a class="headerlink" href="#RenderSample.renders" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>dict</em> – A dictionary mapping perception.RenderMode types to perception.Image classes.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="RenderSample.camera">
+<code class="descname">camera</code><a class="headerlink" href="#RenderSample.camera" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>CameraSample</em> – The camera sample that produced this render sample.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="uniformviewsphererandomvariable">
+<h2>UniformViewsphereRandomVariable<a class="headerlink" href="#uniformviewsphererandomvariable" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="meshrender.UniformViewsphereRandomVariable">
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">UniformViewsphereRandomVariable</code><span class="sig-paren">(</span><em>min_radius</em>, <em>max_radius</em>, <em>min_elev</em>, <em>max_elev</em>, <em>min_az=0</em>, <em>max_az=6.283185307179586</em>, <em>min_roll=0</em>, <em>max_roll=6.283185307179586</em>, <em>num_prealloc_samples=1</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformViewsphereRandomVariable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">autolab_core.random_variables.RandomVariable</span></code></p>
+<p>Uniform distribution over a bounded region of a viewing sphere.</p>
+<dl class="method">
+<dt id="meshrender.UniformViewsphereRandomVariable.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>min_radius</em>, <em>max_radius</em>, <em>min_elev</em>, <em>max_elev</em>, <em>min_az=0</em>, <em>max_az=6.283185307179586</em>, <em>min_roll=0</em>, <em>max_roll=6.283185307179586</em>, <em>num_prealloc_samples=1</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformViewsphereRandomVariable.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a UniformViewsphereRandomVariable.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>min_radius</strong> (<em>float</em>) – Minimum radius for viewing sphere.</li>
+<li><strong>max_radius</strong> (<em>float</em>) – Maximum radius for viewing sphere.</li>
+<li><strong>min_elev</strong> (<em>float</em>) – Minimum elevation (angle from z-axis) for camera position.</li>
+<li><strong>max_elev</strong> (<em>float</em>) – Maximum elevation for camera position.</li>
+<li><strong>min_az</strong> (<em>float</em>) – Minimum azimuth (angle from x-axis) for camera position.</li>
+<li><strong>max_az</strong> (<em>float</em>) – Maximum azimuth for camera position.</li>
+<li><strong>min_roll</strong> (<em>float</em>) – Minimum roll (rotation of camera about axis generated by azimuth and
+elevation) for camera.</li>
+<li><strong>max_roll</strong> (<em>float</em>) – Maximum roll for camera.</li>
+<li><strong>num_prealloc_samples</strong> (<em>int</em>) – Number of preallocated samples.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.UniformViewsphereRandomVariable.object_to_camera_pose">
+<code class="descname">object_to_camera_pose</code><span class="sig-paren">(</span><em>radius</em>, <em>elev</em>, <em>az</em>, <em>roll</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformViewsphereRandomVariable.object_to_camera_pose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert spherical coords to an object-camera pose.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.UniformViewsphereRandomVariable.sample">
+<code class="descname">sample</code><span class="sig-paren">(</span><em>size=1</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformViewsphereRandomVariable.sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sample random variables from the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>size</strong> (<em>int</em>) – number of sample to take</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">sampled object to camera poses</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-obj docutils literal"><span class="pre">list</span></code> of <code class="xref py py-obj docutils literal"><span class="pre">RigidTransform</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="uniformplanarworksurfacerandomvariable">
+<h2>UniformPlanarWorksurfaceRandomVariable<a class="headerlink" href="#uniformplanarworksurfacerandomvariable" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="meshrender.UniformPlanarWorksurfaceRandomVariable">
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">UniformPlanarWorksurfaceRandomVariable</code><span class="sig-paren">(</span><em>frame</em>, <em>config</em>, <em>num_prealloc_samples=1</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformPlanarWorksurfaceRandomVariable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">autolab_core.random_variables.RandomVariable</span></code></p>
+<p>Uniform distribution over camera poses and intrinsics for a bounded region of a viewing sphere and planar worksurface.</p>
+<dl class="method">
+<dt id="meshrender.UniformPlanarWorksurfaceRandomVariable.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>frame</em>, <em>config</em>, <em>num_prealloc_samples=1</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformPlanarWorksurfaceRandomVariable.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a UniformPlanarWorksurfaceRandomVariable.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>frame</strong> (<em>str</em>) – string name of the camera frame</li>
+<li><strong>config</strong> (<em>autolab_core.YamlConfig</em>) – configuration containing parameters of random variable</li>
+<li><strong>num_prealloc_samples</strong> (<em>int</em>) – Number of preallocated samples.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>Required parameters of config are specified in Other Parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Other Parameters:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body"><ul class="first last simple">
+<li><strong>min_f</strong> (<em>float</em>) – Minimum focal length of camera</li>
+<li><strong>max_f</strong> (<em>float</em>) – Maximum focal length of camera</li>
+<li><strong>min_cx</strong> (<em>float</em>) – Minimum camera optical center in x</li>
+<li><strong>max_cx</strong> (<em>float</em>) – Maximum camera optical center in x</li>
+<li><strong>min_cy</strong> (<em>float</em>) – Minimum camera optical center in y</li>
+<li><strong>max_cy</strong> (<em>float</em>) – Maximum camera optical center in y</li>
+<li><strong>im_height</strong> (<em>int</em>) – Height of camera image</li>
+<li><strong>im_width</strong> (<em>int</em>) – Width of camera image</li>
+<li><strong>min_radius</strong> (<em>float</em>) – Minimum radius for viewing sphere.</li>
+<li><strong>max_radius</strong> (<em>float</em>) – Maximum radius for viewing sphere.</li>
+<li><strong>min_elev</strong> (<em>float</em>) – Minimum elevation (angle from z-axis), in degrees, for camera position.</li>
+<li><strong>max_elev</strong> (<em>float</em>) – Maximum elevation for camera position, in degrees.</li>
+<li><strong>min_az</strong> (<em>float</em>) – Minimum azimuth (angle from x-axis), in degrees, for camera position.</li>
+<li><strong>max_az</strong> (<em>float</em>) – Maximum azimuth, in degrees, for camera position.</li>
+<li><strong>min_roll</strong> (<em>float</em>) – Minimum roll (rotation of camera about axis generated by azimuth and
+elevation), in degrees, for camera.</li>
+<li><strong>max_roll</strong> (<em>float</em>) – Maximum roll, in degrees, for camera.</li>
+<li><strong>min_x</strong> (<em>float</em>) – Minimum x translation of object on table</li>
+<li><strong>max_x</strong> (<em>float</em>) – Maximum x translation of object on table</li>
+<li><strong>min_y</strong> (<em>float</em>) – Minimum y translation of object on table</li>
+<li><strong>max_y</strong> (<em>float</em>) – Maximum y translation of object on table</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.UniformPlanarWorksurfaceRandomVariable.object_to_camera_pose">
+<code class="descname">object_to_camera_pose</code><span class="sig-paren">(</span><em>radius</em>, <em>elev</em>, <em>az</em>, <em>roll</em>, <em>x</em>, <em>y</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformPlanarWorksurfaceRandomVariable.object_to_camera_pose" title="Permalink to this definition">¶</a></dt>
+<dd><p>Convert spherical coords to an object-camera pose.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.UniformPlanarWorksurfaceRandomVariable.camera_intrinsics">
+<code class="descname">camera_intrinsics</code><span class="sig-paren">(</span><em>T_camera_obj</em>, <em>f</em>, <em>cx</em>, <em>cy</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformPlanarWorksurfaceRandomVariable.camera_intrinsics" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate shifted camera intrinsics to simulate cropping.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.UniformPlanarWorksurfaceRandomVariable.sample">
+<code class="descname">sample</code><span class="sig-paren">(</span><em>size=1</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformPlanarWorksurfaceRandomVariable.sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sample random variables from the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>size</strong> (<em>int</em>) – number of sample to take</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">sampled object to camera poses</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><code class="xref py py-obj docutils literal"><span class="pre">list</span></code> of <code class="xref py py-obj docutils literal"><span class="pre">RigidTransform</span></code></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="uniformplanarworksurfaceimagerandomvariable">
+<h2>UniformPlanarWorksurfaceImageRandomVariable<a class="headerlink" href="#uniformplanarworksurfaceimagerandomvariable" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="meshrender.UniformPlanarWorksurfaceImageRandomVariable">
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">UniformPlanarWorksurfaceImageRandomVariable</code><span class="sig-paren">(</span><em>object_name</em>, <em>scene</em>, <em>render_modes</em>, <em>frame</em>, <em>config</em>, <em>num_prealloc_samples=0</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformPlanarWorksurfaceImageRandomVariable" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">autolab_core.random_variables.RandomVariable</span></code></p>
+<p>Random variable for sampling images from a camera positioned about an object on a table.</p>
+<dl class="method">
+<dt id="meshrender.UniformPlanarWorksurfaceImageRandomVariable.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>object_name</em>, <em>scene</em>, <em>render_modes</em>, <em>frame</em>, <em>config</em>, <em>num_prealloc_samples=0</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformPlanarWorksurfaceImageRandomVariable.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a UniformPlanarWorksurfaceImageRandomVariable.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>object_name</strong> (<em>str</em>) – The name of the object to render views about</li>
+<li><strong>scene</strong> (<a class="reference internal" href="scene.html#meshrender.Scene" title="meshrender.Scene"><em>Scene</em></a>) – The scene to be rendered which contains the target object.</li>
+<li><strong>render_modes</strong> (<em>list of perception.RenderMode</em>) – A list of RenderModes that indicate the wrapped images to return.</li>
+<li><strong>frame</strong> (<em>str</em>) – The name of the camera’s frame of reference.</li>
+<li><strong>config</strong> (<em>autolab_core.YamlConfig</em>) – A configuration containing parameters of the random variable.</li>
+<li><strong>num_prealloc_samples</strong> (<em>int</em>) – Number of preallocated samples.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<p class="rubric">Notes</p>
+<p>Required parameters of config are specified in Other Parameters.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Other Parameters:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body"><ul class="first last simple">
+<li><strong>min_f</strong> (<em>float</em>) – Minimum focal length of camera</li>
+<li><strong>max_f</strong> (<em>float</em>) – Maximum focal length of camera</li>
+<li><strong>min_cx</strong> (<em>float</em>) – Minimum camera optical center in x</li>
+<li><strong>max_cx</strong> (<em>float</em>) – Maximum camera optical center in x</li>
+<li><strong>min_cy</strong> (<em>float</em>) – Minimum camera optical center in y</li>
+<li><strong>max_cy</strong> (<em>float</em>) – Maximum camera optical center in y</li>
+<li><strong>im_height</strong> (<em>int</em>) – Height of camera image</li>
+<li><strong>im_width</strong> (<em>int</em>) – Width of camera image</li>
+<li><strong>min_radius</strong> (<em>float</em>) – Minimum radius for viewing sphere.</li>
+<li><strong>max_radius</strong> (<em>float</em>) – Maximum radius for viewing sphere.</li>
+<li><strong>min_elev</strong> (<em>float</em>) – Minimum elevation (angle from z-axis) for camera position.</li>
+<li><strong>max_elev</strong> (<em>float</em>) – Maximum elevation for camera position.</li>
+<li><strong>min_az</strong> (<em>float</em>) – Minimum azimuth (angle from x-axis) for camera position.</li>
+<li><strong>max_az</strong> (<em>float</em>) – Maximum azimuth for camera position.</li>
+<li><strong>min_roll</strong> (<em>float</em>) – Minimum roll (rotation of camera about axis generated by azimuth and
+elevation) for camera.</li>
+<li><strong>max_roll</strong> (<em>float</em>) – Maximum roll for camera.</li>
+<li><strong>min_x</strong> (<em>float</em>) – Minimum x translation of object on table</li>
+<li><strong>max_x</strong> (<em>float</em>) – Maximum x translation of object on table</li>
+<li><strong>min_y</strong> (<em>float</em>) – Minimum y translation of object on table</li>
+<li><strong>max_y</strong> (<em>float</em>) – Maximum y translation of object on table</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.UniformPlanarWorksurfaceImageRandomVariable.sample">
+<code class="descname">sample</code><span class="sig-paren">(</span><em>size=1</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.UniformPlanarWorksurfaceImageRandomVariable.sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sample random variables from the model.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>size</strong> (<em>int</em>) – Number of samples to take</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A list of samples of renders taken with random camera poses about the scene.
+If size was 1, returns a single sample rather than a list.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list of RenderSample</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="scene.html" class="btn btn-neutral float-right" title="Scene" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="material.html" class="btn btn-neutral" title="Material" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Matthew Matl.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -1,0 +1,433 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Scene &mdash; meshrender 0.0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="meshrender 0.0.1 documentation" href="../index.html"/>
+        <link rel="next" title="Scene Objects" href="sceneobject.html"/>
+        <link rel="prev" title="Random Variables" href="random_variables.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> meshrender
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Installation Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html">Python Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html#documentation">Documentation</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="camera.html">Camera</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lighting.html">Lighting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="material.html">Material</a></li>
+<li class="toctree-l1"><a class="reference internal" href="random_variables.html">Random Variables</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Scene</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#id1">Scene</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="sceneobject.html">Scene Objects</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example.html">Example Usage</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">meshrender</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Scene</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/scene.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="scene">
+<h1>Scene<a class="headerlink" href="#scene" title="Permalink to this headline">¶</a></h1>
+<p>The <cite>Scene</cite> object provides the central abstraction of the <cite>meshrender</cite> package.
+It manages objects, lights, and the camera, and it wraps the key functions that
+render images.</p>
+<div class="section" id="id1">
+<h2>Scene<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="meshrender.Scene">
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">Scene</code><a class="headerlink" href="#meshrender.Scene" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
+<p>A scene containing objects and lights for 3D OpenGL rendering.</p>
+<dl class="method">
+<dt id="meshrender.Scene.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a Scene object.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="meshrender.Scene.objects">
+<code class="descname">objects</code><a class="headerlink" href="#meshrender.Scene.objects" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>dict</em> – Dictionary mapping object names to their corresponding SceneObject.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="meshrender.Scene.lights">
+<code class="descname">lights</code><a class="headerlink" href="#meshrender.Scene.lights" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>dict</em> – Dictionary mapping light names to their corresponding PointLight or DirectionalLight.</p>
+<p>Note that this doesn’t include the ambient light, since only one of those can exist at a time.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="meshrender.Scene.point_lights">
+<code class="descname">point_lights</code><a class="headerlink" href="#meshrender.Scene.point_lights" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>list of PointLight</em> – The set of point lights active in the scene.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="meshrender.Scene.directional_lights">
+<code class="descname">directional_lights</code><a class="headerlink" href="#meshrender.Scene.directional_lights" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>list of DirectionalLight</em> – The set of directional lights active in the scene.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="meshrender.Scene.ambient_light">
+<code class="descname">ambient_light</code><a class="headerlink" href="#meshrender.Scene.ambient_light" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>AmbientLight</em> – The ambient light active in the scene.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="meshrender.Scene.camera">
+<code class="descname">camera</code><a class="headerlink" href="#meshrender.Scene.camera" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>VirualCamera</em> – The scene’s camera (None if unassigned).</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.Scene.add_object">
+<code class="descname">add_object</code><span class="sig-paren">(</span><em>name</em>, <em>obj</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.add_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds an object to the scene.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>str</em>) – An identifier for the object.</li>
+<li><strong>obj</strong> (<a class="reference internal" href="sceneobject.html#meshrender.SceneObject" title="meshrender.SceneObject"><em>SceneObject</em></a>) – A SceneObject representing the object, including its pose and material properties.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.Scene.remove_object">
+<code class="descname">remove_object</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.remove_object" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes an object from the scene.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>str</em>) – An identifier for the object to be removed.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">ValueError</span></code> – If the given name was not assigned to an object in the scene.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.Scene.add_light">
+<code class="descname">add_light</code><span class="sig-paren">(</span><em>name</em>, <em>light</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.add_light" title="Permalink to this definition">¶</a></dt>
+<dd><p>Adds a named light to the scene.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>name</strong> (<em>str</em>) – An identifier for the light.</li>
+<li><strong>light</strong> (<a class="reference internal" href="lighting.html#meshrender.PointLight" title="meshrender.PointLight"><em>PointLight</em></a><em> or </em><a class="reference internal" href="lighting.html#meshrender.DirectionalLight" title="meshrender.DirectionalLight"><em>DirectionalLight</em></a>) – The light source to add.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.Scene.remove_light">
+<code class="descname">remove_light</code><span class="sig-paren">(</span><em>name</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.remove_light" title="Permalink to this definition">¶</a></dt>
+<dd><p>Removes a light from the scene.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>name</strong> (<em>str</em>) – An identifier for the light to be removed.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">ValueError</span></code> – If the given name was not assigned to a light in the scene.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.Scene.render">
+<code class="descname">render</code><span class="sig-paren">(</span><em>render_color=True</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Render raw images of the scene.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>render_color</strong> (<em>bool</em>) – If True, both a color and a depth image are returned.
+If False, only a depth image is returned.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A raw RGB color image with pixel values in [0, 255] and a depth image
+with true depths expressed as floats. If render_color was False,
+only the depth image is returned.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">tuple of (h, w, 3) uint8, (h, w) float32</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">ValueError</span></code> – If the scene has no set camera.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This function can be called repeatedly, regardless of changes to the scene
+(i.e. moving SceneObjects, adding and removing lights, moving the camera).
+However, adding or removing objects causes a new OpenGL context to be created,
+so put all the objects in the scene before calling it.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Values listed as 0.0 in the depth image are actually at infinity
+(i.e. no object present at that pixel).</p>
+</div>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.Scene.wrapped_render">
+<code class="descname">wrapped_render</code><span class="sig-paren">(</span><em>render_modes</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.wrapped_render" title="Permalink to this definition">¶</a></dt>
+<dd><p>Render images of the scene and wrap them with Image wrapper classes
+from the Berkeley AUTOLab’s perception module.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>render_modes</strong> (<em>list of perception.RenderMode</em>) – A list of the desired image types to return, from the perception
+module’s RenderMode enum.</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A list containing a corresponding Image sub-class for each type listed
+in render_modes.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list of perception.Image</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="sceneobject.html" class="btn btn-neutral float-right" title="Scene Objects" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="random_variables.html" class="btn btn-neutral" title="Random Variables" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Matthew Matl.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

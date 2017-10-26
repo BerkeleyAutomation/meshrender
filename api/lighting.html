@@ -1,0 +1,356 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Lighting &mdash; meshrender 0.0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="meshrender 0.0.1 documentation" href="../index.html"/>
+        <link rel="next" title="Material" href="material.html"/>
+        <link rel="prev" title="Camera" href="camera.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> meshrender
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Installation Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html">Python Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html#documentation">Documentation</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="camera.html">Camera</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Lighting</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#ambientlight">AmbientLight</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#directionallight">DirectionalLight</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#pointlight">PointLight</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="material.html">Material</a></li>
+<li class="toctree-l1"><a class="reference internal" href="random_variables.html">Random Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scene.html">Scene</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sceneobject.html">Scene Objects</a></li>
+</ul>
+<p class="caption"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example.html">Example Usage</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">meshrender</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Lighting</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/lighting.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="lighting">
+<h1>Lighting<a class="headerlink" href="#lighting" title="Permalink to this headline">¶</a></h1>
+<p>There are several types of lighing available in <cite>meshrender</cite>, including
+ambient, directional, and point lights.
+All lighting classes are subclasses of <cite>Light</cite>.</p>
+<div class="section" id="ambientlight">
+<h2>AmbientLight<a class="headerlink" href="#ambientlight" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="meshrender.AmbientLight">
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">AmbientLight</code><span class="sig-paren">(</span><em>color</em>, <em>strength</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.AmbientLight" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">meshrender.light.Light</span></code></p>
+<p>An ambient light, which flatly shades all objects in the world.</p>
+<dl class="method">
+<dt id="meshrender.AmbientLight.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>color</em>, <em>strength</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.AmbientLight.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize an ambient light with the given color and strength.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>color</strong> (<em>(</em><em>3</em><em>,</em><em>) </em><em>float</em>) – The RGB color of the light in (0,1).</li>
+<li><strong>strength</strong> (<em>float</em>) – The strength of the light.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="directionallight">
+<h2>DirectionalLight<a class="headerlink" href="#directionallight" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="meshrender.DirectionalLight">
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">DirectionalLight</code><span class="sig-paren">(</span><em>direction</em>, <em>color</em>, <em>strength</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.DirectionalLight" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">meshrender.light.Light</span></code></p>
+<p>A far-away light with a given direction.</p>
+<dl class="method">
+<dt id="meshrender.DirectionalLight.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>direction</em>, <em>color</em>, <em>strength</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.DirectionalLight.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a directional light with the given direction, color, and strength.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>direction</strong> (<em>(</em><em>3</em><em>,</em><em>) </em><em>float</em>) – A unit vector indicating the direction of the light.</li>
+<li><strong>color</strong> (<em>(</em><em>3</em><em>,</em><em>) </em><em>float</em>) – The RGB color of the light in (0,1).</li>
+<li><strong>strength</strong> (<em>float</em>) – The strength of the light.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="meshrender.DirectionalLight.direction">
+<code class="descname">direction</code><a class="headerlink" href="#meshrender.DirectionalLight.direction" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>(3,) float</em> – A unit vector indicating the direction of the light.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="pointlight">
+<h2>PointLight<a class="headerlink" href="#pointlight" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="meshrender.PointLight">
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">PointLight</code><span class="sig-paren">(</span><em>location</em>, <em>color</em>, <em>strength</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.PointLight" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">meshrender.light.Light</span></code></p>
+<p>A nearby point light source that shines in all directions.</p>
+<dl class="method">
+<dt id="meshrender.PointLight.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>location</em>, <em>color</em>, <em>strength</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.PointLight.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a point light with the given location, color, and strength.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>location</strong> (<em>(</em><em>3</em><em>,</em><em>) </em><em>float</em>) – The 3D location of the point light.</li>
+<li><strong>color</strong> (<em>(</em><em>3</em><em>,</em><em>) </em><em>float</em>) – The RGB color of the light in (0,1).</li>
+<li><strong>strength</strong> (<em>float</em>) – The strength of the light.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="meshrender.PointLight.location">
+<code class="descname">location</code><a class="headerlink" href="#meshrender.PointLight.location" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>(3,) float</em> – The 3D location of the point light.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="material.html" class="btn btn-neutral float-right" title="Material" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="camera.html" class="btn btn-neutral" title="Camera" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Matthew Matl.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>
