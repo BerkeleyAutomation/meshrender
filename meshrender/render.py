@@ -31,13 +31,24 @@ class OpenGLRenderer(object):
         self._framebuf = None
 
         # Initialize the OpenGL context with a 1x1 window and hide it immediately
-        glutInit()
-        glutInitDisplayMode(GLUT_RGBA)
-        glutInitWindowSize(1,1)
-        glutInitContextVersion(3,3)
-        glutInitContextProfile(GLUT_CORE_PROFILE)
-        self._window = glutCreateWindow('render')
-        glutHideWindow()
+        import pyglet
+        import pyglet.gl as gl
+        conf = gl.Config(
+            depth_size=24,
+            double_buffer=True,
+            major_version=3,
+            minor_version=2
+        )
+
+        self._window = pyglet.window.Window(config=conf, width=1, height=1)
+        #self._window.set_visible(False)
+        #glutInit()
+        #glutInitDisplayMode(GLUT_RGBA)
+        #glutInitWindowSize(1,1)
+        #glutInitContextVersion(3,3)
+        #glutInitContextProfile(GLUT_CORE_PROFILE)
+        #self._window = glutCreateWindow('render')
+        #glutHideWindow()
 
         # Bind the frame buffer for offscreen rendering
         self._bind_frame_buffer()
@@ -53,8 +64,11 @@ class OpenGLRenderer(object):
         self._vaids = self._load_meshes()
 
         # Load the shaders
+        # Fix for pyopengl -- bind a framebuffer
+        glBindVertexArray(self._vaids[0])
         self._full_shader = self._load_shaders(vertex_shader, fragment_shader)
         self._depth_shader = self._load_shaders(depth_vertex_shader, depth_fragment_shader)
+        glBindVertexArray(0)
 
     def render(self, render_color=True):
         """Render raw images of the scene.
@@ -104,7 +118,8 @@ class OpenGLRenderer(object):
         -------
         Once this has been called, the OpenGLRenderer object should be discarded.
         """
-        glutDestroyWindow(self._window)
+        #glutDestroyWindow(self._window)
+        self._window.close()
 
     def _bind_frame_buffer(self):
         """Bind the frame buffer for offscreen rendering.
@@ -209,9 +224,9 @@ class OpenGLRenderer(object):
                              GL_STATIC_DRAW)
 
             # Unbind all buffers
-            glBindVertexArray(0)
             glDisableVertexAttribArray(0)
             glDisableVertexAttribArray(1)
+            glBindVertexArray(0)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
 
