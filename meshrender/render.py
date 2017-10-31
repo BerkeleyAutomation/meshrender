@@ -4,7 +4,6 @@ import numpy as np
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from OpenGL.arrays import *
-from OpenGL.GLUT import *
 
 from .constants import MAX_N_LIGHTS, Z_NEAR, Z_FAR
 from .light import AmbientLight, PointLight, DirectionalLight
@@ -39,16 +38,7 @@ class OpenGLRenderer(object):
             major_version=3,
             minor_version=2
         )
-
-        self._window = pyglet.window.Window(config=conf, width=1, height=1)
-        #self._window.set_visible(False)
-        #glutInit()
-        #glutInitDisplayMode(GLUT_RGBA)
-        #glutInitWindowSize(1,1)
-        #glutInitContextVersion(3,3)
-        #glutInitContextProfile(GLUT_CORE_PROFILE)
-        #self._window = glutCreateWindow('render')
-        #glutHideWindow()
+        self._window = pyglet.window.Window(config=conf, visible=False, resizable=False, width=1, height=1)
 
         # Bind the frame buffer for offscreen rendering
         self._bind_frame_buffer()
@@ -118,7 +108,6 @@ class OpenGLRenderer(object):
         -------
         Once this has been called, the OpenGLRenderer object should be discarded.
         """
-        #glutDestroyWindow(self._window)
         self._window.close()
 
     def _bind_frame_buffer(self):
@@ -224,8 +213,6 @@ class OpenGLRenderer(object):
                              GL_STATIC_DRAW)
 
             # Unbind all buffers
-            glDisableVertexAttribArray(0)
-            glDisableVertexAttribArray(1)
             glBindVertexArray(0)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
