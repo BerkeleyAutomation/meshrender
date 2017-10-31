@@ -387,14 +387,19 @@ class SceneViewer(pyglet.window.Window):
     def on_draw(self):
         scene = self._scene
         camera = self._camera
-        width, height = self._size
 
         camera.T_camera_world = self._trackball.T_camera_world
 
         # Set viewport size
-        view = self.context._nscontext.view()
-        bounds = view.convertRectToBacking_(view.bounds()).size
-        back_width, back_height = (int(bounds.width), int(bounds.height))
+        context = self.context
+        back_width, back_height = self._size
+
+        # Check for retina slash high-dpi displays (hack)
+        if hasattr(self.context, '_nscontext'):
+            view = self.context._nscontext.view()
+            bounds = view.convertRectToBacking_(view.bounds()).size
+            back_width, back_height = (int(bounds.width), int(bounds.height))
+
         glViewport(0, 0, back_width, back_height)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
