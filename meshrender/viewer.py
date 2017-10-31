@@ -112,7 +112,7 @@ class Trackball(object):
         """
         point = np.array(point, dtype=np.float32)
         dx, dy = point - self._pdown
-        mindim = 0.3 * np.min(self._scale)
+        mindim = 0.3 * np.min(self._size)
 
         target = self._target
         x_axis = self._T_camera_world.matrix[:3,0].flatten()
@@ -202,7 +202,7 @@ class SceneViewer(pyglet.window.Window):
 
     def __init__(self, scene, size=(640,480), flags=None):
         self._scene = scene
-        self._size = size
+        self._size = np.array(size)
         self._camera = None
         self._trackball = None
 
