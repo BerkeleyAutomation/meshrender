@@ -391,7 +391,11 @@ class SceneViewer(pyglet.window.Window):
 
         camera.T_camera_world = self._trackball.T_camera_world
 
-        glViewport(0, 0, width, height)
+        # Set viewport size
+        view = self.context._nscontext.view()
+        bounds = view.convertRectToBacking_(view.bounds()).size
+        back_width, back_height = (int(bounds.width), int(bounds.height))
+        glViewport(0, 0, back_width, back_height)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         glUseProgram(self._shader)
