@@ -1,6 +1,7 @@
 import copy
 
 import pyglet
+pyglet.options['shadow_window'] = False
 import pyglet.gl as gl
 
 import numpy as np
@@ -50,7 +51,7 @@ class Trackball(object):
             The trackball will revolve around this point.
         """
         self._size = size
-        self._scale = scale
+        self._scale = np.array(scale)
 
         self._T_camera_world = T_camera_world
         self._n_T_camera_world = T_camera_world
@@ -133,7 +134,7 @@ class Trackball(object):
 
         # Interpret drag as a roll about the camera axis
         elif self._state == Trackball.STATE_ROLL:
-            center = np.array([self._width / 2.0, self._height / 2.0])
+            center = self._scale / 2.0
             v_init = self._pdown - center
             v_curr = point - center
             v_init = v_init / np.linalg.norm(v_init)
@@ -161,9 +162,9 @@ class Trackball(object):
             radius = np.linalg.norm(eye - target)
             ratio = 0.0
             if dy < 0:
-                ratio = np.exp(abs(dy)/(0.5*self._height)) - 1.0
+                ratio = np.exp(abs(dy)/(0.5*self._size[1])) - 1.0
             elif dy > 0:
-                ratio = 1.0 - np.exp(-dy/(0.5*(self._height)))
+                ratio = 1.0 - np.exp(-dy/(0.5*(self._size[1])))
             translation = -np.sign(dy) * ratio * radius * z_axis
             t_tf = RigidTransform(translation=translation, from_frame='world', to_frame='world')
             self._n_T_camera_world = t_tf.dot(self._T_camera_world)
@@ -209,24 +210,26 @@ class SceneViewer(pyglet.window.Window):
             conf = gl.Config(sample_buffers=1,
                              samples=4,
                              depth_size=24,
-                             double_buffer=True)
+                             double_buffer=True,
+                             major_version=3,
+                             minor_version=2)
             super(SceneViewer, self).__init__(config=conf,
                                               resizable=True,
-                                              width=self._width,
-                                              height=self._height)
+                                              width=self._size[0],
+                                              height=self._size[1])
         except pyglet.window.NoSuchConfigException:
             conf = gl.Config(double_buffer=True)
             super(SceneViewer, self).__init__(config=conf,
                                               resizable=True,
-                                              width=self._width,
-                                              height=self._height)
-        self._reset_view()
+                                              width=self._size[0],
+                                              height=self._size[1])
         self._init_gl()
-        self._update_flags()
-        self._flags = { 'wireframe' : False }
+        self._flags = {'wireframe' : False}
         if flags:
             for flag in flags:
                 self._flags[flag] = flags[flag]
+        self._update_flags()
+        self._reset_view()
         pyglet.app.run()
 
     def _reset_view(self):
@@ -272,11 +275,11 @@ class SceneViewer(pyglet.window.Window):
         # Create a trackball
         self._trackball = Trackball(
             self._camera.T_camera_world,
-            width, height, scale,
+            self._size, scale,
             target=centroid,
         )
 
-        self.update_flags()
+        self._update_flags()
 
     def _init_gl(self):
         glClearColor(.93, .93, 1, 1)
@@ -373,11 +376,11 @@ class SceneViewer(pyglet.window.Window):
                              GL_STATIC_DRAW)
 
             # Unbind all buffers
-            glBindVertexArray(0)
-            glDisableVertexAttribArray(0)
-            glDisableVertexAttribArray(1)
-            glBindBuffer(GL_ARRAY_BUFFER, 0)
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
+            #glDisableVertexAttribArray(0)
+            #glDisableVertexAttribArray(1)
+            #glBindVertexArray(0)
+            #glBindBuffer(GL_ARRAY_BUFFER, 0)
+            #glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
 
         return VA_ids
 
@@ -453,7 +456,7 @@ class SceneViewer(pyglet.window.Window):
 
         glFlush()
 
-    def update_flags(self):
+    def _update_flags(self):
         if self._flags['wireframe']:
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         else:
@@ -462,39 +465,40 @@ class SceneViewer(pyglet.window.Window):
     def on_resize(self, width, height):
         """Resize the camera and trackball when the window is resized.
         """
-        self.camera.resize(width, height)
-        self.trackball.resize(width, height)
+        self._size = (width, height)
+        self._camera.resize(width, height)
+        self._trackball.resize(self._size)
         self.on_draw()
 
     def on_mouse_press(self, x, y, buttons, modifiers):
         """Record an initial mouse press.
         """
-        self.trackball.set_state(Trackball.STATE_ROTATE)
+        self._trackball.set_state(Trackball.STATE_ROTATE)
         if (buttons == pyglet.window.mouse.LEFT):
             ctrl = (modifiers & pyglet.window.key.MOD_CTRL)
             shift = (modifiers & pyglet.window.key.MOD_SHIFT)
             if (ctrl and shift):
-                self.trackball.set_state(Trackball.STATE_ZOOM)
+                self._trackball.set_state(Trackball.STATE_ZOOM)
             elif ctrl:
-                self.trackball.set_state(Trackball.STATE_ROLL)
+                self._trackball.set_state(Trackball.STATE_ROLL)
             elif shift:
-                self.trackball.set_state(Trackball.STATE_PAN)
+                self._trackball.set_state(Trackball.STATE_PAN)
         elif (buttons == pyglet.window.mouse.MIDDLE):
-            self.trackball.set_state(Trackball.STATE_PAN)
+            self._trackball.set_state(Trackball.STATE_PAN)
         elif (buttons == pyglet.window.mouse.RIGHT):
-            self.trackball.set_state(Trackball.STATE_ZOOM)
+            self._trackball.set_state(Trackball.STATE_ZOOM)
 
-        self.trackball.down(np.array([x, y]))
+        self._trackball.down(np.array([x, y]))
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         """Record a mouse drag.
         """
-        self.trackball.drag(np.array([x, y]))
+        self._trackball.drag(np.array([x, y]))
 
     def on_mouse_scroll(self, x, y, dx, dy):
         """Record a mouse scroll.
         """
-        self.trackball.scroll(dy)
+        self._trackball.scroll(dy)
 
     def on_key_press(self, symbol, modifiers):
         """Record a key press.
@@ -519,12 +523,11 @@ class SceneViewer(pyglet.window.Window):
         """
         lb = np.array([np.infty, np.infty, np.infty])
         ub = -1.0 * np.array([np.infty, np.infty, np.infty])
-        for on in self.scene.objects:
-            o = self.scene.objects[on]
+        for on in self._scene.objects:
+            o = self._scene.objects[on]
             tf_verts = o.T_obj_world.matrix[:3,:3].dot(o.mesh.vertices.T).T + o.T_obj_world.matrix[:3,3]
             lb_mesh = np.min(tf_verts, axis=0)
             ub_mesh = np.max(tf_verts, axis=0)
             lb = np.minimum(lb, lb_mesh)
             ub = np.maximum(ub, ub_mesh)
         return np.array([lb, ub])
-        self.update_flags()

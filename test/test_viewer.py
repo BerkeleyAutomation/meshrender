@@ -134,19 +134,19 @@ scene.camera = camera
 #====================================
 
 # Render raw numpy arrays containing color and depth
-color_image_raw, depth_image_raw = scene.render(render_color=True)
+#color_image_raw, depth_image_raw = scene.render(render_color=True)
 
 # Alternatively, just render a depth image
-depth_image_raw = scene.render(render_color=False)
+#depth_image_raw = scene.render(render_color=False)
 
 # Alternatively, collect wrapped images
-wrapped_color, wrapped_depth, wrapped_segmask = scene.wrapped_render(
-    [RenderMode.COLOR, RenderMode.DEPTH, RenderMode.SEGMASK]
-)
-
-
-wrapped_color.save('color.jpg')
-wrapped_depth.save('depth.jpg')
+#wrapped_color, wrapped_depth, wrapped_segmask = scene.wrapped_render(
+#    [RenderMode.COLOR, RenderMode.DEPTH, RenderMode.SEGMASK]
+#)
+#
+#
+#wrapped_color.save('color.jpg')
+#wrapped_depth.save('depth.jpg')
 
 v = SceneViewer(scene)
 
