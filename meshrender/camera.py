@@ -30,17 +30,6 @@ class VirtualCamera(object):
         self._intrinsics = intrinsics
         self.T_camera_world = T_camera_world
 
-        # Compute an OpenGL projection matrix given the camera intrinsics
-        P = np.zeros((4,4))
-        P[0][0] = 2.0 * intrinsics.fx / intrinsics.width
-        P[1][1] = 2.0 * intrinsics.fy / intrinsics.height
-        P[0][2] = 1.0 - 2.0 * intrinsics.cx / intrinsics.width
-        P[1][2] = 2.0 * intrinsics.cy / intrinsics.height - 1.0
-        P[2][2] = -(Z_FAR + Z_NEAR) / (Z_FAR - Z_NEAR)
-        P[3][2] = -1.0
-        P[2][3] = -(2.0 * Z_FAR * Z_NEAR) / (Z_FAR - Z_NEAR)
-        self._P = P
-
     @property
     def intrinsics(self):
         """perception.CameraIntrinsics: The camera's intrinsic parameters.
@@ -73,5 +62,41 @@ class VirtualCamera(object):
         """(4,4) float: A homogenous projective matrix for the camera, equivalent
         to the OpenGL Projection matrix.
         """
-        return self._P
+        P = np.zeros((4,4))
+        P[0][0] = 2.0 * self.intrinsics.fx / self.intrinsics.width
+        P[1][1] = 2.0 * self.intrinsics.fy / self.intrinsics.height
+        P[0][2] = 1.0 - 2.0 * self.intrinsics.cx / self.intrinsics.width
+        P[1][2] = 2.0 * self.intrinsics.cy / self.intrinsics.height - 1.0
+        P[2][2] = -(Z_FAR + Z_NEAR) / (Z_FAR - Z_NEAR)
+        P[3][2] = -1.0
+        P[2][3] = -(2.0 * Z_FAR * Z_NEAR) / (Z_FAR - Z_NEAR)
+        return P
+
+
+    def resize(self, new_width, new_height):
+        """Reset the camera intrinsics for a new width and height viewing window.
+
+        Parameters
+        ----------
+        new_width : int
+            The new window width, in pixels.
+        new_height : int
+            The new window height, in pixels.
+        """
+        x_scale = float(new_width) / self.intrinsics.width
+        y_scale = float(new_height) / self.intrinsics.height
+        center_x = float(self.intrinsics.width-1)/2
+        center_y = float(self.intrinsics.height-1)/2
+        orig_cx_diff = self.intrinsics.cx - center_x
+        orig_cy_diff = self.intrinsics.cy - center_y
+        scaled_center_x = float(new_width-1) / 2
+        scaled_center_y = float(new_height-1) / 2
+        cx = scaled_center_x + x_scale * orig_cx_diff
+        cy = scaled_center_y + y_scale * orig_cy_diff
+        fx = self.intrinsics.fx * x_scale
+        fy = self.intrinsics.fy * x_scale
+        scaled_intrinsics = CameraIntrinsics(frame=self.intrinsics.frame,
+                                             fx=fx, fy=fy, skew=self.intrinsics.skew,
+                                             cx=cx, cy=cy, height=new_height, width=new_width)
+        self._intrinsics = scaled_intrinsics
 

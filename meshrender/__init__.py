@@ -7,3 +7,4 @@ from .random_variables import CameraSample, RenderSample, \
                               UniformViewsphereRandomVariable, \
                               UniformPlanarWorksurfaceRandomVariable, \
                               UniformPlanarWorksurfaceImageRandomVariable
+from .viewer import SceneViewer

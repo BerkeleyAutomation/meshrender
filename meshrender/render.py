@@ -47,6 +47,7 @@ class OpenGLRenderer(object):
         glDepthMask(GL_TRUE)
         glDepthFunc(GL_LESS)
         glDepthRange(0.0, 1.0)
+        #glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
         # Load the meshes into VAO's
         self._vaids = self._load_meshes()
