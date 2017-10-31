@@ -20,50 +20,98 @@ from autolab_core import RigidTransform
 from perception import CameraIntrinsics
 
 class Trackball(object):
+    """A trackball class for creating camera transformations from mouse movements.
+    """
     STATE_ROTATE = 0
     STATE_PAN = 1
     STATE_ROLL = 2
     STATE_ZOOM = 3
 
-    def __init__(self, T_camera_world,
-                 target=np.array([0.0, 0.0, 0.0]), width=1, height=1, scale=1.0):
-        """
-        """
-        self._T_camera_world = T_camera_world
-        self._target = target
+    def __init__(self, T_camera_world, size, scale,
+                 target=np.array([0.0, 0.0, 0.0])):
+        """Initialize a trackball with an initial camera-to-world pose
+        and the given parameters.
 
+        Parameters
+        ----------
+        T_camera_world : autolab_core.RigidTransform
+            An initial camera-to-world pose for the trackball.
+
+        size : (float, float)
+            The width and height of the camera image in pixels.
+
+        scale : float
+            The diagonal of the scene's bounding box --
+            used for ensuring translation motions are sufficiently
+            fast for differently-sized scenes.
+
+        target : (3,) float
+            The center of the scene in world coordinates.
+            The trackball will revolve around this point.
+        """
+        self._size = size
+        self._scale = scale
+
+        self._T_camera_world = T_camera_world
         self._n_T_camera_world = T_camera_world
+
+        self._target = target
         self._n_target = target
 
-        self._width = width
-        self._height = height
-        self._scale = scale
         self._state = Trackball.STATE_ROTATE
 
-    def set_state(self, state):
+    @property
+    def T_camera_world(self):
+        """autolab_core.RigidTransform : The current camera-to-world pose.
         """
+        return self._n_T_camera_world
+
+    def set_state(self, state):
+        """Set the state of the trackball in order to change the effect of dragging motions.
+
+        Parameters
+        ----------
+        state : int
+            One of Trackball.STATE_ROTATE, Trackball.STATE_PAN, Trackball.STATE_ROLL, and
+            Trackball.STATE_ZOOM.
         """
         self._state = state
 
-    def resize(self, width, height):
+    def resize(self, size):
+        """Resize the window.
+
+        Parameters
+        ----------
+        size : (float, float)
+            The new width and height of the camera image in pixels.
         """
-        """
-        self._width = width
-        self._height = height
+        self._size = size
 
     def down(self, point):
+        """Record an initial mouse press at a given point.
+
+        Parameters
+        ----------
+        point : (2,) int
+            The x and y pixel coordinates of the mouse press.
         """
-        """
-        self._pdown = point
+        self._pdown = np.array(point, dtype=np.float32)
         self._T_camera_world = self._n_T_camera_world
         self._target = self._n_target
 
     def drag(self, point):
+        """Update the tracball during a drag.
+
+        Parameters
+        ----------
+        point : (2,) int
+            The current x and y pixel coordinates of the mouse during a drag.
+            This will compute a movement for the trackball with the relative motion
+            between this point and the one marked by down().
         """
-        """
+        point = np.array(point, dtype=np.float32)
         dx, dy = point - self._pdown
-        dx, dy = float(dx), float(dy)
-        mindim = 0.3 * min(self._width, self._height)
+        mindim = 0.3 * np.min(self._scale)
 
         target = self._target
         x_axis = self._T_camera_world.matrix[:3,0].flatten()
@@ -83,6 +131,7 @@ class Trackball(object):
 
             self._n_T_camera_world = y_rot_tf.dot(x_rot_tf.dot(self._T_camera_world))
 
+        # Interpret drag as a roll about the camera axis
         elif self._state == Trackball.STATE_ROLL:
             center = np.array([self._width / 2.0, self._height / 2.0])
             v_init = self._pdown - center
@@ -97,6 +146,7 @@ class Trackball(object):
 
             self._n_T_camera_world = rot_tf.dot(self._T_camera_world)
 
+        # Interpret drag as a camera pan in view plane
         elif self._state == Trackball.STATE_PAN:
             dx = -dx / (5.0*mindim) * self._scale
             dy = -dy / (5.0*mindim) * self._scale
@@ -106,10 +156,10 @@ class Trackball(object):
             t_tf = RigidTransform(translation=translation, from_frame='world', to_frame='world')
             self._n_T_camera_world = t_tf.dot(self._T_camera_world)
 
+        # Interpret drag as a zoom motion
         elif self._state == Trackball.STATE_ZOOM:
             radius = np.linalg.norm(eye - target)
             ratio = 0.0
-            # Zoom out
             if dy < 0:
                 ratio = np.exp(abs(dy)/(0.5*self._height)) - 1.0
             elif dy > 0:
@@ -119,8 +169,14 @@ class Trackball(object):
             self._n_T_camera_world = t_tf.dot(self._T_camera_world)
 
     def scroll(self, clicks):
-        target = self._target
+        """Zoom using a mouse scroll wheel motion.
 
+        Parameters
+        ----------
+        clicks : int
+            The number of clicks. Positive numbers indicate forward wheel movement.
+        """
+        target = self._target
         ratio = 0.90
 
         z_axis = self._n_T_camera_world.matrix[:3,2].flatten()
@@ -137,21 +193,17 @@ class Trackball(object):
         t_tf = RigidTransform(translation=translation, from_frame='world', to_frame='world')
         self._T_camera_world = t_tf.dot(self._T_camera_world)
 
-    def T_camera_world(self):
-        """
-        """
-        return self._n_T_camera_world
 
 class SceneViewer(pyglet.window.Window):
+    """An interactive viewer for a 3D scene. This doesn't use the scene's camera --
+    instead, it uses one based on a trackball.
+    """
 
-    def __init__(self, scene, size=(640,480)):
-
+    def __init__(self, scene, size=(640,480), flags=None):
         self._scene = scene
-        self.scene = scene
-        self.bounds = self.compute_scene_bounds()
-        self._width = scene.camera.intrinsics.width
-        self._height = scene.camera.intrinsics.height
-        self.orig_camera = copy.copy(scene.camera)
+        self._size = size
+        self._camera = None
+        self._trackball = None
 
         try:
             conf = gl.Config(sample_buffers=1,
@@ -168,42 +220,29 @@ class SceneViewer(pyglet.window.Window):
                                               resizable=True,
                                               width=self._width,
                                               height=self._height)
-        self.trackball = None
-        self.reset_view()
-        self.init_gl()
-        self.update_flags()
+        self._reset_view()
+        self._init_gl()
+        self._update_flags()
+        self._flags = { 'wireframe' : False }
+        if flags:
+            for flag in flags:
+                self._flags[flag] = flags[flag]
         pyglet.app.run()
 
-    def compute_scene_bounds(self):
-        """The axis aligned bounds of the scene.
-
-        Returns
-        -------
-        (2,3) float
-            The bounding box with [min, max] coordinates.
+    def _reset_view(self):
+        """Reset the view to a good initial state.
         """
-        lb = np.array([np.infty, np.infty, np.infty])
-        ub = -1.0 * np.array([np.infty, np.infty, np.infty])
-        for on in self.scene.objects:
-            o = self.scene.objects[on]
-            tf_verts = o.T_obj_world.matrix[:3,:3].dot(o.mesh.vertices.T).T + o.T_obj_world.matrix[:3,3]
-            lb_mesh = np.min(tf_verts, axis=0)
-            ub_mesh = np.max(tf_verts, axis=0)
-            lb = np.minimum(lb, lb_mesh)
-            ub = np.maximum(ub, ub_mesh)
-        return np.array([lb, ub])
 
-        return np.mean(self.compute_scene_bounds(), axis=0)
-
-    def reset_view(self, flags=None):
-        centroid = np.mean(self.bounds, axis=0)
-        extents = np.diff(self.bounds, axis=0).reshape(-1)
+        # Compute scene bounds and scale
+        bounds = self._compute_scene_bounds()
+        centroid = np.mean(bounds, axis=0)
+        extents = np.diff(bounds, axis=0).reshape(-1)
         scale = (extents ** 2).sum() ** .5
-        width, height = self._width, self._height
+        width, height = self._size
 
-        fov = np.pi / 6
-        fl = height / (2.0 * np.tan(fov / 2))
         # Set up reasonable camera intrinsics
+        fov = np.pi / 6.0
+        fl = height / (2.0 * np.tan(fov / 2))
         ci = CameraIntrinsics(
             frame = 'camera',
             fx = fl,
@@ -228,24 +267,18 @@ class SceneViewer(pyglet.window.Window):
         )
 
         # Create a VirtualCamera
-        camera = VirtualCamera(ci, cp)
-        self.scene.camera = camera
+        self._camera = VirtualCamera(ci, cp)
 
-
-        self.trackball = Trackball(
-            self.scene.camera.T_camera_world,
+        # Create a trackball
+        self._trackball = Trackball(
+            self._camera.T_camera_world,
+            width, height, scale,
             target=centroid,
-            width=self.scene.camera.intrinsics.width,
-            height=self.scene.camera.intrinsics.height,
-            scale=scale
         )
-
-        self.view = {'wireframe': False}
-        self.trackball.set_state(Trackball.STATE_ROTATE)
 
         self.update_flags()
 
-    def init_gl(self):
+    def _init_gl(self):
         glClearColor(.93, .93, 1, 1)
 
         glEnable(GL_DEPTH_TEST)
@@ -348,18 +381,12 @@ class SceneViewer(pyglet.window.Window):
 
         return VA_ids
 
-
     def on_draw(self):
-        scene = self.scene
-        camera = self.scene.camera
-        width = camera.intrinsics.width
-        height = camera.intrinsics.height
+        scene = self._scene
+        camera = self._camera
+        width, height = self._size
 
-        # Change camera transform using arcball
-        #v = _view_transform(self.view)
-        #T_world_camera = RigidTransform(v[:3,:3], v[:3,3], from_frame='world', to_frame='camera')
-        #T_camera_world = T_world_camera.inverse()
-        camera.T_camera_world = self.trackball.T_camera_world()
+        camera.T_camera_world = self._trackball.T_camera_world
 
         glViewport(0, 0, width, height)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -379,7 +406,7 @@ class SceneViewer(pyglet.window.Window):
         n_point_id = glGetUniformLocation(self._shader, "n_point_lights")
 
         # Bind view matrix
-        glUniformMatrix4fv(v_id, 1, GL_TRUE, scene.camera.V)
+        glUniformMatrix4fv(v_id, 1, GL_TRUE, camera.V)
 
         # Bind ambient lighting
         glUniform4fv(ambient_id, 1, np.hstack((scene.ambient_light.color,
@@ -427,17 +454,21 @@ class SceneViewer(pyglet.window.Window):
         glFlush()
 
     def update_flags(self):
-        if self.view['wireframe']:
+        if self._flags['wireframe']:
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
         else:
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
     def on_resize(self, width, height):
-        self.scene.camera.resize(width, height)
+        """Resize the camera and trackball when the window is resized.
+        """
+        self.camera.resize(width, height)
         self.trackball.resize(width, height)
         self.on_draw()
 
     def on_mouse_press(self, x, y, buttons, modifiers):
+        """Record an initial mouse press.
+        """
         self.trackball.set_state(Trackball.STATE_ROTATE)
         if (buttons == pyglet.window.mouse.LEFT):
             ctrl = (modifiers & pyglet.window.key.MOD_CTRL)
@@ -456,29 +487,44 @@ class SceneViewer(pyglet.window.Window):
         self.trackball.down(np.array([x, y]))
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        """Record a mouse drag.
+        """
         self.trackball.drag(np.array([x, y]))
 
     def on_mouse_scroll(self, x, y, dx, dy):
+        """Record a mouse scroll.
+        """
         self.trackball.scroll(dy)
 
     def on_key_press(self, symbol, modifiers):
+        """Record a key press.
+        """
         if symbol == pyglet.window.key.W:
             self.toggle_wireframe()
         elif symbol == pyglet.window.key.Z:
             self.reset_view()
 
     def toggle_wireframe(self):
-        self.view['wireframe'] = not self.view['wireframe']
+        """Toggle whether meshes are displayed with wireframe mode on or not.
+        """
+        self._flags['wireframe'] = not self._flags['wireframe']
+
+    def _compute_scene_bounds(self):
+        """The axis aligned bounds of the scene.
+
+        Returns
+        -------
+        (2,3) float
+            The bounding box with [min, max] coordinates.
+        """
+        lb = np.array([np.infty, np.infty, np.infty])
+        ub = -1.0 * np.array([np.infty, np.infty, np.infty])
+        for on in self.scene.objects:
+            o = self.scene.objects[on]
+            tf_verts = o.T_obj_world.matrix[:3,:3].dot(o.mesh.vertices.T).T + o.T_obj_world.matrix[:3,3]
+            lb_mesh = np.min(tf_verts, axis=0)
+            ub_mesh = np.max(tf_verts, axis=0)
+            lb = np.minimum(lb, lb_mesh)
+            ub = np.maximum(ub, ub_mesh)
+        return np.array([lb, ub])
         self.update_flags()
-
-def _view_transform(view):
-    '''
-    Given a dictionary containing view parameters,
-    calculate a transformation matrix.
-    '''
-    transform = view['ball'].matrix()
-    transform[0:3, 3] = view['center']
-    transform[0:3, 3] -= np.dot(transform[0:3, 0:3], view['center'])
-    transform[0:3, 3] += view['translation'] * view['scale'] * 5.0
-    return transform
-

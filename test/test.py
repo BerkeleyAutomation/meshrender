@@ -14,7 +14,7 @@ scene = Scene()
 
 # Begin by loading meshes
 pawn_mesh = trimesh.load_mesh('./models/pawn.obj')
-pawn_mesh = trimesh.load_mesh('./models/pawn_large.obj')
+#pawn_mesh = trimesh.load_mesh('./models/pawn_large.obj')
 bar_mesh = trimesh.load_mesh('./models/bar_clamp.obj')
 
 # Set up each object's pose in the world
