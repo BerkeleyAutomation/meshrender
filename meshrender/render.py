@@ -336,6 +336,11 @@ class OpenGLRenderer(object):
             glUniform3fv(object_color_id, 1, material.color)
             glUniform4fv(matprop_id, 1, np.array([material.k_a, material.k_d, material.k_s, material.alpha]))
 
+            if material.wireframe:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+            else:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
             if material.smooth:
                 glDrawElements(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0))
             else:

@@ -38,7 +38,8 @@ pawn_material = MaterialProperties(
     k_d = 1.0,
     k_s = 0.5,
     alpha = 10.0,
-    smooth=False
+    smooth=False,
+    wireframe=False
 )
 bar_material = MaterialProperties(
     color = np.array([0.1, 0.1, 0.5]),

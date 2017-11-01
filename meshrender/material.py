@@ -5,7 +5,8 @@ class MaterialProperties(object):
     """
 
     def __init__(self, color=np.array([0.5, 0.5, 0.5]),
-                 k_a=1.0, k_d=1.0, k_s = 1.0, alpha=1.0, smooth=False):
+                 k_a=1.0, k_d=1.0, k_s = 1.0, alpha=1.0,
+                 smooth=False, wireframe=False):
         """Initialize a set of material properties.
 
         Parameters
@@ -23,6 +24,8 @@ class MaterialProperties(object):
             more reflectivity and smaller highlights).
         smooth : bool
             If True, normals will be interpolated to smooth the mesh.
+        wireframe : bool
+            If True, the mesh will be rendered as a wireframe.
         """
         self._color = color
         self._k_a = k_a
@@ -30,6 +33,7 @@ class MaterialProperties(object):
         self._k_s = k_s 
         self._alpha = alpha
         self._smooth = smooth
+        self._wireframe = wireframe
 
     @property
     def color(self):
@@ -67,3 +71,8 @@ class MaterialProperties(object):
         """
         return self._smooth
 
+    @property
+    def wireframe(self):
+        """bool: If True, the mesh will be rendered as a wireframe.
+        """
+        return self._wireframe

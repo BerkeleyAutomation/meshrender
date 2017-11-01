@@ -200,15 +200,39 @@ class SceneViewer(pyglet.window.Window):
     instead, it uses one based on a trackball.
     """
 
-    def __init__(self, scene, size=(640,480), flags=None):
+    def __init__(self, scene, size=(640,480), **flags):
+        """Initialize a scene viewer and open the viewer window.
+
+        Parameters
+        ----------
+        scene : Scene
+            A scene to view. The scene's camera is not used.
+        size : (int, int)
+            The width and height of the target window in pixels.
+        flags : other kwargs
+            Other optional keyword arguments.
+
+        Note
+        ----
+        The possible set of flags are given in the Other Parameters section.
+
+        Other Parameters
+        ----------------
+        line_width : float
+            Sets the line width for wireframe meshes (default is 1).
+.        """
         self._scene = scene
         self._size = np.array(size)
         self._camera = None
         self._trackball = None
+        self._flags = flags
+        if 'flip_wireframe' not in self._flags:
+            self._flags['flip_wireframe'] = False
 
         # Close the scene's window if active
         self._scene.close_renderer()
 
+        # Set up the window
         try:
             conf = gl.Config(sample_buffers=1,
                              samples=4,
@@ -227,10 +251,6 @@ class SceneViewer(pyglet.window.Window):
                                               width=self._size[0],
                                               height=self._size[1])
         self._init_gl()
-        self._flags = {'wireframe' : False}
-        if flags:
-            for flag in flags:
-                self._flags[flag] = flags[flag]
         self._update_flags()
         self._reset_view()
         pyglet.app.run()
@@ -457,6 +477,12 @@ class SceneViewer(pyglet.window.Window):
             glUniform3fv(object_color_id, 1, material.color)
             glUniform4fv(matprop_id, 1, np.array([material.k_a, material.k_d, material.k_s, material.alpha]))
 
+            wf = material.wireframe != self._flags['flip_wireframe']
+            if wf:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+            else:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
             if material.smooth:
                 glDrawElements(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0))
             else:
@@ -467,10 +493,8 @@ class SceneViewer(pyglet.window.Window):
         glUseProgram(0)
 
     def _update_flags(self):
-        if self._flags['wireframe']:
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-        else:
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        if 'line_width' in self._flags:
+            glLineWidth(float(self._flags['line_width']))
 
     def on_resize(self, width, height):
         """Resize the camera and trackball when the window is resized.
@@ -514,15 +538,10 @@ class SceneViewer(pyglet.window.Window):
         """Record a key press.
         """
         if symbol == pyglet.window.key.W:
-            self.toggle_wireframe()
+            self._flags['flip_wireframe'] = not self._flags['flip_wireframe']
         elif symbol == pyglet.window.key.Z:
             self.reset_view()
         self._update_flags()
-
-    def toggle_wireframe(self):
-        """Toggle whether meshes are displayed with wireframe mode on or not.
-        """
-        self._flags['wireframe'] = not self._flags['wireframe']
 
     def _compute_scene_bounds(self):
         """The axis aligned bounds of the scene.
