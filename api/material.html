@@ -107,6 +107,7 @@
 <li class="toctree-l1"><a class="reference internal" href="random_variables.html">Random Variables</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scene.html">Scene</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sceneobject.html">Scene Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Examples</span></p>
 <ul>
@@ -184,12 +185,12 @@ we plan to add support for them soon.</p>
 <h2>MaterialProperties<a class="headerlink" href="#materialproperties" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="meshrender.MaterialProperties">
-<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">MaterialProperties</code><span class="sig-paren">(</span><em>color=array([ 0.5</em>, <em>0.5</em>, <em>0.5])</em>, <em>k_a=1.0</em>, <em>k_d=1.0</em>, <em>k_s=1.0</em>, <em>alpha=1.0</em>, <em>smooth=False</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.MaterialProperties" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">MaterialProperties</code><span class="sig-paren">(</span><em>color=array([ 0.5</em>, <em>0.5</em>, <em>0.5])</em>, <em>k_a=1.0</em>, <em>k_d=1.0</em>, <em>k_s=1.0</em>, <em>alpha=1.0</em>, <em>smooth=False</em>, <em>wireframe=False</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.MaterialProperties" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <p>A set of material properties describing how an object will look.</p>
 <dl class="method">
 <dt id="meshrender.MaterialProperties.__init__">
-<code class="descname">__init__</code><span class="sig-paren">(</span><em>color=array([ 0.5</em>, <em>0.5</em>, <em>0.5])</em>, <em>k_a=1.0</em>, <em>k_d=1.0</em>, <em>k_s=1.0</em>, <em>alpha=1.0</em>, <em>smooth=False</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.MaterialProperties.__init__" title="Permalink to this definition">¶</a></dt>
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>color=array([ 0.5</em>, <em>0.5</em>, <em>0.5])</em>, <em>k_a=1.0</em>, <em>k_d=1.0</em>, <em>k_s=1.0</em>, <em>alpha=1.0</em>, <em>smooth=False</em>, <em>wireframe=False</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.MaterialProperties.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize a set of material properties.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -203,6 +204,7 @@ we plan to add support for them soon.</p>
 <li><strong>alpha</strong> (<em>float</em>) – A multiplier for shininess (higher values indicate
 more reflectivity and smaller highlights).</li>
 <li><strong>smooth</strong> (<em>bool</em>) – If True, normals will be interpolated to smooth the mesh.</li>
+<li><strong>wireframe</strong> (<em>bool</em>) – If True, the mesh will be rendered as a wireframe.</li>
 </ul>
 </td>
 </tr>
@@ -244,6 +246,12 @@ more reflectivity and smaller highlights).</li>
 <dt id="meshrender.MaterialProperties.smooth">
 <code class="descname">smooth</code><a class="headerlink" href="#meshrender.MaterialProperties.smooth" title="Permalink to this definition">¶</a></dt>
 <dd><p><em>bool</em> – If True, indicates a smooth rather than piecewise planar surface.</p>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="meshrender.MaterialProperties.wireframe">
+<code class="descname">wireframe</code><a class="headerlink" href="#meshrender.MaterialProperties.wireframe" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>bool</em> – If True, the mesh will be rendered as a wireframe.</p>
 </dd></dl>
 
 </dd></dl>

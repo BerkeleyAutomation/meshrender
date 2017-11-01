@@ -1,0 +1,363 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Viewer &mdash; meshrender 0.0.1 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  
+
+  
+
+  
+        <link rel="index" title="Index"
+              href="../genindex.html"/>
+        <link rel="search" title="Search" href="../search.html"/>
+    <link rel="top" title="meshrender 0.0.1 documentation" href="../index.html"/>
+        <link rel="next" title="Example Usage" href="../examples/example.html"/>
+        <link rel="prev" title="Scene Objects" href="sceneobject.html"/> 
+
+  
+  <script src="../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> meshrender
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                0.0.1
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Installation Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html">Python Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html#dependencies">Dependencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../install/install.html#documentation">Documentation</a></li>
+</ul>
+<p class="caption"><span class="caption-text">API Documentation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="camera.html">Camera</a></li>
+<li class="toctree-l1"><a class="reference internal" href="lighting.html">Lighting</a></li>
+<li class="toctree-l1"><a class="reference internal" href="material.html">Material</a></li>
+<li class="toctree-l1"><a class="reference internal" href="random_variables.html">Random Variables</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scene.html">Scene</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sceneobject.html">Scene Objects</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Viewer</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#sceneviewer">SceneViewer</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption"><span class="caption-text">Examples</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../examples/example.html">Example Usage</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">meshrender</a>
+        
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Viewer</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/api/viewer.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="viewer">
+<h1>Viewer<a class="headerlink" href="#viewer" title="Permalink to this headline">¶</a></h1>
+<p>This package comes with a 3D viewer which allows one to navigate around a scene
+using a camera controlled by a virtual trackball.</p>
+<div class="section" id="sceneviewer">
+<h2>SceneViewer<a class="headerlink" href="#sceneviewer" title="Permalink to this headline">¶</a></h2>
+<dl class="class">
+<dt id="meshrender.SceneViewer">
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">SceneViewer</code><span class="sig-paren">(</span><em>scene</em>, <em>size=(640</em>, <em>480)</em>, <em>**flags</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">pyglet.window.Window</span></code></p>
+<p>An interactive viewer for a 3D scene.</p>
+<p>This doesn’t use the scene’s camera - instead, it uses one based on a trackball.</p>
+<p>The basic commands for moving about the scene are given as follows:</p>
+<ul>
+<li><p class="first">To rotate the camera about the center of the scene, hold the left mouse button and drag the cursor.</p>
+</li>
+<li><p class="first">To rotate the camera about its viewing axis, hold CTRL and then hold the left mouse button and drag the cursor.</p>
+</li>
+<li><p class="first">To pan the camera, do one of the following:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Hold SHIFT, then hold the left mouse button and drag the cursor.</li>
+<li>Hold the middle mouse button and drag the cursor.</li>
+</ul>
+</div></blockquote>
+</li>
+<li><p class="first">To zoom the camera in or our, do one of the following:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Scroll the mouse wheel.</li>
+<li>Hold the right mouse button and drag the cursor.</li>
+</ul>
+</div></blockquote>
+</li>
+</ul>
+<p>Other keyboard commands are as follows:</p>
+<ul class="simple">
+<li>z – resets the view to the original view.</li>
+<li>w – toggles wireframe mode for each mesh in the scene.</li>
+</ul>
+<dl class="method">
+<dt id="meshrender.SceneViewer.__init__">
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>scene</em>, <em>size=(640</em>, <em>480)</em>, <em>**flags</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer.__init__" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize a scene viewer and open the viewer window.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>scene</strong> (<a class="reference internal" href="scene.html#meshrender.Scene" title="meshrender.Scene"><em>Scene</em></a>) – A scene to view. The scene’s camera is not used.</li>
+<li><strong>size</strong> (<em>(</em><em>int</em><em>, </em><em>int</em><em>)</em>) – The width and height of the target window in pixels.</li>
+<li><strong>flags</strong> (<em>other kwargs</em>) – Other optional keyword arguments.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The possible set of flags are given in the Other Parameters section.</p>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name" colspan="2">Other Parameters:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body"><strong>line_width</strong> (<em>float</em>) – Sets the line width for wireframe meshes (default is 1).</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.SceneViewer.on_draw">
+<code class="descname">on_draw</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer.on_draw" title="Permalink to this definition">¶</a></dt>
+<dd><p>Redraw the scene into the viewing window.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.SceneViewer.on_resize">
+<code class="descname">on_resize</code><span class="sig-paren">(</span><em>width</em>, <em>height</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer.on_resize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Resize the camera and trackball when the window is resized.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.SceneViewer.on_mouse_press">
+<code class="descname">on_mouse_press</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>buttons</em>, <em>modifiers</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer.on_mouse_press" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record an initial mouse press.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.SceneViewer.on_mouse_drag">
+<code class="descname">on_mouse_drag</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>dx</em>, <em>dy</em>, <em>buttons</em>, <em>modifiers</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer.on_mouse_drag" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record a mouse drag.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.SceneViewer.on_mouse_scroll">
+<code class="descname">on_mouse_scroll</code><span class="sig-paren">(</span><em>x</em>, <em>y</em>, <em>dx</em>, <em>dy</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer.on_mouse_scroll" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record a mouse scroll.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.SceneViewer.on_key_press">
+<code class="descname">on_key_press</code><span class="sig-paren">(</span><em>symbol</em>, <em>modifiers</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer.on_key_press" title="Permalink to this definition">¶</a></dt>
+<dd><p>Record a key press.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           <div class="articleComments">
+            
+           </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../examples/example.html" class="btn btn-neutral float-right" title="Example Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="sceneobject.html" class="btn btn-neutral" title="Scene Objects" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2017, Matthew Matl.
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'../',
+            VERSION:'0.0.1',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  true,
+            SOURCELINK_SUFFIX: '.txt'
+        };
+    </script>
+      <script type="text/javascript" src="../_static/jquery.js"></script>
+      <script type="text/javascript" src="../_static/underscore.js"></script>
+      <script type="text/javascript" src="../_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

@@ -103,6 +103,7 @@
 <li class="toctree-l1"><a class="reference internal" href="api/random_variables.html">Random Variables</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/scene.html">Scene</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/sceneobject.html">Scene Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/viewer.html">Viewer</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Examples</span></p>
 <ul>
@@ -208,6 +209,8 @@
 </li>
         <li><a href="api/sceneobject.html#meshrender.SceneObject.__init__">(meshrender.SceneObject method)</a>
 </li>
+        <li><a href="api/viewer.html#meshrender.SceneViewer.__init__">(meshrender.SceneViewer method)</a>
+</li>
         <li><a href="api/random_variables.html#meshrender.UniformPlanarWorksurfaceImageRandomVariable.__init__">(meshrender.UniformPlanarWorksurfaceImageRandomVariable method)</a>
 </li>
         <li><a href="api/random_variables.html#meshrender.UniformPlanarWorksurfaceRandomVariable.__init__">(meshrender.UniformPlanarWorksurfaceRandomVariable method)</a>
@@ -256,6 +259,8 @@
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/random_variables.html#meshrender.CameraSample">CameraSample (class in meshrender)</a>
+</li>
+      <li><a href="api/scene.html#meshrender.Scene.close_renderer">close_renderer() (meshrender.Scene method)</a>
 </li>
       <li><a href="api/material.html#meshrender.MaterialProperties.color">color (meshrender.MaterialProperties attribute)</a>
 </li>
@@ -355,9 +360,21 @@
         <li><a href="api/random_variables.html#meshrender.UniformViewsphereRandomVariable.object_to_camera_pose">(meshrender.UniformViewsphereRandomVariable method)</a>
 </li>
       </ul></li>
+      <li><a href="api/scene.html#meshrender.Scene.objects">objects (meshrender.Scene attribute)</a>
+</li>
+      <li><a href="api/viewer.html#meshrender.SceneViewer.on_draw">on_draw() (meshrender.SceneViewer method)</a>
+</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/scene.html#meshrender.Scene.objects">objects (meshrender.Scene attribute)</a>
+      <li><a href="api/viewer.html#meshrender.SceneViewer.on_key_press">on_key_press() (meshrender.SceneViewer method)</a>
+</li>
+      <li><a href="api/viewer.html#meshrender.SceneViewer.on_mouse_drag">on_mouse_drag() (meshrender.SceneViewer method)</a>
+</li>
+      <li><a href="api/viewer.html#meshrender.SceneViewer.on_mouse_press">on_mouse_press() (meshrender.SceneViewer method)</a>
+</li>
+      <li><a href="api/viewer.html#meshrender.SceneViewer.on_mouse_scroll">on_mouse_scroll() (meshrender.SceneViewer method)</a>
+</li>
+      <li><a href="api/viewer.html#meshrender.SceneViewer.on_resize">on_resize() (meshrender.SceneViewer method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -385,13 +402,15 @@
 </li>
       <li><a href="api/scene.html#meshrender.Scene.remove_object">remove_object() (meshrender.Scene method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scene.html#meshrender.Scene.render">render() (meshrender.Scene method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/random_variables.html#RenderSample.renders">renders (RenderSample attribute)</a>
 </li>
       <li><a href="api/random_variables.html#meshrender.RenderSample">RenderSample (class in meshrender)</a>
+</li>
+      <li><a href="api/camera.html#meshrender.VirtualCamera.resize">resize() (meshrender.VirtualCamera method)</a>
 </li>
       <li><a href="api/random_variables.html#CameraSample.roll">roll (CameraSample attribute)</a>
 </li>
@@ -414,6 +433,8 @@
       <li><a href="api/scene.html#meshrender.Scene">Scene (class in meshrender)</a>
 </li>
       <li><a href="api/sceneobject.html#meshrender.SceneObject">SceneObject (class in meshrender)</a>
+</li>
+      <li><a href="api/viewer.html#meshrender.SceneViewer">SceneViewer (class in meshrender)</a>
 </li>
       <li><a href="api/material.html#meshrender.MaterialProperties.smooth">smooth (meshrender.MaterialProperties attribute)</a>
 </li>
@@ -464,6 +485,10 @@
 
 <h2 id="W">W</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/material.html#meshrender.MaterialProperties.wireframe">wireframe (meshrender.MaterialProperties attribute)</a>
+</li>
+  </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/scene.html#meshrender.Scene.wrapped_render">wrapped_render() (meshrender.Scene method)</a>
 </li>

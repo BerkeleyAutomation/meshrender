@@ -36,7 +36,7 @@
               href="../genindex.html"/>
         <link rel="search" title="Search" href="../search.html"/>
     <link rel="top" title="meshrender 0.0.1 documentation" href="../index.html"/>
-        <link rel="prev" title="Scene Objects" href="../api/sceneobject.html"/> 
+        <link rel="prev" title="Viewer" href="../api/viewer.html"/> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
@@ -103,6 +103,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../api/random_variables.html">Random Variables</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api/scene.html">Scene</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api/sceneobject.html">Scene Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api/viewer.html">Viewer</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Examples</span></p>
 <ul class="current">
@@ -196,7 +197,7 @@ which manages the lights, objects, and camera in the world.</p>
 
 <span class="c1"># Begin by loading meshes</span>
 <span class="n">cube_mesh</span> <span class="o">=</span> <span class="n">trimesh</span><span class="o">.</span><span class="n">load_mesh</span><span class="p">(</span><span class="s1">&#39;cube.obj&#39;</span><span class="p">)</span>
-<span class="n">sphere_mesh</span> <span class="o">=</span> <span class="n">trimesh</span><span class="o">.</span><span class="n">load_mesh</span><span class="p">(</span><span class="s1">&#39;cube.obj&#39;</span><span class="p">)</span>
+<span class="n">sphere_mesh</span> <span class="o">=</span> <span class="n">trimesh</span><span class="o">.</span><span class="n">load_mesh</span><span class="p">(</span><span class="s1">&#39;sphere.obj&#39;</span><span class="p">)</span>
 
 <span class="c1"># Set up each object&#39;s pose in the world</span>
 <span class="n">cube_pose</span> <span class="o">=</span> <span class="n">RigidTransform</span><span class="p">(</span>
@@ -250,7 +251,7 @@ which manages the lights, objects, and camera in the world.</p>
 
 <span class="c1"># Create a point light</span>
 <span class="n">point</span> <span class="o">=</span> <span class="n">PointLight</span><span class="p">(</span>
-    <span class="n">position</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">]),</span>
+    <span class="n">location</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">]),</span>
     <span class="n">color</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]),</span>
     <span class="n">strength</span><span class="o">=</span><span class="mf">10.0</span>
 <span class="p">)</span>
@@ -323,7 +324,7 @@ which manages the lights, objects, and camera in the world.</p>
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="../api/sceneobject.html" class="btn btn-neutral" title="Scene Objects" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="../api/viewer.html" class="btn btn-neutral" title="Viewer" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

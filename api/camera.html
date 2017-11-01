@@ -107,6 +107,7 @@
 <li class="toctree-l1"><a class="reference internal" href="random_variables.html">Random Variables</a></li>
 <li class="toctree-l1"><a class="reference internal" href="scene.html">Scene</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sceneobject.html">Scene Objects</a></li>
+<li class="toctree-l1"><a class="reference internal" href="viewer.html">Viewer</a></li>
 </ul>
 <p class="caption"><span class="caption-text">Examples</span></p>
 <ul>
@@ -236,6 +237,24 @@ to camera coordinates. Equivalent to the OpenGL View matrix.</p>
 <code class="descname">P</code><a class="headerlink" href="#meshrender.VirtualCamera.P" title="Permalink to this definition">¶</a></dt>
 <dd><p><em>(4,4) float</em> – A homogenous projective matrix for the camera, equivalent
 to the OpenGL Projection matrix.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.VirtualCamera.resize">
+<code class="descname">resize</code><span class="sig-paren">(</span><em>new_width</em>, <em>new_height</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.VirtualCamera.resize" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reset the camera intrinsics for a new width and height viewing window.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>new_width</strong> (<em>int</em>) – The new window width, in pixels.</li>
+<li><strong>new_height</strong> (<em>int</em>) – The new window height, in pixels.</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
 </dd></dl>
 
 </dd></dl>
