@@ -466,8 +466,6 @@ class SceneViewer(pyglet.window.Window):
 
         glUseProgram(0)
 
-        glFlush()
-
     def _update_flags(self):
         if self._flags['wireframe']:
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
