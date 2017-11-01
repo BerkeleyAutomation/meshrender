@@ -50,8 +50,8 @@ class Trackball(object):
             The center of the scene in world coordinates.
             The trackball will revolve around this point.
         """
-        self._size = size
-        self._scale = np.array(scale)
+        self._size = np.array(size)
+        self._scale = float(scale)
 
         self._T_camera_world = T_camera_world
         self._n_T_camera_world = T_camera_world
@@ -86,7 +86,7 @@ class Trackball(object):
         size : (float, float)
             The new width and height of the camera image in pixels.
         """
-        self._size = size
+        self._size = np.array(size)
 
     def down(self, point):
         """Record an initial mouse press at a given point.
@@ -134,7 +134,7 @@ class Trackball(object):
 
         # Interpret drag as a roll about the camera axis
         elif self._state == Trackball.STATE_ROLL:
-            center = self._scale / 2.0
+            center = self._size / 2.0
             v_init = self._pdown - center
             v_curr = point - center
             v_init = v_init / np.linalg.norm(v_init)
