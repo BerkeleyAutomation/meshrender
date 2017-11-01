@@ -147,5 +147,4 @@ wrapped_color, wrapped_depth, wrapped_segmask = scene.wrapped_render(
 wrapped_color.save('color.jpg')
 wrapped_depth.save('depth.jpg')
 
-#v = SceneViewer(scene)
-
+v = SceneViewer(scene)

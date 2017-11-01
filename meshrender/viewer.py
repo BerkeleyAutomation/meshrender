@@ -206,6 +206,9 @@ class SceneViewer(pyglet.window.Window):
         self._camera = None
         self._trackball = None
 
+        # Close the scene's window if active
+        self._scene.close_renderer()
+
         try:
             conf = gl.Config(sample_buffers=1,
                              samples=4,
@@ -291,7 +294,9 @@ class SceneViewer(pyglet.window.Window):
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         self._vaids = self._load_meshes()
+        glBindVertexArray(self._vaids[0])
         self._shader = self._load_shaders(vertex_shader, fragment_shader)
+        glBindVertexArray(0)
 
     def _load_shaders(self, vertex_shader, fragment_shader):
         """Load and compile shaders from strings.
@@ -376,11 +381,9 @@ class SceneViewer(pyglet.window.Window):
                              GL_STATIC_DRAW)
 
             # Unbind all buffers
-            #glDisableVertexAttribArray(0)
-            #glDisableVertexAttribArray(1)
-            #glBindVertexArray(0)
-            #glBindBuffer(GL_ARRAY_BUFFER, 0)
-            #glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
+            glBindVertexArray(0)
+            glBindBuffer(GL_ARRAY_BUFFER, 0)
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
 
         return VA_ids
 

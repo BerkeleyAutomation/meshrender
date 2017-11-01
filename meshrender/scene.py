@@ -147,6 +147,12 @@ class Scene(object):
         else:
             raise ValueError('Light {} not in scene!'.format(name))
 
+    def close_renderer(self):
+        """Close the renderer.
+        """
+        if self._renderer is not None:
+            self._renderer.close()
+
     def render(self, render_color=True):
         """Render raw images of the scene.
 
