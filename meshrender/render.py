@@ -1,6 +1,8 @@
 import ctypes
 import numpy as np
 
+import pyglet
+pyglet.options['shadow_window'] = False
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from OpenGL.arrays import *
@@ -30,9 +32,7 @@ class OpenGLRenderer(object):
         self._framebuf = None
 
         # Initialize the OpenGL context with a 1x1 window and hide it immediately
-        import pyglet
-        import pyglet.gl as gl
-        conf = gl.Config(
+        conf = pyglet.gl.Config(
             depth_size=24,
             double_buffer=True,
             major_version=3,

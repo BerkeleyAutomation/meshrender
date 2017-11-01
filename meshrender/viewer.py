@@ -196,8 +196,28 @@ class Trackball(object):
 
 
 class SceneViewer(pyglet.window.Window):
-    """An interactive viewer for a 3D scene. This doesn't use the scene's camera --
-    instead, it uses one based on a trackball.
+    """An interactive viewer for a 3D scene.
+
+    This doesn't use the scene's camera - instead, it uses one based on a trackball.
+
+    The basic commands for moving about the scene are given as follows:
+
+    * To rotate the camera about the center of the scene, hold the left mouse button and drag the cursor.
+    * To rotate the camera about its viewing axis, hold CTRL and then hold the left mouse button and drag the cursor.
+    * To pan the camera, do one of the following:
+
+        * Hold SHIFT, then hold the left mouse button and drag the cursor.
+        * Hold the middle mouse button and drag the cursor.
+
+    * To zoom the camera in or our, do one of the following:
+
+        * Scroll the mouse wheel.
+        * Hold the right mouse button and drag the cursor.
+
+    Other keyboard commands are as follows:
+
+    * z -- resets the view to the original view.
+    * w -- toggles wireframe mode for each mesh in the scene.
     """
 
     def __init__(self, scene, size=(640,480), **flags):
@@ -220,7 +240,7 @@ class SceneViewer(pyglet.window.Window):
         ----------------
         line_width : float
             Sets the line width for wireframe meshes (default is 1).
-.        """
+        """
         self._scene = scene
         self._size = np.array(size)
         self._camera = None
@@ -255,8 +275,150 @@ class SceneViewer(pyglet.window.Window):
         self._reset_view()
         pyglet.app.run()
 
+    def on_draw(self):
+        """Redraw the scene into the viewing window.
+        """
+        scene = self._scene
+        camera = self._camera
+
+        camera.T_camera_world = self._trackball.T_camera_world
+
+        # Set viewport size
+        context = self.context
+        back_width, back_height = self._size
+
+        # Check for retina slash high-dpi displays (hack)
+        if hasattr(self.context, '_nscontext'):
+            view = self.context._nscontext.view()
+            bounds = view.convertRectToBacking_(view.bounds()).size
+            back_width, back_height = (int(bounds.width), int(bounds.height))
+
+        glViewport(0, 0, back_width, back_height)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+
+        glUseProgram(self._shader)
+
+        # Get Uniform Locations from Shader
+        mvp_id = glGetUniformLocation(self._shader, 'MVP')
+        mv_id = glGetUniformLocation(self._shader, 'MV')
+        v_id = glGetUniformLocation(self._shader, 'V')
+        matprop_id = glGetUniformLocation(self._shader, 'material_properties')
+        object_color_id = glGetUniformLocation(self._shader, 'object_color')
+        ambient_id = glGetUniformLocation(self._shader, 'ambient_light_info')
+        directional_id = glGetUniformLocation(self._shader, "directional_light_info")
+        n_directional_id = glGetUniformLocation(self._shader, "n_directional_lights")
+        point_id = glGetUniformLocation(self._shader, "point_light_info")
+        n_point_id = glGetUniformLocation(self._shader, "n_point_lights")
+
+        # Bind view matrix
+        glUniformMatrix4fv(v_id, 1, GL_TRUE, camera.V)
+
+        # Bind ambient lighting
+        glUniform4fv(ambient_id, 1, np.hstack((scene.ambient_light.color,
+                                               scene.ambient_light.strength)))
+
+        # Bind directional lighting
+        glUniform1i(n_directional_id, len(scene.directional_lights))
+        directional_info = np.zeros((2*MAX_N_LIGHTS, 4))
+        for i, dlight in enumerate(scene.directional_lights):
+            directional_info[2*i,:] = np.hstack((dlight.color, dlight.strength))
+            directional_info[2*i+1,:] = np.hstack((dlight.direction, 0))
+        glUniform4fv(directional_id, 2*MAX_N_LIGHTS, directional_info.flatten())
+
+        # Bind point lighting
+        glUniform1i(n_point_id, len(scene.point_lights))
+        point_info = np.zeros((2*MAX_N_LIGHTS, 4))
+        for i, plight in enumerate(scene.point_lights):
+            point_info[2*i,:] = np.hstack((plight.color, plight.strength))
+            point_info[2*i+1,:] = np.hstack((plight.location, 1))
+        glUniform4fv(point_id, 2*MAX_N_LIGHTS, point_info.flatten())
+
+        for vaid, obj in zip(self._vaids, scene.objects.values()):
+            mesh = obj.mesh
+            M = obj.T_obj_world.matrix
+            material = obj.material
+
+            glBindVertexArray(vaid)
+
+            MV = camera.V.dot(M)
+            MVP = camera.P.dot(MV)
+            glUniformMatrix4fv(mvp_id, 1, GL_TRUE, MVP)
+            glUniformMatrix4fv(mv_id, 1, GL_TRUE, MV)
+            glUniform3fv(object_color_id, 1, material.color)
+            glUniform4fv(matprop_id, 1, np.array([material.k_a, material.k_d, material.k_s, material.alpha]))
+
+            wf = material.wireframe != self._flags['flip_wireframe']
+            if wf:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+            else:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
+            if material.smooth:
+                glDrawElements(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0))
+            else:
+                glDrawArrays(GL_TRIANGLES, 0, 3*len(mesh.faces))
+
+            glBindVertexArray(0)
+
+        glUseProgram(0)
+
+    def on_resize(self, width, height):
+        """Resize the camera and trackball when the window is resized.
+        """
+        self._size = (width, height)
+        self._camera.resize(width, height)
+        self._trackball.resize(self._size)
+        self.on_draw()
+
+    def on_mouse_press(self, x, y, buttons, modifiers):
+        """Record an initial mouse press.
+        """
+        self._trackball.set_state(Trackball.STATE_ROTATE)
+        if (buttons == pyglet.window.mouse.LEFT):
+            ctrl = (modifiers & pyglet.window.key.MOD_CTRL)
+            shift = (modifiers & pyglet.window.key.MOD_SHIFT)
+            if (ctrl and shift):
+                self._trackball.set_state(Trackball.STATE_ZOOM)
+            elif ctrl:
+                self._trackball.set_state(Trackball.STATE_ROLL)
+            elif shift:
+                self._trackball.set_state(Trackball.STATE_PAN)
+        elif (buttons == pyglet.window.mouse.MIDDLE):
+            self._trackball.set_state(Trackball.STATE_PAN)
+        elif (buttons == pyglet.window.mouse.RIGHT):
+            self._trackball.set_state(Trackball.STATE_ZOOM)
+
+        self._trackball.down(np.array([x, y]))
+
+    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
+        """Record a mouse drag.
+        """
+        self._trackball.drag(np.array([x, y]))
+
+    def on_mouse_scroll(self, x, y, dx, dy):
+        """Record a mouse scroll.
+        """
+        self._trackball.scroll(dy)
+
+    def on_key_press(self, symbol, modifiers):
+        """Record a key press.
+        """
+        if symbol == pyglet.window.key.W:
+            self._flags['flip_wireframe'] = not self._flags['flip_wireframe']
+        elif symbol == pyglet.window.key.Z:
+            self.reset_view()
+        self._update_flags()
+
+    def _update_flags(self):
+        """Update OpenGL state based on the current flags.
+        """
+        if 'line_width' in self._flags:
+            glLineWidth(float(self._flags['line_width']))
+
     def _reset_view(self):
         """Reset the view to a good initial state.
+
+        The view is initially along the positive x-axis a sufficient distance from the scene.
         """
 
         # Compute scene bounds and scale
@@ -305,6 +467,8 @@ class SceneViewer(pyglet.window.Window):
         self._update_flags()
 
     def _init_gl(self):
+        """Initialize OpenGL by loading shaders and mesh geometry.
+        """
         glClearColor(.93, .93, 1, 1)
 
         glEnable(GL_DEPTH_TEST)
@@ -406,142 +570,6 @@ class SceneViewer(pyglet.window.Window):
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
 
         return VA_ids
-
-    def on_draw(self):
-        scene = self._scene
-        camera = self._camera
-
-        camera.T_camera_world = self._trackball.T_camera_world
-
-        # Set viewport size
-        context = self.context
-        back_width, back_height = self._size
-
-        # Check for retina slash high-dpi displays (hack)
-        if hasattr(self.context, '_nscontext'):
-            view = self.context._nscontext.view()
-            bounds = view.convertRectToBacking_(view.bounds()).size
-            back_width, back_height = (int(bounds.width), int(bounds.height))
-
-        glViewport(0, 0, back_width, back_height)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
-        glUseProgram(self._shader)
-
-        # Get Uniform Locations from Shader
-        mvp_id = glGetUniformLocation(self._shader, 'MVP')
-        mv_id = glGetUniformLocation(self._shader, 'MV')
-        v_id = glGetUniformLocation(self._shader, 'V')
-        matprop_id = glGetUniformLocation(self._shader, 'material_properties')
-        object_color_id = glGetUniformLocation(self._shader, 'object_color')
-        ambient_id = glGetUniformLocation(self._shader, 'ambient_light_info')
-        directional_id = glGetUniformLocation(self._shader, "directional_light_info")
-        n_directional_id = glGetUniformLocation(self._shader, "n_directional_lights")
-        point_id = glGetUniformLocation(self._shader, "point_light_info")
-        n_point_id = glGetUniformLocation(self._shader, "n_point_lights")
-
-        # Bind view matrix
-        glUniformMatrix4fv(v_id, 1, GL_TRUE, camera.V)
-
-        # Bind ambient lighting
-        glUniform4fv(ambient_id, 1, np.hstack((scene.ambient_light.color,
-                                               scene.ambient_light.strength)))
-
-        # Bind directional lighting
-        glUniform1i(n_directional_id, len(scene.directional_lights))
-        directional_info = np.zeros((2*MAX_N_LIGHTS, 4))
-        for i, dlight in enumerate(scene.directional_lights):
-            directional_info[2*i,:] = np.hstack((dlight.color, dlight.strength))
-            directional_info[2*i+1,:] = np.hstack((dlight.direction, 0))
-        glUniform4fv(directional_id, 2*MAX_N_LIGHTS, directional_info.flatten())
-
-        # Bind point lighting
-        glUniform1i(n_point_id, len(scene.point_lights))
-        point_info = np.zeros((2*MAX_N_LIGHTS, 4))
-        for i, plight in enumerate(scene.point_lights):
-            point_info[2*i,:] = np.hstack((plight.color, plight.strength))
-            point_info[2*i+1,:] = np.hstack((plight.location, 1))
-        glUniform4fv(point_id, 2*MAX_N_LIGHTS, point_info.flatten())
-
-        for vaid, obj in zip(self._vaids, scene.objects.values()):
-            mesh = obj.mesh
-            M = obj.T_obj_world.matrix
-            material = obj.material
-
-            glBindVertexArray(vaid)
-
-            MV = camera.V.dot(M)
-            MVP = camera.P.dot(MV)
-            glUniformMatrix4fv(mvp_id, 1, GL_TRUE, MVP)
-            glUniformMatrix4fv(mv_id, 1, GL_TRUE, MV)
-            glUniform3fv(object_color_id, 1, material.color)
-            glUniform4fv(matprop_id, 1, np.array([material.k_a, material.k_d, material.k_s, material.alpha]))
-
-            wf = material.wireframe != self._flags['flip_wireframe']
-            if wf:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-            else:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-
-            if material.smooth:
-                glDrawElements(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0))
-            else:
-                glDrawArrays(GL_TRIANGLES, 0, 3*len(mesh.faces))
-
-            glBindVertexArray(0)
-
-        glUseProgram(0)
-
-    def _update_flags(self):
-        if 'line_width' in self._flags:
-            glLineWidth(float(self._flags['line_width']))
-
-    def on_resize(self, width, height):
-        """Resize the camera and trackball when the window is resized.
-        """
-        self._size = (width, height)
-        self._camera.resize(width, height)
-        self._trackball.resize(self._size)
-        self.on_draw()
-
-    def on_mouse_press(self, x, y, buttons, modifiers):
-        """Record an initial mouse press.
-        """
-        self._trackball.set_state(Trackball.STATE_ROTATE)
-        if (buttons == pyglet.window.mouse.LEFT):
-            ctrl = (modifiers & pyglet.window.key.MOD_CTRL)
-            shift = (modifiers & pyglet.window.key.MOD_SHIFT)
-            if (ctrl and shift):
-                self._trackball.set_state(Trackball.STATE_ZOOM)
-            elif ctrl:
-                self._trackball.set_state(Trackball.STATE_ROLL)
-            elif shift:
-                self._trackball.set_state(Trackball.STATE_PAN)
-        elif (buttons == pyglet.window.mouse.MIDDLE):
-            self._trackball.set_state(Trackball.STATE_PAN)
-        elif (buttons == pyglet.window.mouse.RIGHT):
-            self._trackball.set_state(Trackball.STATE_ZOOM)
-
-        self._trackball.down(np.array([x, y]))
-
-    def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
-        """Record a mouse drag.
-        """
-        self._trackball.drag(np.array([x, y]))
-
-    def on_mouse_scroll(self, x, y, dx, dy):
-        """Record a mouse scroll.
-        """
-        self._trackball.scroll(dy)
-
-    def on_key_press(self, symbol, modifiers):
-        """Record a key press.
-        """
-        if symbol == pyglet.window.key.W:
-            self._flags['flip_wireframe'] = not self._flags['flip_wireframe']
-        elif symbol == pyglet.window.key.Z:
-            self.reset_view()
-        self._update_flags()
 
     def _compute_scene_bounds(self):
         """The axis aligned bounds of the scene.

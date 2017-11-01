@@ -103,8 +103,8 @@ scene.add_light('direc', direc)
 # Set up camera intrinsics
 ci = CameraIntrinsics(
     frame = 'camera',
-    fx = 20*525.0,
-    fy = 20*525.0,
+    fx = 525.0,
+    fy = 525.0,
     cx = 320.0,
     cy = 240.0,
     skew=0.0,
@@ -119,7 +119,7 @@ cp = RigidTransform(
         [0.0, 1.0,  0.0],
         [1.0, 0.0,  0.0]
     ]),
-    translation = np.array([-4, 0.0, 0.0]),
+    translation = np.array([-0.3, 0.0, 0.0]),
     from_frame='camera',
     to_frame='world'
 )

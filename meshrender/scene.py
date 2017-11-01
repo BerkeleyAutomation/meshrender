@@ -3,7 +3,7 @@ import numpy as np
 from perception import BinaryImage, ColorImage, DepthImage, RgbdImage, GdImage, RenderMode
 
 from .camera import VirtualCamera
-from .object import SceneObject
+from .scene_object import SceneObject
 from .material import MaterialProperties
 from .light import AmbientLight, PointLight, DirectionalLight
 from .constants import MAX_N_LIGHTS
