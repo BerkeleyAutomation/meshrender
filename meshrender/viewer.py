@@ -517,6 +517,7 @@ class SceneViewer(pyglet.window.Window):
             self.toggle_wireframe()
         elif symbol == pyglet.window.key.Z:
             self.reset_view()
+        self._update_flags()
 
     def toggle_wireframe(self):
         """Toggle whether meshes are displayed with wireframe mode on or not.
