@@ -73,6 +73,10 @@ class DirectionalLight(Light):
         """
         return self._direction
 
+    @direction.setter
+    def direction(self, d):
+        self._direction = d
+
 
 class PointLight(Light):
     """A nearby point light source that shines in all directions.
@@ -98,3 +102,7 @@ class PointLight(Light):
         """(3,) float: The 3D location of the point light.
         """
         return self._location
+
+    @location.setter
+    def location(self, l):
+        self._location = l

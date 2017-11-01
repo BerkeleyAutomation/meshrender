@@ -33,21 +33,21 @@ bar_pose = RigidTransform(
 
 # Set up each object's material properties
 pawn_material = MaterialProperties(
-    color = np.array([0.1, 0.1, 0.1]),
+    color = 5.0*np.array([0.1, 0.1, 0.1]),
     k_a = 0.3,
-    k_d = 1.0,
-    k_s = 0.5,
+    k_d = 0.5,
+    k_s = 0.2,
     alpha = 10.0,
-    smooth=False,
+    smooth=True,
     wireframe=False
 )
 bar_material = MaterialProperties(
-    color = np.array([0.1, 0.1, 0.5]),
-    k_a = 0.3,
-    k_d = 1.0,
-    k_s = 0.5,
+    color = 7.0*np.array([0.1, 0.1, 0.1]),
+    k_a = 0.5,
+    k_d = 0.3,
+    k_s = 0.1,
     alpha = 10.0,
-    smooth=False
+    smooth=True
 )
 
 # Create SceneObjects for each object
@@ -55,8 +55,8 @@ pawn_obj = SceneObject(pawn_mesh, pawn_pose, pawn_material)
 bar_obj = SceneObject(bar_mesh, bar_pose, bar_material)
 
 # Add the SceneObjects to the scene
-scene.add_object('pawn', pawn_obj)
-#scene.add_object('bar', bar_obj)
+#scene.add_object('pawn', pawn_obj)
+scene.add_object('bar', bar_obj)
 
 #====================================
 # Add lighting to the scene
@@ -65,36 +65,33 @@ scene.add_object('pawn', pawn_obj)
 # Create an ambient light
 ambient = AmbientLight(
     color=np.array([1.0, 1.0, 1.0]),
-    strength=2.0
+    strength=1.0
 )
 
 # Create a point light
 
 points = []
-for i in range(8):
-    points.append(
-        PointLight(
-            location=np.array([-4.0+i, 4.0, 4.0]),
-            color=np.array([1.0, 1.0, 1.0]),
-            strength=4.0
-        )
-    )
-
-direction = np.array([1.0, 1.0, -1.0])
-direction = direction / np.linalg.norm(direction)
-
-direc = DirectionalLight(
-    direction=direction,
-    color=np.array([1.0, 1.0, 1.0]),
-    strength=1.0
-
-)
+#for i in range(6):
+#    points.append(
+#        PointLight(
+#            location=np.array([-3.0, 3.0-i, 3.0]),
+#            color=np.array([1.0, 1.0, 1.0]),
+#            strength=4.0
+#        )
+#    )
+#
+#for i, point in enumerate(points):
+#    scene.add_light('point_{}'.format(i), point)
 
 # Add the lights to the scene
 scene.ambient_light = ambient # only one ambient light per scene
-for i, point in enumerate(points):
-    scene.add_light('point_light_{}'.format(i), point)
-scene.add_light('direc', direc)
+
+dl = DirectionalLight(
+    direction=np.array([0.0, 0.0, -1.0]),
+    color=np.array([1.0, 1.0, 1.0]),
+    strength=2.0
+)
+scene.add_light('direc', dl)
 
 #====================================
 # Add a camera to the scene
@@ -148,4 +145,4 @@ wrapped_color, wrapped_depth, wrapped_segmask = scene.wrapped_render(
 wrapped_color.save('color.jpg')
 wrapped_depth.save('depth.jpg')
 
-v = SceneViewer(scene)
+v = SceneViewer(scene, raymond_lighting=True)

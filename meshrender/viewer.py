@@ -240,14 +240,19 @@ class SceneViewer(pyglet.window.Window):
         ----------------
         line_width : float
             Sets the line width for wireframe meshes (default is 1).
+        flip_wireframe : bool
+            If True, inverts the 'wireframe' material property for all meshes.
+        raymond_lighting : bool
+            If true, the scene's point and directional lights are discarded in favor
+            of a set of three directional lights that move with the camera.
         """
         self._scene = scene
         self._size = np.array(size)
         self._camera = None
         self._trackball = None
-        self._flags = flags
-        if 'flip_wireframe' not in self._flags:
-            self._flags['flip_wireframe'] = False
+        self._flags = SceneViewer.default_flags()
+        self._flags.update(flags)
+        self._raymond_lights = self._create_raymond_lights()
 
         # Close the scene's window if active
         self._scene.close_renderer()
@@ -317,18 +322,33 @@ class SceneViewer(pyglet.window.Window):
         glUniform4fv(ambient_id, 1, np.hstack((scene.ambient_light.color,
                                                scene.ambient_light.strength)))
 
+        # If using raymond lighting, don't use scene's directional or point lights
+        d_lights = scene.directional_lights
+        p_lights = scene.point_lights
+        if self._flags['raymond_lighting']:
+            d_lights = []
+            for dlight in self._raymond_lights:
+                direc = dlight.direction
+                direc = camera.T_camera_world.matrix[:3,:3].dot(direc)
+                d_lights.append(DirectionalLight(
+                    direction=direc,
+                    color=dlight.color,
+                    strength=dlight.strength
+                ))
+            p_lights = []
+
         # Bind directional lighting
-        glUniform1i(n_directional_id, len(scene.directional_lights))
+        glUniform1i(n_directional_id, len(d_lights))
         directional_info = np.zeros((2*MAX_N_LIGHTS, 4))
-        for i, dlight in enumerate(scene.directional_lights):
+        for i, dlight in enumerate(d_lights):
             directional_info[2*i,:] = np.hstack((dlight.color, dlight.strength))
             directional_info[2*i+1,:] = np.hstack((dlight.direction, 0))
         glUniform4fv(directional_id, 2*MAX_N_LIGHTS, directional_info.flatten())
 
         # Bind point lighting
-        glUniform1i(n_point_id, len(scene.point_lights))
+        glUniform1i(n_point_id, len(p_lights))
         point_info = np.zeros((2*MAX_N_LIGHTS, 4))
-        for i, plight in enumerate(scene.point_lights):
+        for i, plight in enumerate(p_lights):
             point_info[2*i,:] = np.hstack((plight.color, plight.strength))
             point_info[2*i+1,:] = np.hstack((plight.location, 1))
         glUniform4fv(point_id, 2*MAX_N_LIGHTS, point_info.flatten())
@@ -406,7 +426,9 @@ class SceneViewer(pyglet.window.Window):
         if symbol == pyglet.window.key.W:
             self._flags['flip_wireframe'] = not self._flags['flip_wireframe']
         elif symbol == pyglet.window.key.Z:
-            self.reset_view()
+            self._reset_view()
+        elif symbol == pyglet.window.key.L:
+            self._flags['raymond_lighting'] = not self._flags['raymond_lighting']
         self._update_flags()
 
     def _update_flags(self):
@@ -445,11 +467,11 @@ class SceneViewer(pyglet.window.Window):
         # Set up the camera pose (z axis faces away from scene, x to right, y up)
         cp = RigidTransform(
             rotation = np.array([
-                [0.0, 0.0, -1.0],
-                [0.0, 1.0,  0.0],
-                [1.0, 0.0,  0.0]
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0]
             ]),
-            translation = np.array([-3*scale, 0.0, 0.0]) + centroid,
+            translation = np.array([0.0, 0.0, 3.0*scale]) + centroid,
             from_frame='camera',
             to_frame='world'
         )
@@ -465,6 +487,30 @@ class SceneViewer(pyglet.window.Window):
         )
 
         self._update_flags()
+
+    def _create_raymond_lights(self):
+        """Create raymond lights for the scene.
+        """
+        raymond_lights = []
+
+        # Create raymond lights
+        elevs = np.pi * np.array([1/6., 1/6., 1/4.])
+        azims = np.pi * np.array([1/6., 5/3., -1/4.])
+        l = 0
+        for az, el in zip(azims, elevs):
+            x = np.cos(el) * np.cos(az)
+            y = np.cos(el) * np.sin(el)
+            z = np.sin(el)
+
+            direction = -np.array([x, y, z])
+            direction = direction / np.linalg.norm(direction)
+            direc = DirectionalLight(
+                direction=direction,
+                color=np.array([1.0, 1.0, 1.0]),
+                strength=1.0
+            )
+            raymond_lights.append(direc)
+        return raymond_lights
 
     def _init_gl(self):
         """Initialize OpenGL by loading shaders and mesh geometry.
@@ -589,3 +635,12 @@ class SceneViewer(pyglet.window.Window):
             lb = np.minimum(lb, lb_mesh)
             ub = np.maximum(ub, ub_mesh)
         return np.array([lb, ub])
+
+    @staticmethod
+    def default_flags():
+        flags = {
+            'flip_wireframe' : False,
+            'raymond_lighting' : False,
+            'line_width': 1.0
+        }
+        return flags
