@@ -298,6 +298,10 @@ class OpenGLRenderer(object):
         n_directional_id = glGetUniformLocation(self._full_shader, "n_directional_lights")
         point_id = glGetUniformLocation(self._full_shader, "point_light_info")
         n_point_id = glGetUniformLocation(self._full_shader, "n_point_lights")
+        bad_normals_id = glGetUniformLocation(self._full_shader, "bad_normals")
+
+        # Bind bad normals id
+        glUniform1i(bad_normals_id, 0)
 
         # Bind view matrix
         glUniformMatrix4fv(v_id, 1, GL_TRUE, scene.camera.V)

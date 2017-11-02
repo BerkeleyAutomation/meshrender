@@ -38,24 +38,25 @@ pawn_material = MaterialProperties(
     k_d = 0.5,
     k_s = 0.2,
     alpha = 10.0,
-    smooth=True,
+    smooth=False,
     wireframe=False
 )
-bar_material = MaterialProperties(
-    color = 7.0*np.array([0.1, 0.1, 0.1]),
-    k_a = 0.5,
-    k_d = 0.3,
-    k_s = 0.1,
-    alpha = 10.0,
-    smooth=True
-)
+#bar_material = MaterialProperties(
+#    color = 7.0*np.array([0.1, 0.1, 0.1]),
+#    k_a = 0.5,
+#    k_d = 0.3,
+#    k_s = 0.1,
+#    alpha = 10.0,
+#    smooth=False
+#)
+bar_material = pawn_material
 
 # Create SceneObjects for each object
 pawn_obj = SceneObject(pawn_mesh, pawn_pose, pawn_material)
 bar_obj = SceneObject(bar_mesh, bar_pose, bar_material)
 
 # Add the SceneObjects to the scene
-#scene.add_object('pawn', pawn_obj)
+scene.add_object('pawn', pawn_obj)
 scene.add_object('bar', bar_obj)
 
 #====================================

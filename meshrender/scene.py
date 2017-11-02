@@ -13,15 +13,31 @@ class Scene(object):
     """A scene containing objects and lights for 3D OpenGL rendering.
     """
 
-    def __init__(self):
+    def __init__(self, background_color=np.array([1.0, 1.0, 1.0])):
         """Initialize a Scene object.
+
+        Parameters
+        ----------
+        background_color : (3,) float
+            The background color for the scene.
         """
         self._objects = {}
         self._lights = {}
         self._ambient_light = AmbientLight(np.array([0.,0.,0.]), 0.0)
+        self._background_color = background_color
 
         self._camera = None
         self._renderer = None
+
+    @property
+    def background_color(self):
+        """(3,) float: The background color for the scene.
+        """
+        return self._background_color
+
+    @background_color.setter
+    def background_color(self, bgcolor):
+        self._background_color = bgcolor
 
     @property
     def objects(self):

@@ -74,6 +74,7 @@ uniform int n_directional_lights;
 uniform vec4 point_light_info[2*MAX_N_LIGHTS];
 uniform vec4 directional_light_info[2*MAX_N_LIGHTS];
 uniform mat4 V;
+uniform bool bad_normals;
 
 void main(){
 
@@ -103,8 +104,14 @@ void main(){
         vec3 l = normalize(-vec3(V * directional_light_info[2*i+1]));
 
         vec3 r = reflect(-l, n);
-        float diffuse = clamp(dot(n, l), 0, 1);
-        float specular = clamp(dot(e, r), 0, 1);
+        float nldot = dot(n, l);
+        float erdot = dot(e, r);
+        if (bad_normals) {
+            nldot = abs(nldot);
+            erdot = abs(erdot);
+        }
+        float diffuse = clamp(nldot, 0, 1);
+        float specular = clamp(erdot, 0, 1);
         if (specular > 0.0) {
             specular = pow(specular, alpha);
         }
@@ -126,8 +133,14 @@ void main(){
         light_color *= 1.0 / (dist * dist);
 
         vec3 r = reflect(-l, n);
-        float diffuse = clamp(dot(n, l), 0, 1);
-        float specular = clamp(dot(e, r), 0, 1);
+        float nldot = dot(n, l);
+        float erdot = dot(e, r);
+        if (bad_normals) {
+            nldot = abs(nldot);
+            erdot = abs(erdot);
+        }
+        float diffuse = clamp(nldot, 0, 1);
+        float specular = clamp(erdot, 0, 1);
         if (specular > 0.0) {
             specular = pow(specular, alpha);
         }

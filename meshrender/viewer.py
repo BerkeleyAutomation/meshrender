@@ -3,6 +3,7 @@ import copy
 import pyglet
 pyglet.options['shadow_window'] = False
 import pyglet.gl as gl
+from pyglet import clock
 
 import numpy as np
 
@@ -194,6 +195,26 @@ class Trackball(object):
         t_tf = RigidTransform(translation=translation, from_frame='world', to_frame='world')
         self._T_camera_world = t_tf.dot(self._T_camera_world)
 
+    def rotate(self, azimuth):
+        """Rotate the trackball about the "Up" axis by azimuth radians.
+
+        Parameters
+        ----------
+        azimuth : float
+            The number of radians to rotate.
+        """
+        target = self._target
+
+        y_axis = self._n_T_camera_world.matrix[:3,1].flatten()
+        x_rot_mat = transformations.rotation_matrix(azimuth, y_axis, target)
+        x_rot_tf = RigidTransform(x_rot_mat[:3,:3], x_rot_mat[:3,3], from_frame='world', to_frame='world')
+        self._n_T_camera_world = x_rot_tf.dot(self._n_T_camera_world)
+
+        y_axis = self._T_camera_world.matrix[:3,1].flatten()
+        x_rot_mat = transformations.rotation_matrix(azimuth, y_axis, target)
+        x_rot_tf = RigidTransform(x_rot_mat[:3,:3], x_rot_mat[:3,3], from_frame='world', to_frame='world')
+        self._T_camera_world = x_rot_tf.dot(self._T_camera_world)
+
 
 class SceneViewer(pyglet.window.Window):
     """An interactive viewer for a 3D scene.
@@ -218,6 +239,9 @@ class SceneViewer(pyglet.window.Window):
 
     * z -- resets the view to the original view.
     * w -- toggles wireframe mode for each mesh in the scene.
+    * l -- toggles between raymond lighting and the scene's default lights.
+    * a -- toggles rotational animation.
+    * n -- toggles 'bad normals' mode.
     """
 
     def __init__(self, scene, size=(640,480), **flags):
@@ -243,8 +267,16 @@ class SceneViewer(pyglet.window.Window):
         flip_wireframe : bool
             If True, inverts the 'wireframe' material property for all meshes.
         raymond_lighting : bool
-            If true, the scene's point and directional lights are discarded in favor
+            If True, the scene's point and directional lights are discarded in favor
             of a set of three directional lights that move with the camera.
+        bad_normals : bool
+            If True, the shader will treat all normals as facing the camera.
+        animate : bool
+            If True, the camera will rotate by default about the scene.
+        animate_az : float
+            The number of radians to rotate per timestep.
+        animate_rate : float
+            The framerate for animation in fps.
         """
         self._scene = scene
         self._size = np.array(size)
@@ -314,6 +346,13 @@ class SceneViewer(pyglet.window.Window):
         n_directional_id = glGetUniformLocation(self._shader, "n_directional_lights")
         point_id = glGetUniformLocation(self._shader, "point_light_info")
         n_point_id = glGetUniformLocation(self._shader, "n_point_lights")
+        bad_normals_id = glGetUniformLocation(self._shader, "bad_normals")
+
+        # Bind bad normals id
+        bad_normals = 0
+        if self._flags['bad_normals']:
+            bad_normals = 1
+        glUniform1i(bad_normals_id, bad_normals)
 
         # Bind view matrix
         glUniformMatrix4fv(v_id, 1, GL_TRUE, camera.V)
@@ -410,10 +449,19 @@ class SceneViewer(pyglet.window.Window):
 
         self._trackball.down(np.array([x, y]))
 
+        # Stop animating while using the mouse
+        clock.unschedule(SceneViewer.animate)
+
+
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         """Record a mouse drag.
         """
         self._trackball.drag(np.array([x, y]))
+
+    def on_mouse_release(self, x, y, button, modifiers):
+        """Record a mouse release.
+        """
+        self._update_flags()
 
     def on_mouse_scroll(self, x, y, dx, dy):
         """Record a mouse scroll.
@@ -429,13 +477,19 @@ class SceneViewer(pyglet.window.Window):
             self._reset_view()
         elif symbol == pyglet.window.key.L:
             self._flags['raymond_lighting'] = not self._flags['raymond_lighting']
+        elif symbol == pyglet.window.key.A:
+            self._flags['animate'] = not self._flags['animate']
+        elif symbol == pyglet.window.key.N:
+            self._flags['bad_normals'] = not self._flags['bad_normals']
         self._update_flags()
 
     def _update_flags(self):
         """Update OpenGL state based on the current flags.
         """
-        if 'line_width' in self._flags:
-            glLineWidth(float(self._flags['line_width']))
+        glLineWidth(float(self._flags['line_width']))
+        clock.unschedule(SceneViewer.animate)
+        if self._flags['animate']:
+            clock.schedule_interval(SceneViewer.animate, 1.0/self._flags['animate_rate'], self)
 
     def _reset_view(self):
         """Reset the view to a good initial state.
@@ -515,7 +569,8 @@ class SceneViewer(pyglet.window.Window):
     def _init_gl(self):
         """Initialize OpenGL by loading shaders and mesh geometry.
         """
-        glClearColor(.93, .93, 1, 1)
+        bg = self._scene.background_color
+        glClearColor(bg[0], bg[1], bg[2], 1.0)
 
         glEnable(GL_DEPTH_TEST)
         glEnable(GL_DEPTH_TEST)
@@ -641,6 +696,18 @@ class SceneViewer(pyglet.window.Window):
         flags = {
             'flip_wireframe' : False,
             'raymond_lighting' : False,
-            'line_width': 1.0
+            'line_width': 1.0,
+            'bad_normals': False,
+            'animate' : False,
+            'animate_az' : 0.05,
+            'animate_rate' : 30
         }
         return flags
+
+    @staticmethod
+    def animate(dt, self):
+        """Animate the scene by rotating the camera.
+        """
+        self._trackball.rotate(self._flags['animate_az'])
+
+
