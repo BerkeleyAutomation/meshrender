@@ -278,6 +278,8 @@ class SceneViewer(pyglet.window.Window):
         animate_rate : float
             The framerate for animation in fps.
         """
+        self._gl_initialized = False
+
         self._scene = scene
         self._size = np.array(size)
         self._camera = None
@@ -285,6 +287,7 @@ class SceneViewer(pyglet.window.Window):
         self._flags = SceneViewer.default_flags()
         self._flags.update(flags)
         self._raymond_lights = self._create_raymond_lights()
+        self._reset_view()
 
         # Close the scene's window if active
         self._scene.close_renderer()
@@ -309,12 +312,13 @@ class SceneViewer(pyglet.window.Window):
                                               height=self._size[1])
         self._init_gl()
         self._update_flags()
-        self._reset_view()
         pyglet.app.run()
 
     def on_draw(self):
         """Redraw the scene into the viewing window.
         """
+        if not self._gl_initialized:
+            return
         scene = self._scene
         camera = self._camera
 
@@ -540,8 +544,6 @@ class SceneViewer(pyglet.window.Window):
             target=centroid,
         )
 
-        self._update_flags()
-
     def _create_raymond_lights(self):
         """Create raymond lights for the scene.
         """
@@ -582,6 +584,8 @@ class SceneViewer(pyglet.window.Window):
         glBindVertexArray(self._vaids[0])
         self._shader = self._load_shaders(vertex_shader, fragment_shader)
         glBindVertexArray(0)
+
+        self._gl_initialized = True
 
     def _load_shaders(self, vertex_shader, fragment_shader):
         """Load and compile shaders from strings.
