@@ -195,7 +195,7 @@ class Trackball(object):
         t_tf = RigidTransform(translation=translation, from_frame='world', to_frame='world')
         self._T_camera_world = t_tf.dot(self._T_camera_world)
 
-    def rotate(self, azimuth):
+    def rotate(self, azimuth, axis=None):
         """Rotate the trackball about the "Up" axis by azimuth radians.
 
         Parameters
@@ -206,11 +206,15 @@ class Trackball(object):
         target = self._target
 
         y_axis = self._n_T_camera_world.matrix[:3,1].flatten()
+        if axis is not None:
+            y_axis = axis
         x_rot_mat = transformations.rotation_matrix(azimuth, y_axis, target)
         x_rot_tf = RigidTransform(x_rot_mat[:3,:3], x_rot_mat[:3,3], from_frame='world', to_frame='world')
         self._n_T_camera_world = x_rot_tf.dot(self._n_T_camera_world)
 
         y_axis = self._T_camera_world.matrix[:3,1].flatten()
+        if axis is not None:
+            y_axis = axis
         x_rot_mat = transformations.rotation_matrix(azimuth, y_axis, target)
         x_rot_tf = RigidTransform(x_rot_mat[:3,:3], x_rot_mat[:3,3], from_frame='world', to_frame='world')
         self._T_camera_world = x_rot_tf.dot(self._T_camera_world)
@@ -277,6 +281,9 @@ class SceneViewer(pyglet.window.Window):
             The number of radians to rotate per timestep.
         animate_rate : float
             The framerate for animation in fps.
+        animate_axis : (3,) float or None
+            If present, the animation will rotate about the given axis in world coordinates.
+            Otherwise, the animation will rotate in azimuth.
         """
         self._gl_initialized = False
 
@@ -523,13 +530,14 @@ class SceneViewer(pyglet.window.Window):
         )
 
         # Set up the camera pose (z axis faces away from scene, x to right, y up)
+        s2 = 1.0/np.sqrt(2.0)
         cp = RigidTransform(
             rotation = np.array([
+                [0.0, -s2,  s2],
                 [1.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0],
-                [0.0, 0.0, 1.0]
+                [0.0,  s2,  s2]
             ]),
-            translation = np.array([0.0, 0.0, 3.0*scale]) + centroid,
+            translation = np.sqrt(2.0)*np.array([scale, 0.0, scale]) + centroid,
             from_frame='camera',
             to_frame='world'
         )
@@ -704,7 +712,8 @@ class SceneViewer(pyglet.window.Window):
             'bad_normals': False,
             'animate' : False,
             'animate_az' : 0.05,
-            'animate_rate' : 30
+            'animate_rate' : 30,
+            'animate_axis' : None
         }
         return flags
 
@@ -712,6 +721,6 @@ class SceneViewer(pyglet.window.Window):
     def animate(dt, self):
         """Animate the scene by rotating the camera.
         """
-        self._trackball.rotate(self._flags['animate_az'])
+        self._trackball.rotate(self._flags['animate_az'], self._flags['animate_axis'])
 
 
