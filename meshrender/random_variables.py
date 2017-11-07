@@ -506,13 +506,15 @@ class UniformPlanarWorksurfaceImageRandomVariable(RandomVariable):
 
         RandomVariable.__init__(self, self.num_prealloc_samples)
 
-    def sample(self, size=1):
+    def sample(self, size=1, front_and_back=False):
         """ Sample random variables from the model.
 
         Parameters
         ----------
         size : int
             Number of samples to take
+        front_and_back : bool
+            If True, all normals are treated as facing the camera
 
         Returns
         -------
@@ -540,7 +542,7 @@ class UniformPlanarWorksurfaceImageRandomVariable(RandomVariable):
             self.scene.camera = camera
 
             # Render the scene and grab the appropriate wrapped images
-            images = self.scene.wrapped_render(self.render_modes)
+            images = self.scene.wrapped_render(self.render_modes, front_and_back=front_and_back)
 
             renders = { m : i for m, i in zip(self.render_modes, images) }
             samples.append(RenderSample(renders, camera_sample))
