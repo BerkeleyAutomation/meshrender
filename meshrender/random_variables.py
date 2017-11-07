@@ -545,6 +545,8 @@ class UniformPlanarWorksurfaceImageRandomVariable(RandomVariable):
             renders = { m : i for m, i in zip(self.render_modes, images) }
             samples.append(RenderSample(renders, camera_sample))
 
+        self.scene.camera = orig_camera
+
         # not a list if only 1 sample
         if size == 1:
             return samples[0]
