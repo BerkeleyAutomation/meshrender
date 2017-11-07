@@ -371,8 +371,8 @@ class UniformPlanarWorksurfaceRandomVariable(RandomVariable):
 
         Returns
         -------
-        :obj:`list` of :obj:`RigidTransform`
-            sampled object to camera poses
+        :obj:`list` of :obj:`CameraSample`
+            sampled camera intrinsics and poses
         """
         samples = []
         for i in range(size):
