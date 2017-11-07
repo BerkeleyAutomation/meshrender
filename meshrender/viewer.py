@@ -273,7 +273,7 @@ class SceneViewer(pyglet.window.Window):
         raymond_lighting : bool
             If True, the scene's point and directional lights are discarded in favor
             of a set of three directional lights that move with the camera.
-        bad_normals : bool
+        front_and_back : bool
             If True, the shader will treat all normals as facing the camera.
         animate : bool
             If True, the camera will rotate by default about the scene.
@@ -357,13 +357,13 @@ class SceneViewer(pyglet.window.Window):
         n_directional_id = glGetUniformLocation(self._shader, "n_directional_lights")
         point_id = glGetUniformLocation(self._shader, "point_light_info")
         n_point_id = glGetUniformLocation(self._shader, "n_point_lights")
-        bad_normals_id = glGetUniformLocation(self._shader, "bad_normals")
+        front_and_back_id = glGetUniformLocation(self._shader, "front_and_back")
 
         # Bind bad normals id
-        bad_normals = 0
-        if self._flags['bad_normals']:
-            bad_normals = 1
-        glUniform1i(bad_normals_id, bad_normals)
+        front_and_back = 0
+        if self._flags['front_and_back']:
+            front_and_back = 1
+        glUniform1i(front_and_back_id, front_and_back)
 
         # Bind view matrix
         glUniformMatrix4fv(v_id, 1, GL_TRUE, camera.V)
@@ -491,7 +491,7 @@ class SceneViewer(pyglet.window.Window):
         elif symbol == pyglet.window.key.A:
             self._flags['animate'] = not self._flags['animate']
         elif symbol == pyglet.window.key.N:
-            self._flags['bad_normals'] = not self._flags['bad_normals']
+            self._flags['front_and_back'] = not self._flags['front_and_back']
         self._update_flags()
 
     def _update_flags(self):
@@ -709,7 +709,7 @@ class SceneViewer(pyglet.window.Window):
             'flip_wireframe' : False,
             'raymond_lighting' : False,
             'line_width': 1.0,
-            'bad_normals': False,
+            'front_and_back': False,
             'animate' : False,
             'animate_az' : 0.05,
             'animate_rate' : 30,

@@ -60,7 +60,7 @@ class OpenGLRenderer(object):
         self._depth_shader = self._load_shaders(depth_vertex_shader, depth_fragment_shader)
         glBindVertexArray(0)
 
-    def render(self, render_color=True):
+    def render(self, render_color=True, front_and_back=False):
         """Render raw images of the scene.
 
         Parameters
@@ -68,6 +68,9 @@ class OpenGLRenderer(object):
         render_color : bool
             If True, both a color and a depth image are returned.
             If False, only a depth image is returned.
+
+        front_and_back : bool
+            If True, all normals are treated as facing the camera.
 
         Returns
         -------
@@ -97,7 +100,7 @@ class OpenGLRenderer(object):
             self._bind_frame_buffer()
 
         if render_color:
-            return self._color_and_depth()
+            return self._color_and_depth(front_and_back)
         else:
             return self._depth()
 
@@ -271,7 +274,7 @@ class OpenGLRenderer(object):
 
         return depth_im
 
-    def _color_and_depth(self):
+    def _color_and_depth(self, front_and_back):
         """Render a color image and a depth image of the scene.
         """
         scene = self._scene
@@ -298,10 +301,10 @@ class OpenGLRenderer(object):
         n_directional_id = glGetUniformLocation(self._full_shader, "n_directional_lights")
         point_id = glGetUniformLocation(self._full_shader, "point_light_info")
         n_point_id = glGetUniformLocation(self._full_shader, "n_point_lights")
-        bad_normals_id = glGetUniformLocation(self._full_shader, "bad_normals")
+        front_and_back_id = glGetUniformLocation(self._full_shader, "front_and_back")
 
         # Bind bad normals id
-        glUniform1i(bad_normals_id, 0)
+        glUniform1i(front_and_back_id, int(front_and_back))
 
         # Bind view matrix
         glUniformMatrix4fv(v_id, 1, GL_TRUE, scene.camera.V)

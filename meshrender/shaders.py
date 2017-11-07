@@ -74,7 +74,7 @@ uniform int n_directional_lights;
 uniform vec4 point_light_info[2*MAX_N_LIGHTS];
 uniform vec4 directional_light_info[2*MAX_N_LIGHTS];
 uniform mat4 V;
-uniform bool bad_normals;
+uniform bool front_and_back;
 
 void main(){
 
@@ -106,7 +106,7 @@ void main(){
         vec3 r = reflect(-l, n);
         float nldot = dot(n, l);
         float erdot = dot(e, r);
-        if (bad_normals) {
+        if (front_and_back) {
             nldot = abs(nldot);
             erdot = abs(erdot);
         }
@@ -135,7 +135,7 @@ void main(){
         vec3 r = reflect(-l, n);
         float nldot = dot(n, l);
         float erdot = dot(e, r);
-        if (bad_normals) {
+        if (front_and_back) {
             nldot = abs(nldot);
             erdot = abs(erdot);
         }

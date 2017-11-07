@@ -169,7 +169,7 @@ class Scene(object):
         if self._renderer is not None:
             self._renderer.close()
 
-    def render(self, render_color=True):
+    def render(self, render_color=True, front_and_back=False):
         """Render raw images of the scene.
 
         Parameters
@@ -177,6 +177,9 @@ class Scene(object):
         render_color : bool
             If True, both a color and a depth image are returned.
             If False, only a depth image is returned.
+
+        front_and_back : bool
+            If True, all surface normals are treated as if they're facing the camera.
 
         Returns
         -------
@@ -206,9 +209,9 @@ class Scene(object):
             raise ValueError('scene.camera must be set before calling render()')
         if self._renderer is None:
             self._renderer = OpenGLRenderer(self)
-        return self._renderer.render(render_color)
+        return self._renderer.render(render_color, front_and_back=front_and_back)
 
-    def wrapped_render(self, render_modes):
+    def wrapped_render(self, render_modes, front_and_back=False):
         """Render images of the scene and wrap them with Image wrapper classes
         from the Berkeley AUTOLab's perception module.
 
@@ -217,6 +220,9 @@ class Scene(object):
         render_modes : list of perception.RenderMode 
             A list of the desired image types to return, from the perception
             module's RenderMode enum.
+
+        front_and_back : bool
+            If True, all surface normals are treated as if they're facing the camera.
 
         Returns
         -------
@@ -234,7 +240,7 @@ class Scene(object):
 
         color_im, depth_im = None, None
         if render_color:
-            color_im, depth_im = self.render(render_color)
+            color_im, depth_im = self.render(render_color, front_and_back=front_and_back)
         else:
             depth_im = self.render(render_color)
 
