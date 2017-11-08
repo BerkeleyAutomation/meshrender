@@ -85,7 +85,7 @@ class Scene(object):
 
     @camera.setter
     def camera(self, camera):
-        if not isinstance(camera, VirtualCamera):
+        if camera is not None and not isinstance(camera, VirtualCamera):
             raise ValueError('camera must be an object of type VirtualCamera')
         self._camera = camera
 
