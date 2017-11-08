@@ -321,6 +321,12 @@ class SceneViewer(pyglet.window.Window):
         self._update_flags()
         pyglet.app.run()
 
+    def on_close(self):
+        """Exit the event loop when the window is closed.
+        """
+        self.close()
+        pyglet.app.exit()
+
     def on_draw(self):
         """Redraw the scene into the viewing window.
         """
