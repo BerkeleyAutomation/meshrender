@@ -320,22 +320,29 @@ render images.</p>
 
 <dl class="method">
 <dt id="meshrender.Scene.render">
-<code class="descname">render</code><span class="sig-paren">(</span><em>render_color=True</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.render" title="Permalink to this definition">¶</a></dt>
+<code class="descname">render</code><span class="sig-paren">(</span><em>render_color=True</em>, <em>front_and_back=False</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.render" title="Permalink to this definition">¶</a></dt>
 <dd><p>Render raw images of the scene.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>render_color</strong> (<em>bool</em>) – If True, both a color and a depth image are returned.
-If False, only a depth image is returned.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>render_color</strong> (<em>bool</em>) – If True, both a color and a depth image are returned.
+If False, only a depth image is returned.</li>
+<li><strong>front_and_back</strong> (<em>bool</em>) – If True, all surface normals are treated as if they’re facing the camera.</li>
+</ul>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A raw RGB color image with pixel values in [0, 255] and a depth image
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A raw RGB color image with pixel values in [0, 255] and a depth image
 with true depths expressed as floats. If render_color was False,
-only the depth image is returned.</td>
+only the depth image is returned.</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">tuple of (h, w, 3) uint8, (h, w) float32</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first">tuple of (h, w, 3) uint8, (h, w) float32</p>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><code class="xref py py-exc docutils literal"><span class="pre">ValueError</span></code> – If the scene has no set camera.</td>
+<tr class="field-even field"><th class="field-name">Raises:</th><td class="field-body"><p class="first last"><code class="xref py py-exc docutils literal"><span class="pre">ValueError</span></code> – If the scene has no set camera.</p>
+</td>
 </tr>
 </tbody>
 </table>
@@ -355,20 +362,26 @@ so put all the objects in the scene before calling it.</p>
 
 <dl class="method">
 <dt id="meshrender.Scene.wrapped_render">
-<code class="descname">wrapped_render</code><span class="sig-paren">(</span><em>render_modes</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.wrapped_render" title="Permalink to this definition">¶</a></dt>
+<code class="descname">wrapped_render</code><span class="sig-paren">(</span><em>render_modes</em>, <em>front_and_back=False</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.wrapped_render" title="Permalink to this definition">¶</a></dt>
 <dd><p>Render images of the scene and wrap them with Image wrapper classes
 from the Berkeley AUTOLab’s perception module.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>render_modes</strong> (<em>list of perception.RenderMode</em>) – A list of the desired image types to return, from the perception
-module’s RenderMode enum.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>render_modes</strong> (<em>list of perception.RenderMode</em>) – A list of the desired image types to return, from the perception
+module’s RenderMode enum.</li>
+<li><strong>front_and_back</strong> (<em>bool</em>) – If True, all surface normals are treated as if they’re facing the camera.</li>
+</ul>
+</td>
 </tr>
-<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A list containing a corresponding Image sub-class for each type listed
-in render_modes.</td>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first">A list containing a corresponding Image sub-class for each type listed
+in render_modes.</p>
+</td>
 </tr>
-<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body">list of perception.Image</td>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><p class="first last">list of perception.Image</p>
+</td>
 </tr>
 </tbody>
 </table>

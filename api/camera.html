@@ -204,8 +204,8 @@ along the optical axis.</p>
 <li><strong>intrinsics</strong> (<em>percetion.CameraIntrinsics</em>) – The intrinsic properties of the camera, from the Berkeley AUTOLab’s perception module.</li>
 <li><strong>T_camera_world</strong> (<em>autolab_core.RigidTransform</em>) – A transform from camera to world coordinates that indicates
 the camera’s pose. The camera frame’s x axis points right,
-its y axis points up, and its negative z axis points towards
-the scene. The RigidTransform object is from the Berkeley AUTOLab’s autolab_core module.</li>
+its y axis points down, and its z axis points towards
+the scene (i.e. standard OpenCV coordinates).</li>
 </ul>
 </td>
 </tr>
@@ -230,6 +230,8 @@ the scene. The RigidTransform object is from the Berkeley AUTOLab’s autolab_co
 <code class="descname">V</code><a class="headerlink" href="#meshrender.VirtualCamera.V" title="Permalink to this definition">¶</a></dt>
 <dd><p><em>(4,4) float</em> – A homogenous rigid transform matrix mapping world coordinates
 to camera coordinates. Equivalent to the OpenGL View matrix.</p>
+<p>Note that the OpenGL camera coordinate system has x to the right, y up, and z away
+from the scene towards the eye!</p>
 </dd></dl>
 
 <dl class="attribute">

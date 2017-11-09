@@ -249,7 +249,7 @@ using a camera controlled by a virtual trackball.</p>
 <li><strong>flip_wireframe</strong> (<em>bool</em>) – If True, inverts the ‘wireframe’ material property for all meshes.</li>
 <li><strong>raymond_lighting</strong> (<em>bool</em>) – If True, the scene’s point and directional lights are discarded in favor
 of a set of three directional lights that move with the camera.</li>
-<li><strong>bad_normals</strong> (<em>bool</em>) – If True, the shader will treat all normals as facing the camera.</li>
+<li><strong>front_and_back</strong> (<em>bool</em>) – If True, the shader will treat all normals as facing the camera.</li>
 <li><strong>animate</strong> (<em>bool</em>) – If True, the camera will rotate by default about the scene.</li>
 <li><strong>animate_az</strong> (<em>float</em>) – The number of radians to rotate per timestep.</li>
 <li><strong>animate_rate</strong> (<em>float</em>) – The framerate for animation in fps.</li>
@@ -260,6 +260,12 @@ Otherwise, the animation will rotate in azimuth.</li>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="method">
+<dt id="meshrender.SceneViewer.on_close">
+<code class="descname">on_close</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer.on_close" title="Permalink to this definition">¶</a></dt>
+<dd><p>Exit the event loop when the window is closed.</p>
 </dd></dl>
 
 <dl class="method">

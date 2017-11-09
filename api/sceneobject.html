@@ -184,14 +184,14 @@ material properties (<cite>MaterialProperties</cite>).</p>
 <h2>SceneObject<a class="headerlink" href="#sceneobject" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="meshrender.SceneObject">
-<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">SceneObject</code><span class="sig-paren">(</span><em>mesh, T_obj_world=RigidTransform(rotation=[[ 1.  0.  0.]  [ 0.  1.  0.]  [ 0.  0.  1.]], translation=[ 0.  0.  0.], from_frame=obj, to_frame=world), material=&lt;meshrender.material.MaterialProperties object&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneObject" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">SceneObject</code><span class="sig-paren">(</span><em>mesh, T_obj_world=RigidTransform(rotation=[[ 1.  0.  0.]  [ 0.  1.  0.]  [ 0.  0.  1.]], translation=[ 0.  0.  0.], from_frame=obj, to_frame=world), material=&lt;meshrender.material.MaterialProperties object&gt;, enabled=True</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneObject" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <p>A complete description of an object in a Scene.</p>
 <p>This includes its geometry (represented as a Trimesh), its pose in the world,
 and its material properties.</p>
 <dl class="method">
 <dt id="meshrender.SceneObject.__init__">
-<code class="descname">__init__</code><span class="sig-paren">(</span><em>mesh, T_obj_world=RigidTransform(rotation=[[ 1.  0.  0.]  [ 0.  1.  0.]  [ 0.  0.  1.]], translation=[ 0.  0.  0.], from_frame=obj, to_frame=world), material=&lt;meshrender.material.MaterialProperties object&gt;</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneObject.__init__" title="Permalink to this definition">¶</a></dt>
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>mesh, T_obj_world=RigidTransform(rotation=[[ 1.  0.  0.]  [ 0.  1.  0.]  [ 0.  0.  1.]], translation=[ 0.  0.  0.], from_frame=obj, to_frame=world), material=&lt;meshrender.material.MaterialProperties object&gt;, enabled=True</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneObject.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize a scene object with the given mesh, pose, and material.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
@@ -201,11 +201,18 @@ and its material properties.</p>
 <li><strong>mesh</strong> (<em>trimesh.Trimesh</em>) – A mesh representing the object’s geometry.</li>
 <li><strong>T_obj_world</strong> (<em>autolab_core.RigidTransform</em>) – A rigid transformation from the object’s frame to the world frame.</li>
 <li><strong>material</strong> (<a class="reference internal" href="material.html#meshrender.MaterialProperties" title="meshrender.MaterialProperties"><em>MaterialProperties</em></a>) – A set of material properties for the object.</li>
+<li><strong>enabled</strong> (<em>bool</em>) – If False, the object will not be rendered.</li>
 </ul>
 </td>
 </tr>
 </tbody>
 </table>
+</dd></dl>
+
+<dl class="attribute">
+<dt id="meshrender.SceneObject.enabled">
+<code class="descname">enabled</code><a class="headerlink" href="#meshrender.SceneObject.enabled" title="Permalink to this definition">¶</a></dt>
+<dd><p><em>bool</em> – If False, the object will not be rendered.</p>
 </dd></dl>
 
 <dl class="attribute">
