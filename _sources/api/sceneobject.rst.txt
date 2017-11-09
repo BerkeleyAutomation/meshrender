@@ -8,3 +8,6 @@ SceneObject
 ~~~~~~~~~~~
 .. autoclass:: meshrender.SceneObject
 
+InstancedSceneObject
+~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: meshrender.InstancedSceneObject
