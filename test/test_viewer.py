@@ -3,7 +3,7 @@ import trimesh
 from autolab_core import RigidTransform
 from perception import CameraIntrinsics, RenderMode, ColorImage, DepthImage
 
-from meshrender import Scene, MaterialProperties, AmbientLight, PointLight, SceneObject, VirtualCamera, DirectionalLight, SceneViewer, UniformPlanarWorksurfaceImageRandomVariable
+from meshrender import Scene, MaterialProperties, AmbientLight, PointLight, SceneObject, VirtualCamera, DirectionalLight, SceneViewer, UniformPlanarWorksurfaceImageRandomVariable, InstancedSceneObject
 
 # Start with an empty scene
 scene = Scene()
@@ -54,9 +54,10 @@ bar_material = pawn_material
 # Create SceneObjects for each object
 pawn_obj = SceneObject(pawn_mesh, pawn_pose, pawn_material)
 bar_obj = SceneObject(bar_mesh, bar_pose, bar_material)
+pawn_inst_obj = InstancedSceneObject(pawn_mesh, [pawn_pose, bar_pose], material=pawn_material)
 
 # Add the SceneObjects to the scene
-scene.add_object('pawn', pawn_obj)
+scene.add_object('pawn', pawn_inst_obj)
 scene.add_object('bar', bar_obj)
 
 #====================================

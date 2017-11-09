@@ -76,3 +76,35 @@ class SceneObject(object):
             raise ValueError('transform must be an object of type RigidTransform')
         self._T_obj_world = T
 
+class InstancedSceneObject(SceneObject):
+    """A scene object which consists as a set of identical objects.
+    """
+    def __init__(self, mesh, poses,
+                 T_obj_world=RigidTransform(from_frame='obj', to_frame='world'),
+                 material=MaterialProperties(),
+                 enabled=True):
+        """Initialize a scene object with the given mesh, pose, and material.
+
+        Parameters
+        ----------
+        mesh : trimesh.Trimesh
+            A mesh representing the object's geometry.
+        poses : list of autolab_core.RigidTransform
+            A set of poses, one for each instance of the scene object,
+            relative to the full object's origin.
+        T_obj_world : autolab_core.RigidTransform
+            A rigid transformation from the object's frame to the world frame.
+        material : MaterialProperties
+            A set of material properties for the object.
+        enabled : bool
+            If False, the object will not be rendered.
+        """
+
+        super(InstancedSceneObject, self).__init__(mesh, T_obj_world, material, enabled)
+        self._poses = poses
+
+    @property
+    def poses(self):
+        """list of autolab_core.RigidTransform: A set of poses for each instance relative to the object's origin.
+        """
+        return self._poses

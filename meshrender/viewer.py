@@ -16,6 +16,7 @@ from .constants import MAX_N_LIGHTS
 from .light import AmbientLight, PointLight, DirectionalLight
 from .shaders import vertex_shader, fragment_shader
 from .camera import VirtualCamera
+from .scene_object import InstancedSceneObject
 
 from autolab_core import transformations
 from autolab_core import RigidTransform
@@ -353,9 +354,9 @@ class SceneViewer(pyglet.window.Window):
         glUseProgram(self._shader)
 
         # Get Uniform Locations from Shader
-        mvp_id = glGetUniformLocation(self._shader, 'MVP')
-        mv_id = glGetUniformLocation(self._shader, 'MV')
         v_id = glGetUniformLocation(self._shader, 'V')
+        p_id = glGetUniformLocation(self._shader, 'P')
+        m_id = glGetUniformLocation(self._shader, 'M')
         matprop_id = glGetUniformLocation(self._shader, 'material_properties')
         object_color_id = glGetUniformLocation(self._shader, 'object_color')
         ambient_id = glGetUniformLocation(self._shader, 'ambient_light_info')
@@ -366,13 +367,11 @@ class SceneViewer(pyglet.window.Window):
         front_and_back_id = glGetUniformLocation(self._shader, "front_and_back")
 
         # Bind bad normals id
-        front_and_back = 0
-        if self._flags['front_and_back']:
-            front_and_back = 1
-        glUniform1i(front_and_back_id, front_and_back)
+        glUniform1i(front_and_back_id, int(self._flags['front_and_back']))
 
         # Bind view matrix
         glUniformMatrix4fv(v_id, 1, GL_TRUE, camera.V)
+        glUniformMatrix4fv(p_id, 1, GL_TRUE, camera.P)
 
         # Bind ambient lighting
         glUniform4fv(ambient_id, 1, np.hstack((scene.ambient_light.color,
@@ -414,15 +413,9 @@ class SceneViewer(pyglet.window.Window):
                 continue
 
             mesh = obj.mesh
-            M = obj.T_obj_world.matrix
             material = obj.material
 
-            glBindVertexArray(vaid)
-
-            MV = camera.V.dot(M)
-            MVP = camera.P.dot(MV)
-            glUniformMatrix4fv(mvp_id, 1, GL_TRUE, MVP)
-            glUniformMatrix4fv(mv_id, 1, GL_TRUE, MV)
+            glUniformMatrix4fv(m_id, 1, GL_TRUE, obj.T_obj_world.matrix)
             glUniform3fv(object_color_id, 1, material.color)
             glUniform4fv(matprop_id, 1, np.array([material.k_a, material.k_d, material.k_s, material.alpha]))
 
@@ -432,10 +425,16 @@ class SceneViewer(pyglet.window.Window):
             else:
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
+            glBindVertexArray(vaid)
+
+            n_instances = 1
+            if isinstance(obj, InstancedSceneObject):
+                n_instances = len(obj.poses)
+
             if material.smooth:
-                glDrawElements(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0))
+                glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0), n_instances)
             else:
-                glDrawArrays(GL_TRIANGLES, 0, 3*len(mesh.faces))
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 3*len(mesh.faces), n_instances)
 
             glBindVertexArray(0)
 
@@ -622,7 +621,6 @@ class SceneViewer(pyglet.window.Window):
         if len(self._scene.objects) == 1:
             VA_ids = [VA_ids]
 
-        buffer_ids = []
         for VA_id, obj in zip(VA_ids, self._scene.objects.values()):
             mesh = obj.mesh
             material = obj.material
@@ -686,6 +684,26 @@ class SceneViewer(pyglet.window.Window):
                              normals,
                              GL_STATIC_DRAW)
 
+            glVertexAttribDivisor(0, 0)
+            glVertexAttribDivisor(1, 0)
+
+            # Set up model matrix buffer
+            modelbuf = glGenBuffers(1)
+            glBindBuffer(GL_ARRAY_BUFFER, modelbuf)
+            for i in range(4):
+                glEnableVertexAttribArray(2 + i)
+                glVertexAttribPointer(2 + i, 4, GL_FLOAT, GL_FALSE, 4*16, ctypes.c_void_p(4*4*i))
+                glVertexAttribDivisor(2 + i, 1)
+
+            if isinstance(obj, InstancedSceneObject):
+                glBufferData(GL_ARRAY_BUFFER, 4*16*len(obj.poses), None, GL_STATIC_DRAW)
+                data = np.concatenate([p.matrix.T for p in obj.poses], axis=0).flatten().astype(np.float32)
+                glBufferSubData(GL_ARRAY_BUFFER, 0, 4*16*len(obj.poses), data)
+            else:
+                glBufferData(GL_ARRAY_BUFFER, 4*16, None, GL_STATIC_DRAW)
+                glBufferSubData(GL_ARRAY_BUFFER, 0, 4*16, np.eye(4).flatten().astype(np.float32))
+
+
             # Unbind all buffers
             glBindVertexArray(0)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
@@ -705,11 +723,16 @@ class SceneViewer(pyglet.window.Window):
         ub = -1.0 * np.array([np.infty, np.infty, np.infty])
         for on in self._scene.objects:
             o = self._scene.objects[on]
-            tf_verts = o.T_obj_world.matrix[:3,:3].dot(o.mesh.vertices.T).T + o.T_obj_world.matrix[:3,3]
-            lb_mesh = np.min(tf_verts, axis=0)
-            ub_mesh = np.max(tf_verts, axis=0)
-            lb = np.minimum(lb, lb_mesh)
-            ub = np.maximum(ub, ub_mesh)
+            poses = [RigidTransform(from_frame=o.T_obj_world.from_frame, to_frame=o.T_obj_world.to_frame)]
+            if isinstance(o, InstancedSceneObject):
+                poses = o.poses
+            for pose in poses:
+                tf_verts = pose.matrix[:3,:3].dot(o.mesh.vertices.T).T + pose.matrix[:3,3]
+                tf_verts = o.T_obj_world.matrix[:3,:3].dot(tf_verts.T).T + o.T_obj_world.matrix[:3,3]
+                lb_mesh = np.min(tf_verts, axis=0)
+                ub_mesh = np.max(tf_verts, axis=0)
+                lb = np.minimum(lb, lb_mesh)
+                ub = np.maximum(ub, ub_mesh)
         return np.array([lb, ub])
 
     @staticmethod

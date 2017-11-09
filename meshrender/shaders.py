@@ -5,15 +5,18 @@ depth_vertex_shader = '''#version 330 core
 
 // Input vertex data
 layout(location = 0) in vec3 vertex_position_m;
+layout(location = 2) in mat4 inst_M;
 
 // Output data
 out vec4 color;
 
 // Values that stay constant for the whole mesh.
-uniform mat4 MVP;
+uniform mat4 P;
+uniform mat4 V;
+uniform mat4 M;
 
 void main(){
-    gl_Position =  MVP * vec4(vertex_position_m, 1);
+    gl_Position =  P * V * M * inst_M * vec4(vertex_position_m, 1);
 
     color = vec4(1.0);
 }
@@ -36,6 +39,7 @@ vertex_shader = '''#version 330 core
 // Input vertex data
 layout(location = 0) in vec3 vertex_position_m;
 layout(location = 1) in vec3 vertex_normal_m;
+layout(location = 2) in mat4 inst_M;
 
 // Output data
 out vec4 color;
@@ -43,11 +47,14 @@ out vec4 position;
 out vec3 normal;
 
 // Values that stay constant for the whole mesh.
-uniform mat4 MVP;
-uniform mat4 MV;
+uniform mat4 P;
+uniform mat4 V;
+uniform mat4 M;
 uniform vec3 object_color;
 
 void main(){
+    mat4 MV = V * M * inst_M;
+    mat4 MVP = P * MV;
     gl_Position =  MVP * vec4(vertex_position_m, 1);
 
     color = vec4(object_color, 1.0);

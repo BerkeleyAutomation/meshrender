@@ -10,6 +10,7 @@ from OpenGL.arrays import *
 from .constants import MAX_N_LIGHTS, Z_NEAR, Z_FAR
 from .light import AmbientLight, PointLight, DirectionalLight
 from .shaders import vertex_shader, fragment_shader, depth_vertex_shader, depth_fragment_shader
+from .scene_object import InstancedSceneObject
 
 
 class OpenGLRenderer(object):
@@ -151,7 +152,6 @@ class OpenGLRenderer(object):
         if len(self._scene.objects) == 1:
             VA_ids = [VA_ids]
 
-        buffer_ids = []
         for VA_id, obj in zip(VA_ids, self._scene.objects.values()):
             mesh = obj.mesh
             material = obj.material
@@ -215,6 +215,26 @@ class OpenGLRenderer(object):
                              normals,
                              GL_STATIC_DRAW)
 
+            glVertexAttribDivisor(0, 0)
+            glVertexAttribDivisor(1, 0)
+
+            # Set up model matrix buffer
+            modelbuf = glGenBuffers(1)
+            glBindBuffer(GL_ARRAY_BUFFER, modelbuf)
+            for i in range(4):
+                glEnableVertexAttribArray(2 + i)
+                glVertexAttribPointer(2 + i, 4, GL_FLOAT, GL_FALSE, 4*16, ctypes.c_void_p(4*4*i))
+                glVertexAttribDivisor(2 + i, 1)
+
+            if isinstance(obj, InstancedSceneObject):
+                glBufferData(GL_ARRAY_BUFFER, 4*16*len(obj.poses), None, GL_STATIC_DRAW)
+                data = np.concatenate([p.matrix.T for p in obj.poses], axis=0).flatten().astype(np.float32)
+                glBufferSubData(GL_ARRAY_BUFFER, 0, 4*16*len(obj.poses), data)
+            else:
+                glBufferData(GL_ARRAY_BUFFER, 4*16, None, GL_STATIC_DRAW)
+                glBufferSubData(GL_ARRAY_BUFFER, 0, 4*16, np.eye(4).flatten().astype(np.float32))
+
+
             # Unbind all buffers
             glBindVertexArray(0)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
@@ -238,20 +258,29 @@ class OpenGLRenderer(object):
         glUseProgram(self._depth_shader)
 
         # Get Uniform Locations from Shader
-        mvp_id = glGetUniformLocation(self._depth_shader, 'MVP')
+        v_id = glGetUniformLocation(self._depth_shader, 'V')
+        p_id = glGetUniformLocation(self._depth_shader, 'P')
+        m_id = glGetUniformLocation(self._depth_shader, 'M')
+
+        glUniformMatrix4fv(v_id, 1, GL_TRUE, camera.V)
+        glUniformMatrix4fv(p_id, 1, GL_TRUE, camera.P)
 
         for vaid, obj in zip(self._vaids, self._scene.objects.values()):
-            M = obj.T_obj_world.matrix
+            material = obj.material
+            mesh = obj.mesh
+
+            glUniformMatrix4fv(m_id, 1, GL_TRUE, obj.T_obj_world.matrix)
 
             glBindVertexArray(vaid)
 
-            MVP = camera.P.dot(camera.V.dot(M))
-            glUniformMatrix4fv(mvp_id, 1, GL_TRUE, MVP)
+            n_instances = 1
+            if isinstance(obj, InstancedSceneObject):
+                n_instances = len(obj.poses)
 
-            if obj.material.smooth:
-                glDrawElements(GL_TRIANGLES, 3*len(obj.mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0))
+            if material.smooth:
+                glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0), n_instances)
             else:
-                glDrawArrays(GL_TRIANGLES, 0, 3*len(obj.mesh.faces))
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 3*len(mesh.faces), n_instances)
 
             glBindVertexArray(0)
 
@@ -291,9 +320,9 @@ class OpenGLRenderer(object):
         glUseProgram(self._full_shader)
 
         # Get Uniform Locations from Shader
-        mvp_id = glGetUniformLocation(self._full_shader, 'MVP')
-        mv_id = glGetUniformLocation(self._full_shader, 'MV')
+        p_id = glGetUniformLocation(self._full_shader, 'P')
         v_id = glGetUniformLocation(self._full_shader, 'V')
+        m_id = glGetUniformLocation(self._full_shader, 'M')
         matprop_id = glGetUniformLocation(self._full_shader, 'material_properties')
         object_color_id = glGetUniformLocation(self._full_shader, 'object_color')
         ambient_id = glGetUniformLocation(self._full_shader, 'ambient_light_info')
@@ -308,6 +337,7 @@ class OpenGLRenderer(object):
 
         # Bind view matrix
         glUniformMatrix4fv(v_id, 1, GL_TRUE, scene.camera.V)
+        glUniformMatrix4fv(p_id, 1, GL_TRUE, scene.camera.P)
 
         # Bind ambient lighting
         glUniform4fv(ambient_id, 1, np.hstack((scene.ambient_light.color,
@@ -334,15 +364,11 @@ class OpenGLRenderer(object):
                 continue
 
             mesh = obj.mesh
-            M = obj.T_obj_world.matrix
             material = obj.material
 
             glBindVertexArray(vaid)
 
-            MV = camera.V.dot(M)
-            MVP = camera.P.dot(MV)
-            glUniformMatrix4fv(mvp_id, 1, GL_TRUE, MVP)
-            glUniformMatrix4fv(mv_id, 1, GL_TRUE, MV)
+            glUniformMatrix4fv(m_id, 1, GL_TRUE, obj.T_obj_world.matrix)
             glUniform3fv(object_color_id, 1, material.color)
             glUniform4fv(matprop_id, 1, np.array([material.k_a, material.k_d, material.k_s, material.alpha]))
 
@@ -351,10 +377,14 @@ class OpenGLRenderer(object):
             else:
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
+            n_instances = 1
+            if isinstance(obj, InstancedSceneObject):
+                n_instances = len(obj.poses)
+
             if material.smooth:
-                glDrawElements(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0))
+                glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0), n_instances)
             else:
-                glDrawArrays(GL_TRIANGLES, 0, 3*len(mesh.faces))
+                glDrawArraysInstanced(GL_TRIANGLES, 0, 3*len(mesh.faces), n_instances)
 
             glBindVertexArray(0)
 
