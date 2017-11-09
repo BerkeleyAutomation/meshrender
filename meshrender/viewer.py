@@ -725,6 +725,8 @@ class SceneViewer(pyglet.window.Window):
             o = self._scene.objects[on]
             poses = [RigidTransform(from_frame=o.T_obj_world.from_frame, to_frame=o.T_obj_world.to_frame)]
             if isinstance(o, InstancedSceneObject):
+                if len(o.poses) > 5: # prevent expensive bounds computation for hugely-instanced objects
+                    continue
                 poses = o.poses
             for pose in poses:
                 tf_verts = pose.matrix[:3,:3].dot(o.mesh.vertices.T).T + pose.matrix[:3,3]
