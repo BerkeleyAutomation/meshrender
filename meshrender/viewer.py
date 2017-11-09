@@ -123,7 +123,7 @@ class Trackball(object):
 
         # Interpret drag as a rotation
         if self._state == Trackball.STATE_ROTATE:
-            x_angle = -dx / mindim
+            x_angle = dx / mindim
             x_rot_mat = transformations.rotation_matrix(x_angle, y_axis, target)
             x_rot_tf = RigidTransform(x_rot_mat[:3,:3], x_rot_mat[:3,3], from_frame='world', to_frame='world')
 
@@ -143,7 +143,7 @@ class Trackball(object):
 
             theta = np.arctan2(v_curr[1], v_curr[0]) - np.arctan2(v_init[1], v_init[0])
 
-            rot_mat = transformations.rotation_matrix(-theta, z_axis, target)
+            rot_mat = transformations.rotation_matrix(theta, z_axis, target)
             rot_tf = RigidTransform(rot_mat[:3,:3], rot_mat[:3,3], from_frame='world', to_frame='world')
 
             self._n_T_camera_world = rot_tf.dot(self._T_camera_world)
@@ -151,7 +151,7 @@ class Trackball(object):
         # Interpret drag as a camera pan in view plane
         elif self._state == Trackball.STATE_PAN:
             dx = -dx / (5.0*mindim) * self._scale
-            dy = -dy / (5.0*mindim) * self._scale
+            dy = dy / (5.0*mindim) * self._scale
 
             translation = dx * x_axis + dy * y_axis
             self._n_target = self._target + translation
@@ -166,7 +166,7 @@ class Trackball(object):
                 ratio = np.exp(abs(dy)/(0.5*self._size[1])) - 1.0
             elif dy > 0:
                 ratio = 1.0 - np.exp(-dy/(0.5*(self._size[1])))
-            translation = -np.sign(dy) * ratio * radius * z_axis
+            translation = np.sign(dy) * ratio * radius * z_axis
             t_tf = RigidTransform(translation=translation, from_frame='world', to_frame='world')
             self._n_T_camera_world = t_tf.dot(self._T_camera_world)
 
@@ -208,14 +208,14 @@ class Trackball(object):
         y_axis = self._n_T_camera_world.matrix[:3,1].flatten()
         if axis is not None:
             y_axis = axis
-        x_rot_mat = transformations.rotation_matrix(azimuth, y_axis, target)
+        x_rot_mat = transformations.rotation_matrix(-azimuth, y_axis, target)
         x_rot_tf = RigidTransform(x_rot_mat[:3,:3], x_rot_mat[:3,3], from_frame='world', to_frame='world')
         self._n_T_camera_world = x_rot_tf.dot(self._n_T_camera_world)
 
         y_axis = self._T_camera_world.matrix[:3,1].flatten()
         if axis is not None:
             y_axis = axis
-        x_rot_mat = transformations.rotation_matrix(azimuth, y_axis, target)
+        x_rot_mat = transformations.rotation_matrix(-azimuth, y_axis, target)
         x_rot_tf = RigidTransform(x_rot_mat[:3,:3], x_rot_mat[:3,3], from_frame='world', to_frame='world')
         self._T_camera_world = x_rot_tf.dot(self._T_camera_world)
 
@@ -538,13 +538,13 @@ class SceneViewer(pyglet.window.Window):
             width=width
         )
 
-        # Set up the camera pose (z axis faces away from scene, x to right, y up)
+        # Set up the camera pose (z axis faces towards scene, x to right, y down)
         s2 = 1.0/np.sqrt(2.0)
         cp = RigidTransform(
             rotation = np.array([
-                [0.0, -s2,  s2],
+                [0.0, s2,  -s2],
                 [1.0, 0.0, 0.0],
-                [0.0,  s2,  s2]
+                [0.0, -s2, -s2]
             ]),
             translation = np.sqrt(2.0)*np.array([scale, 0.0, scale]) + centroid,
             from_frame='camera',
@@ -572,8 +572,8 @@ class SceneViewer(pyglet.window.Window):
         l = 0
         for az, el in zip(azims, elevs):
             x = np.cos(el) * np.cos(az)
-            y = np.cos(el) * np.sin(el)
-            z = np.sin(el)
+            y = -np.cos(el) * np.sin(el)
+            z = -np.sin(el)
 
             direction = -np.array([x, y, z])
             direction = direction / np.linalg.norm(direction)

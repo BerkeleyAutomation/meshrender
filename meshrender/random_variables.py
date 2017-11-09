@@ -316,7 +316,7 @@ class UniformPlanarWorksurfaceRandomVariable(RandomVariable):
         delta_t = np.array([x, y, 0])
         camera_z = np.array([sph2cart(radius, az, elev)]).squeeze()
         camera_center = camera_z + delta_t
-        camera_z = camera_z / np.linalg.norm(camera_z)
+        camera_z = -camera_z / np.linalg.norm(camera_z)
 
         # find the canonical camera x and y axes
         camera_x = np.array([camera_z[1], -camera_z[0], 0])
@@ -328,7 +328,7 @@ class UniformPlanarWorksurfaceRandomVariable(RandomVariable):
         camera_y = np.cross(camera_z, camera_x)
         camera_y = camera_y / np.linalg.norm(camera_y)
 
-        # Reverse the x direction if needed
+        # Reverse the x direction if needed so that y points down
         if camera_y[2] > 0:
             camera_x = -camera_x
             camera_y = np.cross(camera_z, camera_x)

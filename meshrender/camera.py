@@ -21,8 +21,8 @@ class VirtualCamera(object):
         T_camera_world : autolab_core.RigidTransform
             A transform from camera to world coordinates that indicates
             the camera's pose. The camera frame's x axis points right,
-            its y axis points up, and its negative z axis points towards
-            the scene. The RigidTransform object is from the Berkeley AUTOLab's autolab_core module.
+            its y axis points down, and its z axis points towards
+            the scene (i.e. standard OpenCV coordinates).
         """
         if not isinstance(intrinsics, CameraIntrinsics):
             raise ValueError('intrinsics must be an object of type CameraIntrinsics')
@@ -54,8 +54,15 @@ class VirtualCamera(object):
     def V(self):
         """(4,4) float: A homogenous rigid transform matrix mapping world coordinates
         to camera coordinates. Equivalent to the OpenGL View matrix.
+
+        Note that the OpenGL camera coordinate system has x to the right, y up, and z away
+        from the scene towards the eye!
         """
-        return self.T_camera_world.inverse().matrix
+        T_camera_world_GL = self.T_camera_world.matrix.copy()
+        T_camera_world_GL[:3,2] = -T_camera_world_GL[:3,2] # Reverse Z axis
+        T_camera_world_GL[:3,1] = -T_camera_world_GL[:3,1] # Reverse Y axis;
+        T_world_camera_GL = np.linalg.inv(T_camera_world_GL)
+        return T_world_camera_GL
 
     @property
     def P(self):

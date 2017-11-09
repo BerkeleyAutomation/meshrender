@@ -113,8 +113,8 @@ ci = CameraIntrinsics(
 # Set up the camera pose (z axis faces away from scene, x to right, y up)
 cp = RigidTransform(
     rotation = np.array([
-        [0.0, 0.0, -1.0],
-        [0.0, 1.0,  0.0],
+        [0.0, 0.0, 1.0],
+        [0.0, -1.0,  0.0],
         [1.0, 0.0,  0.0]
     ]),
     translation = np.array([-0.3, 0.0, 0.0]),

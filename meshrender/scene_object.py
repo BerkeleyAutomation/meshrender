@@ -74,7 +74,5 @@ class SceneObject(object):
     def T_obj_world(self, T):
         if not isinstance(T, RigidTransform):
             raise ValueError('transform must be an object of type RigidTransform')
-        if not T.from_frame == 'obj' or not T.to_frame == 'world':
-            raise ValueError('transform must be from obj -> world, got {} -> {}'.format(T.from_frame, T.to_frame))
         self._T_obj_world = T
 
