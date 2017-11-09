@@ -14,7 +14,8 @@ class SceneObject(object):
 
     def __init__(self, mesh,
                  T_obj_world=RigidTransform(from_frame='obj', to_frame='world'),
-                 material=MaterialProperties()):
+                 material=MaterialProperties(),
+                 enabled=True):
         """Initialize a scene object with the given mesh, pose, and material.
 
         Parameters
@@ -25,6 +26,8 @@ class SceneObject(object):
             A rigid transformation from the object's frame to the world frame.
         material : MaterialProperties
             A set of material properties for the object.
+        enabled : bool
+            If False, the object will not be rendered.
         """
         if not isinstance(mesh, Trimesh):
             raise ValueError('mesh must be an object of type Trimesh')
@@ -37,6 +40,17 @@ class SceneObject(object):
         self._mesh = mesh
         self._material = material
         self.T_obj_world = T_obj_world
+        self._enabled = True
+
+    @property
+    def enabled(self):
+        """bool: If False, the object will not be rendered.
+        """
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, enabled):
+        self._enabled = enabled
 
     @property
     def mesh(self):

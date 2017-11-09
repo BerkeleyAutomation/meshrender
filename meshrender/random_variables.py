@@ -8,7 +8,7 @@ import logging
 import numpy as np
 import scipy.stats as ss
 
-from autolab_core import Point, RigidTransform, RandomVariable
+from autolab_core import Point, RigidTransform, RandomVariable, transformations
 from autolab_core.utils import sph2cart, cart2sph
 from perception import CameraIntrinsics, RenderMode
 
@@ -43,10 +43,10 @@ class CameraSample(object):
     cy : float
         The y-axis optical center of the camera.
     """
-    def __init__(self, object_to_camera_pose, camera_intr,
+    def __init__(self, camera_to_world_pose, camera_intr,
                  radius, elev, az, roll, tx=0, ty=0, focal=0, 
                  cx=0, cy=0):
-        self.object_to_camera_pose = object_to_camera_pose
+        self.camera_to_world_pose = camera_to_world_pose
         self.camera_intr = camera_intr
         self.radius = radius
         self.elev = elev
@@ -190,7 +190,8 @@ class UniformViewsphereRandomVariable(RandomVariable):
         return samples
 
 class UniformPlanarWorksurfaceRandomVariable(RandomVariable):
-    """Uniform distribution over camera poses and intrinsics for a bounded region of a viewing sphere and planar worksurface.
+    """Uniform distribution over camera poses and intrinsics about a viewsphere over a planar worksurface.
+    The camera is positioned pointing towards (0,0,0).
     """
 
     def __init__(self, frame, config, num_prealloc_samples=1):
@@ -245,13 +246,13 @@ class UniformPlanarWorksurfaceRandomVariable(RandomVariable):
         max_roll : float
             Maximum roll, in degrees, for camera.
         min_x : float
-            Minimum x translation of object on table
+            Minimum x translation from center point
         max_x : float
-            Maximum x translation of object on table
+            Maximum x translation from center point
         min_y : float
-            Minimum y translation of object on table
+            Minimum y translation from center point
         max_y : float
-            Maximum y translation of object on table
+            Maximum y translation from center point
         """
         # read params
         self.frame = frame
@@ -308,43 +309,40 @@ class UniformPlanarWorksurfaceRandomVariable(RandomVariable):
         self.min_y = config['min_y']
         self.max_y = config['max_y']
 
-    def object_to_camera_pose(self, radius, elev, az, roll, x, y):
-        """Convert spherical coords to an object-camera pose.
+    def camera_to_world_pose(self, radius, elev, az, roll, x, y):
+        """Convert spherical coords to a camera pose in the world.
         """
         # generate camera center from spherical coords
         delta_t = np.array([x, y, 0])
-        camera_center_obj = np.array([sph2cart(radius, az, elev)]).squeeze() + delta_t
-        camera_z_obj = np.array([sph2cart(radius, az, elev)]).squeeze()
-        camera_z_obj = camera_z_obj / np.linalg.norm(camera_z_obj)
+        camera_z = np.array([sph2cart(radius, az, elev)]).squeeze()
+        camera_center = camera_z + delta_t
+        camera_z = camera_z / np.linalg.norm(camera_z)
 
         # find the canonical camera x and y axes
-        camera_x_par_obj = np.array([camera_z_obj[1], -camera_z_obj[0], 0])
-        if np.linalg.norm(camera_x_par_obj) == 0:
-            camera_x_par_obj = np.array([1, 0, 0])
-        camera_x_par_obj = camera_x_par_obj / np.linalg.norm(camera_x_par_obj)
-        camera_y_par_obj = np.cross(camera_z_obj, camera_x_par_obj)
-        camera_y_par_obj = camera_y_par_obj / np.linalg.norm(camera_y_par_obj)
-        if camera_y_par_obj[2] > 0:
-            camera_x_par_obj = -camera_x_par_obj
-            camera_y_par_obj = np.cross(camera_z_obj, camera_x_par_obj)
-            camera_y_par_obj = camera_y_par_obj / np.linalg.norm(camera_y_par_obj)
+        camera_x = np.array([camera_z[1], -camera_z[0], 0])
+        x_norm = np.linalg.norm(camera_x)
+        if x_norm == 0:
+            camera_x = np.array([1, 0, 0])
+        else:
+            camera_x = camera_x / x_norm
+        camera_y = np.cross(camera_z, camera_x)
+        camera_y = camera_y / np.linalg.norm(camera_y)
+
+        # Reverse the x direction if needed
+        if camera_y[2] > 0:
+            camera_x = -camera_x
+            camera_y = np.cross(camera_z, camera_x)
+            camera_y = camera_y / np.linalg.norm(camera_y)
 
         # rotate by the roll
-        R_obj_camera_par = np.c_[camera_x_par_obj, camera_y_par_obj, camera_z_obj]
-        R_camera_par_camera = np.array([[np.cos(roll), -np.sin(roll), 0],
-                                        [np.sin(roll), np.cos(roll), 0],
-                                        [0, 0, 1]])
-        R_obj_camera = R_obj_camera_par.dot(R_camera_par_camera)
-        t_obj_camera = camera_center_obj
+        R = np.vstack((camera_x, camera_y, camera_z)).T
+        roll_rot_mat = transformations.rotation_matrix(roll, camera_z, np.zeros(3))[:3,:3]
+        R = roll_rot_mat.dot(R)
+        T_camera_world = RigidTransform(R, camera_center, from_frame=self.frame, to_frame='world')
 
-        # create final transform
-        T_obj_camera = RigidTransform(R_obj_camera, t_obj_camera,
-                                      from_frame=self.frame,
-                                      to_frame='obj')
+        return T_camera_world
 
-        return T_obj_camera.inverse()
-
-    def camera_intrinsics(self, T_camera_obj, f, cx, cy):
+    def camera_intrinsics(self, T_camera_world, f, cx, cy):
         """Generate shifted camera intrinsics to simulate cropping.
         """
         # form intrinsics
@@ -352,14 +350,7 @@ class UniformPlanarWorksurfaceRandomVariable(RandomVariable):
                                        cx=cx, cy=cy, skew=0.0,
                                        height=self.im_height, width=self.im_width)
 
-        # compute new camera center by projecting object 0,0,0 into the camera
-        center_obj_obj = Point(np.zeros(3), frame='obj')
-        center_obj_camera = T_camera_obj * center_obj_obj
-        u_center_obj = camera_intr.project(center_obj_camera)
-        camera_shifted_intr = copy.deepcopy(camera_intr)
-        camera_shifted_intr.cx = 2 * camera_intr.cx - float(u_center_obj.x)
-        camera_shifted_intr.cy = 2 * camera_intr.cy - float(u_center_obj.y)
-        return camera_shifted_intr
+        return camera_intr
 
     def sample(self, size=1):
         """Sample random variables from the model.
@@ -406,11 +397,10 @@ class UniformPlanarWorksurfaceRandomVariable(RandomVariable):
             logging.debug('ty: %.3f' %(ty))
 
             # convert to pose and intrinsics
-            object_to_camera_pose = self.object_to_camera_pose(radius, elev, az, roll,
-                                                               tx, ty)
-            camera_shifted_intr = self.camera_intrinsics(object_to_camera_pose,
+            T_camera_world = self.camera_to_world_pose(radius, elev, az, roll, tx, ty)
+            camera_shifted_intr = self.camera_intrinsics(T_camera_world,
                                                          focal, cx, cy)
-            camera_sample = CameraSample(object_to_camera_pose,
+            camera_sample = CameraSample(T_camera_world,
                                          camera_shifted_intr,
                                          radius, elev, az, roll, tx=tx, ty=ty,
                                          focal=focal, cx=cx, cy=cy)
@@ -525,17 +515,17 @@ class UniformPlanarWorksurfaceImageRandomVariable(RandomVariable):
         # Save scene's original camera
         orig_camera = self.scene.camera
 
+        obj_xy = np.array(self.scene.objects[self.object_name].T_obj_world.translation)
+        obj_xy[2] = 0.0
+
         samples = []
         for i in range(size):
             # sample camera params
             camera_sample = self.ws_rv.sample(size=1)
 
             # Compute the camera-to-world transform from the object-to-camera transform
-            T_obj_camera = camera_sample.object_to_camera_pose
-            T_obj_world = self.scene.objects[self.object_name].T_obj_world
-            T_world_obj = T_obj_world.inverse()
-            T_world_camera = T_obj_camera.dot(T_world_obj)
-            T_camera_world = T_world_camera.inverse()
+            T_camera_world = camera_sample.camera_to_world_pose
+            T_camera_world.translation += obj_xy
 
             # Set the scene's camera
             camera = VirtualCamera(camera_sample.camera_intr, T_camera_world)
@@ -544,7 +534,25 @@ class UniformPlanarWorksurfaceImageRandomVariable(RandomVariable):
             # Render the scene and grab the appropriate wrapped images
             images = self.scene.wrapped_render(self.render_modes, front_and_back=front_and_back)
 
+            # If a segmask was requested, re-render the scene after disabling all other objects.
+            seg_image = None
+            if RenderMode.SEGMASK in self.render_modes:
+                # Disable every object that isn't the target
+                for obj in self.scene.objects.keys():
+                    if obj != self.object_name:
+                        self.scene.objects[obj].enabled = False
+
+                # Compute the Seg Image
+                seg_image = self.scene.wrapped_render([RenderMode.SEGMASK], front_and_back=front_and_back)[0]
+
+                # Re-enable every object
+                for obj in self.scene.objects.keys():
+                    self.scene.objects[obj].enabled = True
+
             renders = { m : i for m, i in zip(self.render_modes, images) }
+            if seg_image:
+                renders[RenderMode.SEGMASK] = seg_image
+
             samples.append(RenderSample(renders, camera_sample))
 
         self.scene.camera = orig_camera

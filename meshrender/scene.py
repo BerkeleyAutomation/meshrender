@@ -249,7 +249,7 @@ class Scene(object):
         for render_mode in render_modes:
             # Then, convert them to an image wrapper class
             if render_mode == RenderMode.SEGMASK:
-                images.append(BinaryImage(color_im[:,:,0], frame=self.camera.intrinsics.frame, threshold=0))
+                images.append(BinaryImage((depth_im > 0.0).astype(np.uint8), frame=self.camera.intrinsics.frame, threshold=0))
 
             elif render_mode == RenderMode.COLOR:
                 images.append(ColorImage(color_im, frame=self.camera.intrinsics.frame))

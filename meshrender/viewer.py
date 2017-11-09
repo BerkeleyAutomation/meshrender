@@ -410,6 +410,9 @@ class SceneViewer(pyglet.window.Window):
         glUniform4fv(point_id, 2*MAX_N_LIGHTS, point_info.flatten())
 
         for vaid, obj in zip(self._vaids, scene.objects.values()):
+            if not obj.enabled:
+                continue
+
             mesh = obj.mesh
             M = obj.T_obj_world.matrix
             material = obj.material
