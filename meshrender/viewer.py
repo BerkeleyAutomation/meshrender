@@ -1,4 +1,8 @@
 import copy
+try:
+    from Tkinter import Tk, tkFileDialog as filedialog
+except ImportError:
+    from tkinter import Tk, filedialog as filedialog
 
 import pyglet
 pyglet.options['shadow_window'] = False
@@ -6,6 +10,7 @@ import pyglet.gl as gl
 from pyglet import clock
 
 import numpy as np
+import imageio
 
 from OpenGL.GL import *
 from OpenGL.GL import shaders
@@ -247,6 +252,9 @@ class SceneViewer(pyglet.window.Window):
     * l -- toggles between raymond lighting and the scene's default lights.
     * a -- toggles rotational animation.
     * n -- toggles 'bad normals' mode.
+    * q -- quits the viewer
+    * s -- saves the current image
+    * r -- starts a recording session, pressing again stops (saves animation as .gif)
     """
 
     def __init__(self, scene, size=(640,480), **flags):
@@ -296,9 +304,12 @@ class SceneViewer(pyglet.window.Window):
         self._flags.update(flags)
         self._raymond_lights = self._create_raymond_lights()
         self._reset_view()
+        self._save_directory = os.getcwd()
+        self._save_frames = []
 
         # Close the scene's window if active
         self._scene.close_renderer()
+
 
         # Set up the window
         try:
@@ -318,6 +329,9 @@ class SceneViewer(pyglet.window.Window):
                                               resizable=True,
                                               width=self._size[0],
                                               height=self._size[1])
+
+        self.set_caption("Scene Viewer")
+
         self._init_gl()
         self._update_flags()
         pyglet.app.run()
@@ -500,6 +514,17 @@ class SceneViewer(pyglet.window.Window):
             self._flags['animate'] = not self._flags['animate']
         elif symbol == pyglet.window.key.N:
             self._flags['front_and_back'] = not self._flags['front_and_back']
+        elif symbol == pyglet.window.key.S:
+            self._save_image()
+        elif symbol == pyglet.window.key.Q:
+            self.on_close()
+        elif symbol == pyglet.window.key.R:
+            if self._flags['record']:
+                self._save_gif()
+                self.set_caption("Scene Viewer")
+            else:
+                self.set_caption("Scene Viewer (RECORDING)")
+            self._flags['record'] = not self._flags['record']
         self._update_flags()
 
     def _update_flags(self):
@@ -507,8 +532,11 @@ class SceneViewer(pyglet.window.Window):
         """
         glLineWidth(float(self._flags['line_width']))
         clock.unschedule(SceneViewer.animate)
+        clock.unschedule(SceneViewer.record)
         if self._flags['animate']:
             clock.schedule_interval(SceneViewer.animate, 1.0/self._flags['animate_rate'], self)
+        if self._flags['record']:
+            clock.schedule_interval(SceneViewer.record, 1.0/30.0, self)
 
     def _reset_view(self):
         """Reset the view to a good initial state.
@@ -737,6 +765,50 @@ class SceneViewer(pyglet.window.Window):
                 ub = np.maximum(ub, ub_mesh)
         return np.array([lb, ub])
 
+    def _save_image(self):
+        # Get save file location
+        root = Tk()
+        filename = filedialog.asksaveasfilename(initialdir = self._save_directory,
+                                                title = 'Select file save location',
+                                                filetypes = (('png files','*.png'),
+                                                            ('jpeg files', '*.jpg'),
+                                                            ('all files','*.*')))
+        root.destroy()
+        if filename == ():
+            return
+        else:
+            self._save_directory = os.path.dirname(filename)
+
+        # Extract color image from frame buffer
+        width, height = self._size
+        color_buf = (GLubyte * (3 * width * height))(0)
+        glReadBuffer(GL_FRONT)
+        glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, color_buf)
+
+        # Re-format them into numpy arrays
+        color_im = np.frombuffer(color_buf, dtype=np.uint8).reshape((height, width, 3))
+        color_im = np.flip(color_im, axis=0)
+
+        imageio.imwrite(filename, color_im)
+
+    def _save_gif(self):
+        # Get save file location
+        root = Tk()
+        filename = filedialog.asksaveasfilename(initialdir = self._save_directory,
+                                                title = 'Select file save location',
+                                                filetypes = (('gif files','*.gif'),
+                                                            ('all files','*.*')))
+        root.destroy()
+        if filename == ():
+            self._save_frames = []
+            return
+        else:
+            self._save_directory = os.path.dirname(filename)
+
+        imageio.mimwrite(filename, self._save_frames, fps=30.0)
+
+        self._save_frames = []
+
     @staticmethod
     def default_flags():
         flags = {
@@ -747,14 +819,29 @@ class SceneViewer(pyglet.window.Window):
             'animate' : False,
             'animate_az' : 0.05,
             'animate_rate' : 30,
-            'animate_axis' : None
+            'animate_axis' : None,
+            'record' : False
         }
         return flags
+
+    @staticmethod
+    def record(dt, self):
+        """Save another frame for the GIF.
+        """
+        # Extract color image from frame buffer
+        width, height = self._size
+        color_buf = (GLubyte * (3 * width * height))(0)
+        glReadBuffer(GL_FRONT)
+        glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, color_buf)
+
+        # Re-format them into numpy arrays
+        color_im = np.frombuffer(color_buf, dtype=np.uint8).reshape((height, width, 3))
+        color_im = np.flip(color_im, axis=0)
+
+        self._save_frames.append(color_im)
 
     @staticmethod
     def animate(dt, self):
         """Animate the scene by rotating the camera.
         """
         self._trackball.rotate(self._flags['animate_az'], self._flags['animate_axis'])
-
-
