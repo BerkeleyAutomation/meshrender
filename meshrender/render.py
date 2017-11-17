@@ -394,10 +394,8 @@ class OpenGLRenderer(object):
 
         # Extract the color and depth buffers
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self._framebuf)
-        color_buf = (GLubyte * (3 * width * height))(0)
-        glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, color_buf)
-        depth_buf = (GLfloat * (width * height))(0)
-        glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, depth_buf)
+        color_buf = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+        depth_buf = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
 
         # Re-format them into numpy arrays
         color_im = np.frombuffer(color_buf, dtype=np.uint8).reshape((height, width, 3))

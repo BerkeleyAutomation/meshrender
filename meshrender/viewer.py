@@ -781,9 +781,8 @@ class SceneViewer(pyglet.window.Window):
 
         # Extract color image from frame buffer
         width, height = self._size
-        color_buf = (GLubyte * (3 * width * height))(0)
         glReadBuffer(GL_FRONT)
-        glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, color_buf)
+        color_buf = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
 
         # Re-format them into numpy arrays
         color_im = np.frombuffer(color_buf, dtype=np.uint8).reshape((height, width, 3))
@@ -830,9 +829,8 @@ class SceneViewer(pyglet.window.Window):
         """
         # Extract color image from frame buffer
         width, height = self._size
-        color_buf = (GLubyte * (3 * width * height))(0)
         glReadBuffer(GL_FRONT)
-        glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE, color_buf)
+        color_buf = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
 
         # Re-format them into numpy arrays
         color_im = np.frombuffer(color_buf, dtype=np.uint8).reshape((height, width, 3))
