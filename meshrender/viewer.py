@@ -753,9 +753,15 @@ class SceneViewer(pyglet.window.Window):
             o = self._scene.objects[on]
             poses = [RigidTransform(from_frame=o.T_obj_world.from_frame, to_frame=o.T_obj_world.to_frame)]
             if isinstance(o, InstancedSceneObject):
-                if len(o.poses) > 5: # prevent expensive bounds computation for hugely-instanced objects
-                    continue
-                poses = o.poses
+                # Cheat for instanced objects -- just find the min/max translations and create poses from those
+                # Complile translations
+                translations = np.array([p.translation for p in o.poses])
+                min_trans = np.min(translations, axis=0)
+                max_trans = np.max(translations, axis=0)
+                poses = [RigidTransform(translation=min_trans, from_frame=o.poses[0].from_frame,
+                                        to_frame=o.poses[0].to_frame),
+                         RigidTransform(translation=max_trans, from_frame=o.poses[0].from_frame,
+                                        to_frame=o.poses[0].to_frame)]
             for pose in poses:
                 tf_verts = pose.matrix[:3,:3].dot(o.mesh.vertices.T).T + pose.matrix[:3,3]
                 tf_verts = o.T_obj_world.matrix[:3,:3].dot(tf_verts.T).T + o.T_obj_world.matrix[:3,3]
@@ -763,6 +769,8 @@ class SceneViewer(pyglet.window.Window):
                 ub_mesh = np.max(tf_verts, axis=0)
                 lb = np.minimum(lb, lb_mesh)
                 ub = np.maximum(ub, ub_mesh)
+        if np.any(lb > ub):
+            return np.array([[-1.0, -1.0, -1.0], [1.0, 1.0, 1.0]])
         return np.array([lb, ub])
 
     def _save_image(self):
