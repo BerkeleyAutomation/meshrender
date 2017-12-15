@@ -409,6 +409,3 @@ class OpenGLRenderer(object):
         depth_im[inf_inds] = 0.0
 
         return color_im, depth_im
-
-    def __del__(self):
-        self.close()

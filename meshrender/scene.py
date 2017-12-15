@@ -276,7 +276,3 @@ class Scene(object):
                 raise ValueError('Render mode {} not supported'.format(render_mode))
 
         return images
-
-    def __del__(self):
-        if self._renderer is not None:
-            self._renderer.close()
