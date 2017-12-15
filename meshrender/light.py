@@ -65,6 +65,8 @@ class DirectionalLight(Light):
             The strength of the light.
         """
         self._direction = direction
+        if np.linalg.norm(direction) > 0:
+            self._direction = direction / np.linalg.norm(direction)
         super(DirectionalLight, self).__init__(color, strength)
 
     @property
@@ -76,7 +78,6 @@ class DirectionalLight(Light):
     @direction.setter
     def direction(self, d):
         self._direction = d
-
 
 class PointLight(Light):
     """A nearby point light source that shines in all directions.

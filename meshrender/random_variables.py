@@ -60,7 +60,7 @@ class CameraSample(object):
 
     @property
     def T_camera_world(self):
-        return self.object_to_camera_pose.inverse().as_frames(self.camera_intr.frame, 'world')
+        return self.camera_to_world_pose
 
 class RenderSample(object):
     """Struct to encapsulate the results of sampling rendered images from a camera.
@@ -284,30 +284,35 @@ class UniformPlanarWorksurfaceRandomVariable(RandomVariable):
         """Reads parameters from the config into class members.
         """
         # camera params
-        self.min_f = config['min_f']
-        self.max_f = config['max_f']
-        self.min_cx = config['min_cx']
-        self.max_cx = config['max_cx']
-        self.min_cy = config['min_cy']
-        self.max_cy = config['max_cy']
+        self.min_f = config['focal_length']['min']
+        self.max_f = config['focal_length']['max']
+        self.min_delta_c = config['delta_optical_center']['min']
+        self.max_delta_c = config['delta_optical_center']['max']
         self.im_height = config['im_height']
         self.im_width = config['im_width']
 
+        self.mean_cx = float(self.im_width - 1) / 2
+        self.mean_cy = float(self.im_height - 1) / 2
+        self.min_cx = self.mean_cx + self.min_delta_c
+        self.max_cx = self.mean_cx + self.max_delta_c
+        self.min_cy = self.mean_cy + self.min_delta_c
+        self.max_cy = self.mean_cy + self.max_delta_c
+
         # viewsphere params
-        self.min_radius = config['min_radius']
-        self.max_radius = config['max_radius']
-        self.min_az = np.deg2rad(config['min_az'])
-        self.max_az = np.deg2rad(config['max_az'])
-        self.min_elev = np.deg2rad(config['min_elev'])
-        self.max_elev = np.deg2rad(config['max_elev'])
-        self.min_roll = np.deg2rad(config['min_roll'])
-        self.max_roll = np.deg2rad(config['max_roll'])
+        self.min_radius = config['radius']['min']
+        self.max_radius = config['radius']['max']
+        self.min_az = np.deg2rad(config['azimuth']['min'])
+        self.max_az = np.deg2rad(config['azimuth']['max'])
+        self.min_elev = np.deg2rad(config['elevation']['min'])
+        self.max_elev = np.deg2rad(config['elevation']['max'])
+        self.min_roll = np.deg2rad(config['roll']['min'])
+        self.max_roll = np.deg2rad(config['roll']['max'])
 
         # params of translation in plane
-        self.min_x = config['min_x']
-        self.max_x = config['max_x']
-        self.min_y = config['min_y']
-        self.max_y = config['max_y']
+        self.min_x = config['x']['min']
+        self.max_x = config['x']['max']
+        self.min_y = config['y']['min']
+        self.max_y = config['y']['max']
 
     def camera_to_world_pose(self, radius, elev, az, roll, x, y):
         """Convert spherical coords to a camera pose in the world.
