@@ -1,5 +1,6 @@
 import ctypes
 import numpy as np
+import weakref
 
 import pyglet
 pyglet.options['shadow_window'] = False
@@ -25,9 +26,9 @@ class OpenGLRenderer(object):
         scene : Scene
             A scene description.
         """
-        self._scene = scene
-        self._width = scene.camera.intrinsics.width
-        self._height = scene.camera.intrinsics.height
+        self.scene = scene
+        self._width = self.scene.camera.intrinsics.width
+        self._height = self.scene.camera.intrinsics.height
         self._vaids = None
         self._colorbuf, self._depthbuf = None, None
         self._framebuf = None
@@ -49,7 +50,6 @@ class OpenGLRenderer(object):
         glDepthMask(GL_TRUE)
         glDepthFunc(GL_LESS)
         glDepthRange(0.0, 1.0)
-        #glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
 
         # Load the meshes into VAO's
         self._vaids = self._load_meshes()
@@ -60,6 +60,14 @@ class OpenGLRenderer(object):
         self._full_shader = self._load_shaders(vertex_shader, fragment_shader)
         self._depth_shader = self._load_shaders(depth_vertex_shader, depth_fragment_shader)
         glBindVertexArray(0)
+
+    @property
+    def scene(self):
+        return self._scene()
+
+    @scene.setter
+    def scene(self, s):
+        self._scene = weakref.ref(s)
 
     def render(self, render_color=True, front_and_back=False):
         """Render raw images of the scene.
@@ -93,8 +101,8 @@ class OpenGLRenderer(object):
         (i.e. no object present at that pixel).
         """
         # Reload the frame buffers if the width or height of the camera changed
-        width = self._scene.camera.intrinsics.width
-        height = self._scene.camera.intrinsics.height
+        width = self.scene.camera.intrinsics.width
+        height = self.scene.camera.intrinsics.height
         if width != self._width or height != self._height:
             self._width = width
             self._height = height
@@ -112,7 +120,9 @@ class OpenGLRenderer(object):
         -------
         Once this has been called, the OpenGLRenderer object should be discarded.
         """
-        self._window.close()
+        if self._window is not None:
+            self._window.close()
+            self._window = None
 
     def _bind_frame_buffer(self):
         """Bind the frame buffer for offscreen rendering.
@@ -147,12 +157,12 @@ class OpenGLRenderer(object):
     def _load_meshes(self):
         """Load the scene's meshes into vertex buffers.
         """
-        VA_ids = glGenVertexArrays(len(self._scene.objects))
+        VA_ids = glGenVertexArrays(len(self.scene.objects))
 
-        if len(self._scene.objects) == 1:
+        if len(self.scene.objects) == 1:
             VA_ids = [VA_ids]
 
-        for VA_id, obj in zip(VA_ids, self._scene.objects.values()):
+        for VA_id, obj in zip(VA_ids, self.scene.objects.values()):
             mesh = obj.mesh
             material = obj.material
 
@@ -245,7 +255,7 @@ class OpenGLRenderer(object):
     def _depth(self):
         """Render a depth image of the scene.
         """
-        camera = self._scene.camera
+        camera = self.scene.camera
         width = camera.intrinsics.width
         height = camera.intrinsics.height
 
@@ -265,7 +275,7 @@ class OpenGLRenderer(object):
         glUniformMatrix4fv(v_id, 1, GL_TRUE, camera.V)
         glUniformMatrix4fv(p_id, 1, GL_TRUE, camera.P)
 
-        for vaid, obj in zip(self._vaids, self._scene.objects.values()):
+        for vaid, obj in zip(self._vaids, self.scene.objects.values()):
             material = obj.material
             mesh = obj.mesh
 
@@ -306,7 +316,7 @@ class OpenGLRenderer(object):
     def _color_and_depth(self, front_and_back):
         """Render a color image and a depth image of the scene.
         """
-        scene = self._scene
+        scene = self.scene
         camera = scene.camera
         width = camera.intrinsics.width
         height = camera.intrinsics.height

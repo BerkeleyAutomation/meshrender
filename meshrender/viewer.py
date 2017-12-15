@@ -1,4 +1,5 @@
 import copy
+import weakref
 try:
     from Tkinter import Tk, tkFileDialog as filedialog
 except ImportError:
@@ -296,7 +297,7 @@ class SceneViewer(pyglet.window.Window):
         """
         self._gl_initialized = False
 
-        self._scene = scene
+        self.scene = scene
         self._size = np.array(size)
         self._camera = None
         self._trackball = None
@@ -308,7 +309,7 @@ class SceneViewer(pyglet.window.Window):
         self._save_frames = []
 
         # Close the scene's window if active
-        self._scene.close_renderer()
+        self.scene.close_renderer()
 
 
         # Set up the window
@@ -336,6 +337,14 @@ class SceneViewer(pyglet.window.Window):
         self._update_flags()
         pyglet.app.run()
 
+    @property
+    def scene(self):
+        return self._scene()
+
+    @scene.setter
+    def scene(self, s):
+        self._scene = weakref.ref(s)
+
     def on_close(self):
         """Exit the event loop when the window is closed.
         """
@@ -347,7 +356,7 @@ class SceneViewer(pyglet.window.Window):
         """
         if not self._gl_initialized:
             return
-        scene = self._scene
+        scene = self.scene
         camera = self._camera
 
         camera.T_camera_world = self._trackball.T_camera_world
@@ -615,7 +624,7 @@ class SceneViewer(pyglet.window.Window):
     def _init_gl(self):
         """Initialize OpenGL by loading shaders and mesh geometry.
         """
-        bg = self._scene.background_color
+        bg = self.scene.background_color
         glClearColor(bg[0], bg[1], bg[2], 1.0)
 
         glEnable(GL_DEPTH_TEST)
@@ -644,12 +653,12 @@ class SceneViewer(pyglet.window.Window):
     def _load_meshes(self):
         """Load the scene's meshes into vertex buffers.
         """
-        VA_ids = glGenVertexArrays(len(self._scene.objects))
+        VA_ids = glGenVertexArrays(len(self.scene.objects))
 
-        if len(self._scene.objects) == 1:
+        if len(self.scene.objects) == 1:
             VA_ids = [VA_ids]
 
-        for VA_id, obj in zip(VA_ids, self._scene.objects.values()):
+        for VA_id, obj in zip(VA_ids, self.scene.objects.values()):
             mesh = obj.mesh
             material = obj.material
 
@@ -749,8 +758,8 @@ class SceneViewer(pyglet.window.Window):
         """
         lb = np.array([np.infty, np.infty, np.infty])
         ub = -1.0 * np.array([np.infty, np.infty, np.infty])
-        for on in self._scene.objects:
-            o = self._scene.objects[on]
+        for on in self.scene.objects:
+            o = self.scene.objects[on]
             poses = [RigidTransform(from_frame=o.T_obj_world.from_frame, to_frame=o.T_obj_world.to_frame)]
             if isinstance(o, InstancedSceneObject):
                 # Cheat for instanced objects -- just find the min/max translations and create poses from those

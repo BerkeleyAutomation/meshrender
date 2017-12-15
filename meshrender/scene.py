@@ -102,9 +102,7 @@ class Scene(object):
         if not isinstance(obj, SceneObject):
             raise ValueError('obj must be an object of type SceneObject')
         self._objects[name] = obj
-        if self._renderer is not None:
-            self._renderer.close()
-        self._renderer = None
+        self.close_renderer()
 
     def remove_object(self, name):
         """Removes an object from the scene.
@@ -123,9 +121,7 @@ class Scene(object):
             del self._objects[name]
         else:
             raise ValueError('Object {} not in scene!'.format(name))
-        if self._renderer is not None:
-            self._renderer.close()
-        self._renderer = None
+        self.close_renderer()
 
     def add_light(self, name, light):
         """Adds a named light to the scene.
@@ -168,6 +164,7 @@ class Scene(object):
         """
         if self._renderer is not None:
             self._renderer.close()
+            self._renderer = None
 
     def render(self, render_color=True, front_and_back=False):
         """Render raw images of the scene.
@@ -276,7 +273,3 @@ class Scene(object):
                 raise ValueError('Render mode {} not supported'.format(render_mode))
 
         return images
-
-    def __del__(self):
-        if self._renderer is not None:
-            self._renderer.close()
