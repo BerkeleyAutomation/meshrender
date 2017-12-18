@@ -1,3 +1,4 @@
+from .version import __version__
 from .camera import VirtualCamera
 from .material import MaterialProperties
 from .scene_object import SceneObject, InstancedSceneObject

@@ -16,37 +16,36 @@ requirements = [
     'PyOpenGL_accelerate',
     'pyglet==1.3.0',
     'imageio',
-    #'autolab_core',
-    #'perception',
+    'autolab_core',
+    'autolab_perception'
 ]
 
 setup(
-    name='meshrender',
-    version=__version__,
-    description='Python utilities for rendering scenes containing 3D meshes',
-    long_description='A set of Python utilities for rendering 3D scenes, based on PyOpenGL and target at OpenGL 3+.',
-    url='https://github.com/BerkeleyAutomation/meshrender',
-    author='Matthew Matl',
-    author_email='mmatl@eecs.berkeley.edu',
-    license = "Apache",
-    classifiers=[
+    name = 'meshrender',
+    version = __version__,
+    description = 'Python utilities for rendering scenes containing 3D meshes',
+    long_description = 'A set of Python utilities for rendering 3D scenes, based on PyOpenGL and target at OpenGL 3+.',
+    author = 'Matthew Matl',
+    author_email = 'mmatl@eecs.berkeley.edu',
+    license = "Apache Software License",
+    url = 'https://github.com/BerkeleyAutomation/meshrender',
+    classifiers = [
         'Development Status :: 3 - Alpha',
         'License :: OSI Approved :: Apache Software License',
         'Operating System :: POSIX :: Linux',
-        'Operating System :: Microsoft :: Windows',
         'Operating System :: MacOS :: MacOS X',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.0',
-        'Programming Language :: Python :: 3.1',
-        'Programming Language :: Python :: 3.2',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
-    keywords='rendering opengl',
-    packages=['meshrender'],
-    install_requires=requirements,
+    keywords = 'rendering opengl 3d visualization',
+    packages = ['meshrender'],
+    setup_requires = requirements,
+    install_requires = requirements,
+    extras_require = { 'docs' : [
+            'sphinx',
+            'sphinxcontrib-napoleon',
+            'sphinx_rtd_theme'
+        ],
+    }
 )
