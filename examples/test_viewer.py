@@ -144,35 +144,45 @@ wrapped_color, wrapped_depth, wrapped_segmask = scene.wrapped_render(
     [RenderMode.COLOR, RenderMode.DEPTH, RenderMode.SEGMASK]
 )
 
-wrapped_color.save('color.jpg')
-wrapped_depth.save('depth.jpg')
+wrapped_color.save('output/color.jpg')
+wrapped_depth.save('output/depth.jpg')
 
 # Test random variables
 cfg = {
-  'min_f': 520,
-  'max_f': 530,
-  'min_cx': 299.5,
-  'max_cx': 299.5,
-  'min_cy': 299.5,
-  'max_cy': 299.5,
-  'im_width': 600,
-  'im_height': 600,
-
-  # Camera pose
-  'min_radius': 0.5,
-  'max_radius': 0.7,
-  'min_elev': 0.1,
-  'max_elev': 10.0, # in degrees
-  'min_az': 0.0,
-  'max_az': 360.0, # degrees
-  'min_roll': -0.2,
-  'max_roll': 0.2, # degrees
-
-  # Object pose
-  'min_x': -0.01,
-  'max_x': 0.01,
-  'min_y': -0.01,
-  'max_y': 0.01
+    'focal_length': {
+        'min' : 520,
+        'max' : 530,
+    },
+    'delta_optical_center': {
+        'min' : 0.0,
+        'max' : 0.0,
+    },
+    'radius': {
+        'min' : 0.5,
+        'max' : 0.7,
+    },
+    'azimuth': {
+        'min' : 0.0,
+        'max' : 360.0,
+    },
+    'elevation': {
+        'min' : 0.10,
+        'max' : 10.0,
+    },
+    'roll': {
+        'min' : -0.2,
+        'max' : 0.2,
+    },
+    'x': {
+        'min' : -0.01,
+        'max' : 0.01,
+    },
+    'y': {
+        'min' : -0.01,
+        'max' : 0.01,
+    },
+    'im_width': 600,
+    'im_height': 600
 }
 
 urv = UniformPlanarWorksurfaceImageRandomVariable('pawn', scene, [RenderMode.COLOR], 'camera', cfg)
@@ -180,6 +190,6 @@ renders = urv.sample(10, front_and_back=True)
 
 for i, render in enumerate(renders):
     color = render.renders[RenderMode.COLOR]
-    color.save('random_{}.jpg'.format(i))
+    color.save('output/random_{}.jpg'.format(i))
 
 v = SceneViewer(scene, raymond_lighting=True)
