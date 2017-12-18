@@ -93,7 +93,6 @@
               <p class="caption"><span class="caption-text">Installation Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../install/install.html">Python Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../install/install.html#dependencies">Dependencies</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../install/install.html#documentation">Documentation</a></li>
 </ul>
 <p class="caption"><span class="caption-text">API Documentation</span></p>
@@ -184,18 +183,22 @@ render images.</p>
 <h2>Scene<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
 <dl class="class">
 <dt id="meshrender.Scene">
-<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">Scene</code><span class="sig-paren">(</span><em>background_color=array([ 1.</em>, <em>1.</em>, <em>1.])</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene" title="Permalink to this definition">¶</a></dt>
+<em class="property">class </em><code class="descclassname">meshrender.</code><code class="descname">Scene</code><span class="sig-paren">(</span><em>background_color=array([ 1.</em>, <em>1.</em>, <em>1.])</em>, <em>camera=None</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal"><span class="pre">object</span></code></p>
 <p>A scene containing objects and lights for 3D OpenGL rendering.</p>
 <dl class="method">
 <dt id="meshrender.Scene.__init__">
-<code class="descname">__init__</code><span class="sig-paren">(</span><em>background_color=array([ 1.</em>, <em>1.</em>, <em>1.])</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.__init__" title="Permalink to this definition">¶</a></dt>
+<code class="descname">__init__</code><span class="sig-paren">(</span><em>background_color=array([ 1.</em>, <em>1.</em>, <em>1.])</em>, <em>camera=None</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.Scene.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initialize a Scene object.</p>
 <table class="docutils field-list" frame="void" rules="none">
 <col class="field-name" />
 <col class="field-body" />
 <tbody valign="top">
-<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>background_color</strong> (<em>(</em><em>3</em><em>,</em><em>) </em><em>float</em>) – The background color for the scene.</td>
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>background_color</strong> (<em>(</em><em>3</em><em>,</em><em>) </em><em>float</em>) – The background color for the scene.</li>
+<li><strong>camera</strong> (<code class="xref py py-obj docutils literal"><span class="pre">VirtualCamera</span></code>) – Camera to use for rendering</li>
+</ul>
+</td>
 </tr>
 </tbody>
 </table>

@@ -92,12 +92,7 @@
             
               <p class="caption"><span class="caption-text">Installation Guide</span></p>
 <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Python Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#clone-the-repository">1. Clone the repository</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#run-installation-script">2. Run installation script</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Python Installation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="#documentation">Documentation</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#building">Building</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#deploying">Deploying</a></li>
@@ -182,29 +177,10 @@
             
   <div class="section" id="python-installation">
 <h1>Python Installation<a class="headerlink" href="#python-installation" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="clone-the-repository">
-<h2>1. Clone the repository<a class="headerlink" href="#clone-the-repository" title="Permalink to this headline">¶</a></h2>
-<p>Clone or download our source code from <a class="reference external" href="https://github.com/BerkeleyAutomation/meshrender">Github</a>.</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ git clone https://github.com/BerkeleyAutomation/meshrender.git
+<p>This package is installable via <cite>pip</cite></p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ pip install meshrender
 </pre></div>
 </div>
-</div>
-<div class="section" id="run-installation-script">
-<h2>2. Run installation script<a class="headerlink" href="#run-installation-script" title="Permalink to this headline">¶</a></h2>
-<p>Change directories into the <cite>meshrender</cite> repository and run</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ python setup.py install
-</pre></div>
-</div>
-<p>This will install <cite>meshrender</cite> in your current Python environment.</p>
-</div>
-</div>
-<div class="section" id="dependencies">
-<h1>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h1>
-<p>The <cite>meshrender</cite> module depends on a few external modules. <cite>numpy</cite>, <cite>scipy</cite>,
-<cite>PyOpenGL</cite>, <cite>PyOpenGL_accelerate</cite>, <cite>trimesh</cite>, and <cite>ctypes</cite> are all pip installable and
-should be installed automatically by the installation script.</p>
-<p>However, <a class="reference external" href="http://www.github.com/BerkeleyAutomation/autolab_core">autolab_core</a> and <a class="reference external" href="http://www.github.com/BerkeleyAutomation/perception">perception</a> are Berkeley AUTOLab-specific and aren’t yet on PyPi.
-Install them from Github using their documetation.</p>
 </div>
 <div class="section" id="documentation">
 <h1>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h1>
@@ -212,8 +188,8 @@ Install them from Github using their documetation.</p>
 <h2>Building<a class="headerlink" href="#building" title="Permalink to this headline">¶</a></h2>
 <p>Building <cite>meshrender</cite>’s documentation requires a few extra dependencies –
 specifically, <a class="reference external" href="http://www.sphinx-doc.org/en/1.4.8/">sphinx</a> and a few plugins.</p>
-<p>To install the dependencies required, simply run</p>
-<div class="highlight-default"><div class="highlight"><pre><span></span>$ pip install -r docs_requirements.txt
+<p>To install the dependencies required, simply change directories into the <cite>autolab_core</cite> source and run</p>
+<div class="highlight-default"><div class="highlight"><pre><span></span>$ pip install .[docs]
 </pre></div>
 </div>
 <p>Then, go to the <cite>docs</cite> directory and run <code class="docutils literal"><span class="pre">make</span></code> with the appropriate target.

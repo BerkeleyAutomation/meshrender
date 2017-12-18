@@ -93,7 +93,6 @@
               <p class="caption"><span class="caption-text">Installation Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../install/install.html">Python Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../install/install.html#dependencies">Dependencies</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../install/install.html#documentation">Documentation</a></li>
 </ul>
 <p class="caption"><span class="caption-text">API Documentation</span></p>
@@ -217,6 +216,9 @@ using a camera controlled by a virtual trackball.</p>
 <li>l – toggles between raymond lighting and the scene’s default lights.</li>
 <li>a – toggles rotational animation.</li>
 <li>n – toggles ‘bad normals’ mode.</li>
+<li>q – quits the viewer</li>
+<li>s – saves the current image</li>
+<li>r – starts a recording session, pressing again stops (saves animation as .gif)</li>
 </ul>
 <dl class="method">
 <dt id="meshrender.SceneViewer.__init__">
@@ -308,6 +310,12 @@ Otherwise, the animation will rotate in azimuth.</li>
 <dt id="meshrender.SceneViewer.on_key_press">
 <code class="descname">on_key_press</code><span class="sig-paren">(</span><em>symbol</em>, <em>modifiers</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer.on_key_press" title="Permalink to this definition">¶</a></dt>
 <dd><p>Record a key press.</p>
+</dd></dl>
+
+<dl class="staticmethod">
+<dt id="meshrender.SceneViewer.record">
+<em class="property">static </em><code class="descname">record</code><span class="sig-paren">(</span><em>dt</em>, <em>self</em><span class="sig-paren">)</span><a class="headerlink" href="#meshrender.SceneViewer.record" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save another frame for the GIF.</p>
 </dd></dl>
 
 <dl class="staticmethod">
