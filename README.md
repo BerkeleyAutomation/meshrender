@@ -1,6 +1,9 @@
 # meshrender
 ### A simple, OpenGL 3+ based Python scene renderer
 
+[![Build Status](https://travis-ci.org/BerkeleyAutomation/meshrender.svg?branch=master)](https://travis-ci.org/BerkeleyAutomation/meshrender)
+
+
 This package, which is build on top of PyOpenGL, is designed to make it easy
 to render images of 3D scenes in pure Python.
 It supports a scene abstraction and allows users to specify material properties,
