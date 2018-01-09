@@ -13,6 +13,10 @@ from .light import AmbientLight, PointLight, DirectionalLight
 from .shaders import vertex_shader, fragment_shader, depth_vertex_shader, depth_fragment_shader
 from .scene_object import InstancedSceneObject
 
+# Create static c_void_p objects to avoid leaking memory
+C_VOID_PS = []
+for i in range(5):
+    C_VOID_PS.append(ctypes.c_void_p(4*4*i))
 
 class OpenGLRenderer(object):
     """An OpenGL 3.0+ renderer, based on PyOpenGL.
@@ -32,6 +36,7 @@ class OpenGLRenderer(object):
         self._vaids = None
         self._colorbuf, self._depthbuf = None, None
         self._framebuf = None
+        self._window = None
 
         # Initialize the OpenGL context with a 1x1 window and hide it immediately
         conf = pyglet.gl.Config(
@@ -121,6 +126,7 @@ class OpenGLRenderer(object):
         Once this has been called, the OpenGLRenderer object should be discarded.
         """
         if self._window is not None:
+            OpenGL.contextdata.cleanupContext()
             self._window.close()
             self._window = None
 
@@ -162,6 +168,7 @@ class OpenGLRenderer(object):
         if len(self.scene.objects) == 1:
             VA_ids = [VA_ids]
 
+        null = C_VOID_PS[0]
         for VA_id, obj in zip(VA_ids, self.scene.objects.values()):
             mesh = obj.mesh
             material = obj.material
@@ -175,7 +182,7 @@ class OpenGLRenderer(object):
                 vertexbuffer = glGenBuffers(1)
                 glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer)
                 glEnableVertexAttribArray(0)
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, null)
                 glBufferData(GL_ARRAY_BUFFER,
                              4*3*len(mesh.vertices),
                              np.array(mesh.vertices.flatten(), dtype=np.float32),
@@ -185,7 +192,7 @@ class OpenGLRenderer(object):
                 normalbuffer = glGenBuffers(1)
                 glBindBuffer(GL_ARRAY_BUFFER, normalbuffer)
                 glEnableVertexAttribArray(1)
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, null)
                 glBufferData(GL_ARRAY_BUFFER,
                              4*3*len(mesh.vertex_normals),
                              np.array(mesh.vertex_normals.flatten(), dtype=np.float32),
@@ -207,7 +214,7 @@ class OpenGLRenderer(object):
                 vertexbuffer = glGenBuffers(1)
                 glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer)
                 glEnableVertexAttribArray(0)
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, null)
                 glBufferData(GL_ARRAY_BUFFER,
                              4*3*3*len(mesh.triangles),
                              np.array(mesh.triangles.flatten(), dtype=np.float32),
@@ -217,7 +224,7 @@ class OpenGLRenderer(object):
                 normalbuffer = glGenBuffers(1)
                 glBindBuffer(GL_ARRAY_BUFFER, normalbuffer)
                 glEnableVertexAttribArray(1)
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, null)
                 normals = np.array([[x,x,x] for x in mesh.face_normals], dtype=np.float32)
                 normals = normals.flatten()
                 glBufferData(GL_ARRAY_BUFFER,
@@ -233,7 +240,7 @@ class OpenGLRenderer(object):
             glBindBuffer(GL_ARRAY_BUFFER, modelbuf)
             for i in range(4):
                 glEnableVertexAttribArray(2 + i)
-                glVertexAttribPointer(2 + i, 4, GL_FLOAT, GL_FALSE, 4*16, ctypes.c_void_p(4*4*i))
+                glVertexAttribPointer(2 + i, 4, GL_FLOAT, GL_FALSE, 4*16, C_VOID_PS[i])
                 glVertexAttribDivisor(2 + i, 1)
 
             if isinstance(obj, InstancedSceneObject):
@@ -249,6 +256,12 @@ class OpenGLRenderer(object):
             glBindVertexArray(0)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
+            glDisableVertexAttribArray(0)
+            glDisableVertexAttribArray(1)
+            glDisableVertexAttribArray(2)
+            glDisableVertexAttribArray(3)
+            glDisableVertexAttribArray(4)
+            glDisableVertexAttribArray(5)
 
         return VA_ids
 
@@ -288,7 +301,7 @@ class OpenGLRenderer(object):
                 n_instances = len(obj.poses)
 
             if material.smooth:
-                glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0), n_instances)
+                glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, C_VOID_PS[0], n_instances)
             else:
                 glDrawArraysInstanced(GL_TRIANGLES, 0, 3*len(mesh.faces), n_instances)
 
@@ -392,7 +405,7 @@ class OpenGLRenderer(object):
                 n_instances = len(obj.poses)
 
             if material.smooth:
-                glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0), n_instances)
+                glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, C_VOID_PS[0], n_instances)
             else:
                 glDrawArraysInstanced(GL_TRIANGLES, 0, 3*len(mesh.faces), n_instances)
 

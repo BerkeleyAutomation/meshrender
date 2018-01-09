@@ -13,6 +13,7 @@ from pyglet import clock
 import numpy as np
 import imageio
 
+import OpenGL
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from OpenGL.arrays import *
@@ -27,6 +28,11 @@ from .scene_object import InstancedSceneObject
 from autolab_core import transformations
 from autolab_core import RigidTransform
 from perception import CameraIntrinsics
+
+# Create static c_void_p objects to avoid leaking memory
+C_VOID_PS = []
+for i in range(5):
+    C_VOID_PS.append(ctypes.c_void_p(4*4*i))
 
 class Trackball(object):
     """A trackball class for creating camera transformations from mouse movements.
@@ -348,6 +354,7 @@ class SceneViewer(pyglet.window.Window):
     def on_close(self):
         """Exit the event loop when the window is closed.
         """
+        OpenGL.contextdata.cleanupContext()
         self.close()
         pyglet.app.exit()
 
@@ -455,7 +462,7 @@ class SceneViewer(pyglet.window.Window):
                 n_instances = len(obj.poses)
 
             if material.smooth:
-                glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, ctypes.c_void_p(0), n_instances)
+                glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, C_VOID_PS[0], n_instances)
             else:
                 glDrawArraysInstanced(GL_TRIANGLES, 0, 3*len(mesh.faces), n_instances)
 
@@ -671,7 +678,7 @@ class SceneViewer(pyglet.window.Window):
                 vertexbuffer = glGenBuffers(1)
                 glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer)
                 glEnableVertexAttribArray(0)
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, C_VOID_PS[0])
                 glBufferData(GL_ARRAY_BUFFER,
                              4*3*len(mesh.vertices),
                              np.array(mesh.vertices.flatten(), dtype=np.float32),
@@ -681,7 +688,7 @@ class SceneViewer(pyglet.window.Window):
                 normalbuffer = glGenBuffers(1)
                 glBindBuffer(GL_ARRAY_BUFFER, normalbuffer)
                 glEnableVertexAttribArray(1)
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, C_VOID_PS[0])
                 glBufferData(GL_ARRAY_BUFFER,
                              4*3*len(mesh.vertex_normals),
                              np.array(mesh.vertex_normals.flatten(), dtype=np.float32),
@@ -703,7 +710,7 @@ class SceneViewer(pyglet.window.Window):
                 vertexbuffer = glGenBuffers(1)
                 glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer)
                 glEnableVertexAttribArray(0)
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, C_VOID_PS[0])
                 glBufferData(GL_ARRAY_BUFFER,
                              4*3*3*len(mesh.triangles),
                              np.array(mesh.triangles.flatten(), dtype=np.float32),
@@ -713,7 +720,7 @@ class SceneViewer(pyglet.window.Window):
                 normalbuffer = glGenBuffers(1)
                 glBindBuffer(GL_ARRAY_BUFFER, normalbuffer)
                 glEnableVertexAttribArray(1)
-                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, ctypes.c_void_p(0))
+                glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, C_VOID_PS[0])
                 normals = np.array([[x,x,x] for x in mesh.face_normals], dtype=np.float32)
                 normals = normals.flatten()
                 glBufferData(GL_ARRAY_BUFFER,
@@ -729,7 +736,7 @@ class SceneViewer(pyglet.window.Window):
             glBindBuffer(GL_ARRAY_BUFFER, modelbuf)
             for i in range(4):
                 glEnableVertexAttribArray(2 + i)
-                glVertexAttribPointer(2 + i, 4, GL_FLOAT, GL_FALSE, 4*16, ctypes.c_void_p(4*4*i))
+                glVertexAttribPointer(2 + i, 4, GL_FLOAT, GL_FALSE, 4*16, C_VOID_PS[i])
                 glVertexAttribDivisor(2 + i, 1)
 
             if isinstance(obj, InstancedSceneObject):
