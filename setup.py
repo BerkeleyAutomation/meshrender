@@ -11,7 +11,7 @@ exec(open('meshrender/version.py').read())
 requirements = [
     'numpy',
     'scipy',
-    'trimesh',
+    'trimesh[easy]',
     'PyOpenGL==3.1.0',
     'PyOpenGL_accelerate==3.1.0',
     'pyglet==1.3.0',
