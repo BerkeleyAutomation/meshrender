@@ -300,6 +300,10 @@ class SceneViewer(pyglet.window.Window):
         animate_axis : (3,) float or None
             If present, the animation will rotate about the given axis in world coordinates.
             Otherwise, the animation will rotate in azimuth.
+        registered_keys : dict
+            Map from alphabetic key to a tuple containing
+            (1) a callback function taking the viewer itself as its first argument and
+            (2) an additional list of arguments for the callback.
         """
         self._gl_initialized = False
 
@@ -308,6 +312,8 @@ class SceneViewer(pyglet.window.Window):
         self._camera = None
         self._trackball = None
         self._flags = SceneViewer.default_flags()
+        if 'registered_keys' in flags:
+            flags['registered_keys'] = {ord(k.lower()) : v for k, v in flags['registered_keys'].iteritems()}
         self._flags.update(flags)
         self._raymond_lights = self._create_raymond_lights()
         self._reset_view()
@@ -520,7 +526,11 @@ class SceneViewer(pyglet.window.Window):
     def on_key_press(self, symbol, modifiers):
         """Record a key press.
         """
-        if symbol == pyglet.window.key.W:
+        if symbol in self._flags['registered_keys']:
+            tup = self._flags['registered_keys'][symbol]
+            callback, args = tup
+            callback(self, *args)
+        elif symbol == pyglet.window.key.W:
             self._flags['flip_wireframe'] = not self._flags['flip_wireframe']
         elif symbol == pyglet.window.key.Z:
             self._reset_view()
@@ -595,7 +605,7 @@ class SceneViewer(pyglet.window.Window):
         )
 
         # Create a VirtualCamera
-        self._camera = VirtualCamera(ci, cp)
+        self._camera = VirtualCamera(ci, cp, z_near=scale/100.0, z_far=scale*100.0)
 
         # Create a trackball
         self._trackball = Trackball(
@@ -843,7 +853,8 @@ class SceneViewer(pyglet.window.Window):
             'animate_az' : 0.05,
             'animate_rate' : 30,
             'animate_axis' : None,
-            'record' : False
+            'record' : False,
+            'registered_keys': {}
         }
         return flags
 

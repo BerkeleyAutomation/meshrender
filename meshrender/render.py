@@ -8,7 +8,7 @@ from OpenGL.GL import *
 from OpenGL.GL import shaders
 from OpenGL.arrays import *
 
-from .constants import MAX_N_LIGHTS, Z_NEAR, Z_FAR
+from .constants import MAX_N_LIGHTS
 from .light import AmbientLight, PointLight, DirectionalLight
 from .shaders import vertex_shader, fragment_shader, depth_vertex_shader, depth_fragment_shader
 from .scene_object import InstancedSceneObject
@@ -321,7 +321,8 @@ class OpenGLRenderer(object):
         depth_im = np.flip(depth_im, axis=0)
         inf_inds = (depth_im == 1.0)
         depth_im = 2.0 * depth_im - 1.0
-        depth_im = 2.0 * Z_NEAR * Z_FAR / (Z_FAR + Z_NEAR - depth_im * (Z_FAR - Z_NEAR))
+        z_near, z_far = camera.z_near, camera.z_far
+        depth_im = 2.0 * z_near * z_far / (z_far + z_near - depth_im * (z_far - z_near))
         depth_im[inf_inds] = 0.0
 
         return depth_im
@@ -428,7 +429,8 @@ class OpenGLRenderer(object):
         depth_im = np.flip(depth_im, axis=0)
         inf_inds = (depth_im == 1.0)
         depth_im = 2.0 * depth_im - 1.0
-        depth_im = 2.0 * Z_NEAR * Z_FAR / (Z_FAR + Z_NEAR - depth_im * (Z_FAR - Z_NEAR))
+        z_near, z_far = camera.z_near, camera.z_far
+        depth_im = 2.0 * z_near * z_far / (z_far + z_near - depth_im * (z_far - z_near))
         depth_im[inf_inds] = 0.0
 
         return color_im, depth_im
