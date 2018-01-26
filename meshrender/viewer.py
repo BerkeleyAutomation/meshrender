@@ -27,7 +27,7 @@ from .scene_object import InstancedSceneObject
 
 from autolab_core import transformations
 from autolab_core import RigidTransform
-from perception import CameraIntrinsics
+from perception import CameraIntrinsics, ColorImage
 
 # Create static c_void_p objects to avoid leaking memory
 C_VOID_PS = []
@@ -304,6 +304,11 @@ class SceneViewer(pyglet.window.Window):
             Map from alphabetic key to a tuple containing
             (1) a callback function taking the viewer itself as its first argument and
             (2) an additional list of arguments for the callback.
+        camera_pose : autolab_core.RigidTransform
+            An initial pose for the camera, if specified.
+        max_frames : int
+            If specified, the viewer won't show itself. Instead, max_frames will be saved
+            and then the viewer will close.
         """
         self._gl_initialized = False
 
@@ -318,13 +323,14 @@ class SceneViewer(pyglet.window.Window):
         self._raymond_lights = self._create_raymond_lights()
         self._reset_view()
         self._save_directory = os.getcwd()
-        self._save_frames = []
+        self._saved_frames = []
 
         # Close the scene's window if active
         self.scene.close_renderer()
 
-
         # Set up the window
+        if self._flags['max_frames']:
+            self._flags['record'] = True
         try:
             conf = gl.Config(sample_buffers=1,
                              samples=4,
@@ -356,6 +362,17 @@ class SceneViewer(pyglet.window.Window):
     @scene.setter
     def scene(self, s):
         self._scene = weakref.ref(s)
+
+    @property
+    def saved_frames(self):
+        """Return saved color images.
+
+        Returns
+        -------
+        list of perception.ColorImage
+            Any color images that have been saved due to recording or the max_frames flag.
+        """
+        return [ColorImage(f) for f in self._saved_frames]
 
     def on_close(self):
         """Exit the event loop when the window is closed.
@@ -505,8 +522,7 @@ class SceneViewer(pyglet.window.Window):
         self._trackball.down(np.array([x, y]))
 
         # Stop animating while using the mouse
-        clock.unschedule(SceneViewer.animate)
-
+        self._flags['mouse_pressed'] = True
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         """Record a mouse drag.
@@ -516,7 +532,7 @@ class SceneViewer(pyglet.window.Window):
     def on_mouse_release(self, x, y, button, modifiers):
         """Record a mouse release.
         """
-        self._update_flags()
+        self._flags['mouse_pressed'] = False
 
     def on_mouse_scroll(self, x, y, dx, dy):
         """Record a mouse scroll.
@@ -556,13 +572,11 @@ class SceneViewer(pyglet.window.Window):
     def _update_flags(self):
         """Update OpenGL state based on the current flags.
         """
+        clock.set_fps_limit(self._flags['animate_rate'])
         glLineWidth(float(self._flags['line_width']))
-        clock.unschedule(SceneViewer.animate)
-        clock.unschedule(SceneViewer.record)
-        if self._flags['animate']:
-            clock.schedule_interval(SceneViewer.animate, 1.0/self._flags['animate_rate'], self)
-        if self._flags['record']:
-            clock.schedule_interval(SceneViewer.record, 1.0/30.0, self)
+        clock.unschedule(SceneViewer.time_event)
+        if self._flags['animate'] or self._flags['record']:
+            clock.schedule_interval(SceneViewer.time_event, 1.0/self._flags['animate_rate'], self)
 
     def _reset_view(self):
         """Reset the view to a good initial state.
@@ -603,6 +617,8 @@ class SceneViewer(pyglet.window.Window):
             from_frame='camera',
             to_frame='world'
         )
+        if self._flags['camera_pose'] is not None:
+            cp = self._flags['camera_pose']
 
         # Create a VirtualCamera
         self._camera = VirtualCamera(ci, cp, z_near=scale/100.0, z_far=scale*100.0)
@@ -833,33 +849,35 @@ class SceneViewer(pyglet.window.Window):
                                                             ('all files','*.*')))
         root.destroy()
         if filename == ():
-            self._save_frames = []
+            self._saved_frames = []
             return
         else:
             self._save_directory = os.path.dirname(filename)
 
-        imageio.mimwrite(filename, self._save_frames, fps=30.0)
+        imageio.mimwrite(filename, self._saved_frames, fps=30.0)
 
-        self._save_frames = []
+        self._saved_frames = []
 
     @staticmethod
     def default_flags():
         flags = {
+            'mouse_pressed' : False,
             'flip_wireframe' : False,
             'raymond_lighting' : False,
             'line_width': 1.0,
             'front_and_back': False,
             'animate' : False,
             'animate_az' : 0.05,
-            'animate_rate' : 30,
+            'animate_rate' : 30.0,
             'animate_axis' : None,
             'record' : False,
-            'registered_keys': {}
+            'registered_keys' : {},
+            'camera_pose' : None,
+            'max_frames' : None
         }
         return flags
 
-    @staticmethod
-    def record(dt, self):
+    def _record(self):
         """Save another frame for the GIF.
         """
         # Extract color image from frame buffer
@@ -871,10 +889,20 @@ class SceneViewer(pyglet.window.Window):
         color_im = np.frombuffer(color_buf, dtype=np.uint8).reshape((height, width, 3))
         color_im = np.flip(color_im, axis=0)
 
-        self._save_frames.append(color_im)
+        self._saved_frames.append(color_im)
 
-    @staticmethod
-    def animate(dt, self):
+        if self._flags['max_frames']:
+            if len(self._saved_frames) == self._flags['max_frames']:
+                self.on_close()
+
+    def _animate(self):
         """Animate the scene by rotating the camera.
         """
         self._trackball.rotate(self._flags['animate_az'], self._flags['animate_axis'])
+
+    @staticmethod
+    def time_event(dt, self):
+        if self._flags['record']:
+            self._record()
+        if self._flags['animate'] and not self._flags['mouse_pressed']:
+            self._animate()
