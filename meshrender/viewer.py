@@ -318,7 +318,7 @@ class SceneViewer(pyglet.window.Window):
         self._trackball = None
         self._flags = SceneViewer.default_flags()
         if 'registered_keys' in flags:
-            flags['registered_keys'] = {ord(k.lower()) : v for k, v in flags['registered_keys'].iteritems()}
+            flags['registered_keys'] = {ord(k.lower()) : flags['registered_keys'][k] for k in flags['registered_keys']}
         self._flags.update(flags)
         self._raymond_lights = self._create_raymond_lights()
         self._reset_view()
