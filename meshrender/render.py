@@ -39,13 +39,25 @@ class OpenGLRenderer(object):
         self._window = None
 
         # Initialize the OpenGL context with a 1x1 window and hide it immediately
-        conf = pyglet.gl.Config(
-            depth_size=24,
-            double_buffer=True,
-            major_version=3,
-            minor_version=2
-        )
-        self._window = pyglet.window.Window(config=conf, visible=False, resizable=False, width=1, height=1)
+        try:
+            conf = pyglet.gl.Config(
+                depth_size=24,
+                double_buffer=True,
+                major_version=4,
+                minor_version=5
+            )
+            self._window = pyglet.window.Window(config=conf, visible=False, resizable=False, width=1, height=1)
+        except:
+            try:
+                conf = pyglet.gl.Config(
+                    depth_size=24,
+                    double_buffer=True,
+                    major_version=3,
+                    minor_version=2
+                )
+                self._window = pyglet.window.Window(config=conf, visible=False, resizable=False, width=1, height=1)
+            except:
+                raise ValueError('Meshrender requires OpenGL 3+!')
 
         # Bind the frame buffer for offscreen rendering
         self._bind_frame_buffer()

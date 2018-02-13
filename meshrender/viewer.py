@@ -336,18 +336,27 @@ class SceneViewer(pyglet.window.Window):
                              samples=4,
                              depth_size=24,
                              double_buffer=True,
-                             major_version=3,
-                             minor_version=2)
+                             major_version=4,
+                             minor_version=5)
             super(SceneViewer, self).__init__(config=conf,
                                               resizable=True,
                                               width=self._size[0],
                                               height=self._size[1])
-        except pyglet.window.NoSuchConfigException:
-            conf = gl.Config(double_buffer=True)
-            super(SceneViewer, self).__init__(config=conf,
-                                              resizable=True,
-                                              width=self._size[0],
-                                              height=self._size[1])
+        except:
+            try:
+                conf = gl.Config(sample_buffers=1,
+                                 samples=4,
+                                 depth_size=24,
+                                 double_buffer=True,
+                                 major_version=3,
+                                 minor_version=2)
+                super(SceneViewer, self).__init__(config=conf,
+                                                  resizable=True,
+                                                  width=self._size[0],
+                                                  height=self._size[1])
+            except:
+                raise ValueError('Meshrender requires OpenGL 3+!')
+
 
         self.set_caption("Scene Viewer")
 
