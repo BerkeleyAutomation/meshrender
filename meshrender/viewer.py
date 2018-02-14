@@ -599,7 +599,8 @@ class SceneViewer(pyglet.window.Window):
         extents = np.diff(bounds, axis=0).reshape(-1)
         scale = (extents ** 2).sum() ** .5
         width, height = self._size
-
+        target = centroid
+        
         # Set up reasonable camera intrinsics
         fov = np.pi / 6.0
         fl = height / (2.0 * np.tan(fov / 2))
@@ -628,7 +629,9 @@ class SceneViewer(pyglet.window.Window):
         )
         if self._flags['camera_pose'] is not None:
             cp = self._flags['camera_pose']
-
+        if self._flags['focal_point'] is not None:
+            target = self._flags['focal_point']
+            
         # Create a VirtualCamera
         self._camera = VirtualCamera(ci, cp, z_near=scale/100.0, z_far=scale*100.0)
 
@@ -636,7 +639,7 @@ class SceneViewer(pyglet.window.Window):
         self._trackball = Trackball(
             self._camera.T_camera_world,
             self._size, scale,
-            target=centroid,
+            target=target,
         )
 
     def _create_raymond_lights(self):
