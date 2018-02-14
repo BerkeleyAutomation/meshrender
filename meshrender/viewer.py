@@ -863,7 +863,7 @@ class SceneViewer(pyglet.window.Window):
         else:
             self._save_directory = os.path.dirname(filename)
 
-        imageio.mimwrite(filename, self._saved_frames, fps=30.0)
+        imageio.mimwrite(filename, self._saved_frames, fps=30.0, palettesize=128, subrectangles=True)
 
         self._saved_frames = []
 
