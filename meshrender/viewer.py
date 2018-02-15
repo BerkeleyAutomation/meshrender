@@ -885,6 +885,7 @@ class SceneViewer(pyglet.window.Window):
             'record' : False,
             'registered_keys' : {},
             'camera_pose' : None,
+            'focal_point' : None,
             'max_frames' : None
         }
         return flags
