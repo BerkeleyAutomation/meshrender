@@ -43,21 +43,12 @@ class OpenGLRenderer(object):
             conf = pyglet.gl.Config(
                 depth_size=24,
                 double_buffer=True,
-                major_version=4,
-                minor_version=5
+                major_version=3,
+                minor_version=2
             )
             self._window = pyglet.window.Window(config=conf, visible=False, resizable=False, width=1, height=1)
         except:
-            try:
-                conf = pyglet.gl.Config(
-                    depth_size=24,
-                    double_buffer=True,
-                    major_version=3,
-                    minor_version=2
-                )
-                self._window = pyglet.window.Window(config=conf, visible=False, resizable=False, width=1, height=1)
-            except:
-                raise ValueError('Meshrender requires OpenGL 3+!')
+            raise ValueError('Meshrender requires OpenGL 3+!')
 
         # Bind the frame buffer for offscreen rendering
         self._bind_frame_buffer()
@@ -268,12 +259,6 @@ class OpenGLRenderer(object):
             glBindVertexArray(0)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
-            glDisableVertexAttribArray(0)
-            glDisableVertexAttribArray(1)
-            glDisableVertexAttribArray(2)
-            glDisableVertexAttribArray(3)
-            glDisableVertexAttribArray(4)
-            glDisableVertexAttribArray(5)
 
         return VA_ids
 
