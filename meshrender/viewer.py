@@ -70,8 +70,8 @@ class SceneViewer(pyglet.window.Window):
                  animate=False, animate_az=0.05, animate_rate=30.0, animate_axis=None,
                  two_sided_lighting=False, line_width = 1.0,
                  registered_keys={}, starting_camera_pose=None, max_frames=0,
-                 save_directory=None, title='Scene Viewer',
-                 target_object=None, **kwargs):
+                 save_directory=None, save_filename=None,
+                 title='Scene Viewer', target_object=None, **kwargs):
         """Initialize a scene viewer and open the viewer window.
 
         Parameters
@@ -108,6 +108,9 @@ class SceneViewer(pyglet.window.Window):
         save_directory : str
             A directory to open the TK save file dialog in to begin with.
             If None, uses the current directory.
+        save_filename : str
+            A default filename to open the save box with. Shouldn't have an extension --
+            extension will be .png or .gif depending on save type.
         title : str
             A title for the scene viewer.
         target_object : str
@@ -135,6 +138,7 @@ class SceneViewer(pyglet.window.Window):
         self._starting_camera_pose = starting_camera_pose
         self._max_frames = max_frames
         self._save_directory = save_directory
+        self._save_filename = save_filename
         self._raymond_lighting = raymond_lighting
         self._raymond_lights = SceneViewer._get_raymond_lights()
         self._title = title
@@ -411,7 +415,11 @@ class SceneViewer(pyglet.window.Window):
     def _save_image(self):
         # Get save file location
         root = Tk()
-        filename = filedialog.asksaveasfilename(initialdir = (self._save_directory or os.getcwd()),
+        fn = ''
+        if self._save_filename:
+            fn = '{}.png'.format(self._save_filename)
+        filename = filedialog.asksaveasfilename(initialfile = fn,
+                                                initialdir = (self._save_directory or os.getcwd()),
                                                 title = 'Select file save location',
                                                 filetypes = (('png files','*.png'),
                                                             ('jpeg files', '*.jpg'),
@@ -437,7 +445,11 @@ class SceneViewer(pyglet.window.Window):
     def _save_gif(self):
         # Get save file location
         root = Tk()
-        filename = filedialog.asksaveasfilename(initialdir = (self._save_directory or os.getcwd()),
+        fn = ''
+        if self._save_filename:
+            fn = '{}.gif'.format(self._save_filename)
+        filename = filedialog.asksaveasfilename(initialfile = fn,
+                                                initialdir = (self._save_directory or os.getcwd()),
                                                 title = 'Select file save location',
                                                 filetypes = (('gif files','*.gif'),
                                                             ('all files','*.*')))
