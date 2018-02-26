@@ -350,6 +350,7 @@ class SceneViewer(pyglet.window.Window):
             else:
                 centroid = np.mean(obj.mesh.bounds, axis=0)
             centroid = obj.T_obj_world.matrix.dot(np.hstack((centroid, 1.0)))[:3]
+            scale = (obj.mesh.extents ** 2).sum() ** .5
 
         # Set up the camera pose (z axis faces towards scene, x to right, y down)
         s2 = 1.0/np.sqrt(2.0)
