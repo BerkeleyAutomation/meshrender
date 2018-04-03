@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>meshrender</name>
-  <version>0.0.4</version>
+  <version>0.0.5</version>
   <description>The meshrender package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
