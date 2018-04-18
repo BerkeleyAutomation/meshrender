@@ -345,8 +345,7 @@ class SceneViewer(pyglet.window.Window):
         if self._target_object and self._target_object in self.scene.objects:
             obj = self.scene.objects[self._target_object]
             if isinstance(obj, InstancedSceneObject):
-                locs = np.array([p.matrix[:3,3] for p in obj.poses])
-                centroid = np.mean(locs, axis=0)
+                centroid = np.mean(obj.raw_pose_data[3::4,:3], axis=0)
             else:
                 centroid = np.mean(obj.mesh.bounds, axis=0)
             centroid = obj.T_obj_world.matrix.dot(np.hstack((centroid, 1.0)))[:3]
@@ -394,13 +393,11 @@ class SceneViewer(pyglet.window.Window):
             if isinstance(o, InstancedSceneObject):
                 # Cheat for instanced objects -- just find the min/max translations and create poses from those
                 # Complile translations
-                translations = np.array([p.translation for p in o.poses])
+                translations = o.raw_pose_data[3::4,:3]
                 min_trans = np.min(translations, axis=0)
                 max_trans = np.max(translations, axis=0)
-                poses = [RigidTransform(translation=min_trans, from_frame=o.poses[0].from_frame,
-                                        to_frame=o.poses[0].to_frame),
-                         RigidTransform(translation=max_trans, from_frame=o.poses[0].from_frame,
-                                        to_frame=o.poses[0].to_frame)]
+                poses = [RigidTransform(translation=min_trans),
+                         RigidTransform(translation=max_trans)]
             for pose in poses:
                 tf_verts = pose.matrix[:3,:3].dot(o.mesh.vertices.T).T + pose.matrix[:3,3]
                 tf_verts = o.T_obj_world.matrix[:3,:3].dot(tf_verts.T).T + o.T_obj_world.matrix[:3,3]
@@ -605,9 +602,9 @@ class SceneViewer(pyglet.window.Window):
                 glVertexAttribDivisor(2 + i, 1)
 
             if isinstance(obj, InstancedSceneObject):
-                glBufferData(GL_ARRAY_BUFFER, 4*16*len(obj.poses), None, GL_STATIC_DRAW)
-                data = np.concatenate([p.matrix.T for p in obj.poses], axis=0).flatten().astype(np.float32)
-                glBufferSubData(GL_ARRAY_BUFFER, 0, 4*16*len(obj.poses), data)
+                glBufferData(GL_ARRAY_BUFFER, 4*16*obj.n_instances, None, GL_STATIC_DRAW)
+                data = obj.raw_pose_data.flatten().astype(np.float32)
+                glBufferSubData(GL_ARRAY_BUFFER, 0, 4*16*obj.n_instances, data)
             else:
                 glBufferData(GL_ARRAY_BUFFER, 4*16, None, GL_STATIC_DRAW)
                 glBufferSubData(GL_ARRAY_BUFFER, 0, 4*16, np.eye(4).flatten().astype(np.float32))
@@ -733,7 +730,7 @@ class SceneViewer(pyglet.window.Window):
 
             n_instances = 1
             if isinstance(obj, InstancedSceneObject):
-                n_instances = len(obj.poses)
+                n_instances = obj.n_instances
 
             if material.smooth:
                 glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, C_VOID_PS[0], n_instances)

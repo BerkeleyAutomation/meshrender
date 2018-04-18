@@ -248,7 +248,7 @@ class OpenGLRenderer(object):
 
             if isinstance(obj, InstancedSceneObject):
                 glBufferData(GL_ARRAY_BUFFER, 4*16*len(obj.poses), None, GL_STATIC_DRAW)
-                data = np.concatenate([p.matrix.T for p in obj.poses], axis=0).flatten().astype(np.float32)
+                data = obj.raw_pose_data.flatten().astype(np.float32)
                 glBufferSubData(GL_ARRAY_BUFFER, 0, 4*16*len(obj.poses), data)
             else:
                 glBufferData(GL_ARRAY_BUFFER, 4*16, None, GL_STATIC_DRAW)
@@ -309,7 +309,7 @@ class OpenGLRenderer(object):
 
             n_instances = 1
             if isinstance(obj, InstancedSceneObject):
-                n_instances = len(obj.poses)
+                n_instances = obj.n_instances
 
             if material.smooth:
                 glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, C_VOID_PS[0], n_instances)
@@ -412,7 +412,7 @@ class OpenGLRenderer(object):
 
             n_instances = 1
             if isinstance(obj, InstancedSceneObject):
-                n_instances = len(obj.poses)
+                n_instances = obj.n_instances
 
             if material.smooth:
                 glDrawElementsInstanced(GL_TRIANGLES, 3*len(mesh.faces), GL_UNSIGNED_INT, C_VOID_PS[0], n_instances)

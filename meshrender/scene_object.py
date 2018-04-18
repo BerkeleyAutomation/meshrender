@@ -79,7 +79,7 @@ class SceneObject(object):
 class InstancedSceneObject(SceneObject):
     """A scene object which consists as a set of identical objects.
     """
-    def __init__(self, mesh, poses, colors=None,
+    def __init__(self, mesh, poses=None, raw_pose_data=None, colors=None,
                  T_obj_world=RigidTransform(from_frame='obj', to_frame='world'),
                  material=MaterialProperties(),
                  enabled=True):
@@ -92,6 +92,9 @@ class InstancedSceneObject(SceneObject):
         poses : list of autolab_core.RigidTransform
             A set of poses, one for each instance of the scene object,
             relative to the full object's origin.
+        raw_pose_data : (4*n,4) float or None
+            A numpy array containing raw pose data, where each row is a column of a point's
+            homogenous transform matrix. If not present, poses must be present.
         colors : (n,3) float or None
             A set of colors for each instanced object. If None, the color specified in material
             properties is used for all instances.
@@ -105,9 +108,20 @@ class InstancedSceneObject(SceneObject):
 
         super(InstancedSceneObject, self).__init__(mesh, T_obj_world, material, enabled)
         self._poses = poses
+        self._raw_pose_data = raw_pose_data
+
+        if self._raw_pose_data is None:
+            if self._poses is None:
+                raise ValueError('Either poses or raw_pose_data must be specified')
+            self._raw_pose_data = np.zeros((4*len(self._poses), 4))
+            for i, pose in enumerate(self._poses):
+                self._raw_pose_data[i*4:(i+1)*4,:] = pose.matrix.T
+
+        self._n_instances = self._raw_pose_data.shape[0] / 4
+
         self._colors = colors
         if self._colors is None:
-            self._colors = np.tile(material.color, (len(poses),1))
+            self._colors = np.tile(material.color, (self._n_instances,1))
 
     @property
     def poses(self):
@@ -116,7 +130,19 @@ class InstancedSceneObject(SceneObject):
         return self._poses
 
     @property
+    def raw_pose_data(self):
+        """(4*n,4) float: Raw data for pose matrices.
+        """
+        return self._raw_pose_data
+
+    @property
     def colors(self):
         """(n,3) float: The color of each instance.
         """
         return self._colors
+
+    @property
+    def n_instances(self):
+        """int: The number of instances of this object.
+        """
+        return self._n_instances
