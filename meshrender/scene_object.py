@@ -79,7 +79,7 @@ class SceneObject(object):
 class InstancedSceneObject(SceneObject):
     """A scene object which consists as a set of identical objects.
     """
-    def __init__(self, mesh, poses,
+    def __init__(self, mesh, poses, colors=None,
                  T_obj_world=RigidTransform(from_frame='obj', to_frame='world'),
                  material=MaterialProperties(),
                  enabled=True):
@@ -92,6 +92,9 @@ class InstancedSceneObject(SceneObject):
         poses : list of autolab_core.RigidTransform
             A set of poses, one for each instance of the scene object,
             relative to the full object's origin.
+        colors : (n,3) float or None
+            A set of colors for each instanced object. If None, the color specified in material
+            properties is used for all instances.
         T_obj_world : autolab_core.RigidTransform
             A rigid transformation from the object's frame to the world frame.
         material : MaterialProperties
@@ -102,9 +105,18 @@ class InstancedSceneObject(SceneObject):
 
         super(InstancedSceneObject, self).__init__(mesh, T_obj_world, material, enabled)
         self._poses = poses
+        self._colors = colors
+        if self._colors is None:
+            self._colors = np.tile(material.color, (len(poses),1))
 
     @property
     def poses(self):
         """list of autolab_core.RigidTransform: A set of poses for each instance relative to the object's origin.
         """
         return self._poses
+
+    @property
+    def colors(self):
+        """(n,3) float: The color of each instance.
+        """
+        return self._colors

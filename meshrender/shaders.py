@@ -40,6 +40,7 @@ vertex_shader = '''#version 330 core
 layout(location = 0) in vec3 vertex_position_m;
 layout(location = 1) in vec3 vertex_normal_m;
 layout(location = 2) in mat4 inst_M;
+layout(location = 6) in vec3 object_color;
 
 // Output data
 out vec4 color;
@@ -50,7 +51,6 @@ out vec3 normal;
 uniform mat4 P;
 uniform mat4 V;
 uniform mat4 M;
-uniform vec3 object_color;
 
 void main(){
     mat4 MV = V * M * inst_M;

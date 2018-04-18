@@ -54,7 +54,7 @@ bar_material = pawn_material
 # Create SceneObjects for each object
 pawn_obj = SceneObject(pawn_mesh, pawn_pose, pawn_material)
 bar_obj = SceneObject(bar_mesh, bar_pose, bar_material)
-pawn_inst_obj = InstancedSceneObject(pawn_mesh, [pawn_pose, bar_pose], material=pawn_material)
+pawn_inst_obj = InstancedSceneObject(pawn_mesh, [pawn_pose, bar_pose], colors=np.array([[0,0,1],[0,1,0]]), material=pawn_material)
 
 # Add the SceneObjects to the scene
 scene.add_object('pawn', pawn_inst_obj)

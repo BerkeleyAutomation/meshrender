@@ -254,6 +254,20 @@ class OpenGLRenderer(object):
                 glBufferData(GL_ARRAY_BUFFER, 4*16, None, GL_STATIC_DRAW)
                 glBufferSubData(GL_ARRAY_BUFFER, 0, 4*16, np.eye(4).flatten().astype(np.float32))
 
+            # Set up color buffer
+            colorbuf = glGenBuffers(1)
+            glBindBuffer(GL_ARRAY_BUFFER, colorbuf)
+            glEnableVertexAttribArray(6)
+            glVertexAttribPointer(6, 3, GL_FLOAT, GL_FALSE, 0, C_VOID_PS[0])
+            glVertexAttribDivisor(6, 1)
+
+            if isinstance(obj, InstancedSceneObject):
+                glBufferData(GL_ARRAY_BUFFER, 4*3*len(obj.colors), None, GL_STATIC_DRAW)
+                data = obj.colors.flatten().astype(np.float32)
+                glBufferSubData(GL_ARRAY_BUFFER, 0, 4*3*len(obj.colors), data)
+            else:
+                glBufferData(GL_ARRAY_BUFFER, 4*3, None, GL_STATIC_DRAW)
+                glBufferSubData(GL_ARRAY_BUFFER, 0, 4*3, obj.material.color.astype(np.float32))
 
             # Unbind all buffers
             glBindVertexArray(0)
@@ -345,7 +359,6 @@ class OpenGLRenderer(object):
         v_id = glGetUniformLocation(self._full_shader, 'V')
         m_id = glGetUniformLocation(self._full_shader, 'M')
         matprop_id = glGetUniformLocation(self._full_shader, 'material_properties')
-        object_color_id = glGetUniformLocation(self._full_shader, 'object_color')
         ambient_id = glGetUniformLocation(self._full_shader, 'ambient_light_info')
         directional_id = glGetUniformLocation(self._full_shader, "directional_light_info")
         n_directional_id = glGetUniformLocation(self._full_shader, "n_directional_lights")
@@ -390,7 +403,6 @@ class OpenGLRenderer(object):
             glBindVertexArray(vaid)
 
             glUniformMatrix4fv(m_id, 1, GL_TRUE, obj.T_obj_world.matrix)
-            glUniform3fv(object_color_id, 1, material.color)
             glUniform4fv(matprop_id, 1, np.array([material.k_a, material.k_d, material.k_s, material.alpha]))
 
             if material.wireframe:
