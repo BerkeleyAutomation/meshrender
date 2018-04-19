@@ -583,7 +583,7 @@ class SceneViewer(pyglet.window.Window):
                 glBindBuffer(GL_ARRAY_BUFFER, normalbuffer)
                 glEnableVertexAttribArray(1)
                 glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, C_VOID_PS[0])
-                normals = np.array([[x,x,x] for x in mesh.face_normals], dtype=np.float32)
+                normals = np.repeat(mesh.face_normals, 3, axis=0).astype(np.float32)
                 normals = normals.flatten()
                 glBufferData(GL_ARRAY_BUFFER,
                              4*len(normals),
