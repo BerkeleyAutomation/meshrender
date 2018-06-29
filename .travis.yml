@@ -23,12 +23,14 @@ script:
 
 deploy:
     provider: pypi
+    skip_existing: true
     user: mmatl
     on:
         tags: true
         branch: master
     password:
         secure: Ly+BbCKwlwpolMH8dfglye8LYUgoc0psBZGLuqCr90GX20rECMQnuox0VOp0wQT/ND1L/SBWuhJoliVHvfipOxUbO/8hlNrKTvONk1owAW38bHQ5RNpThfRSi03xVyCK4a9L4Ss7tB25a29XAW/IG9GO8+AwsWg4U6eRWJK7oNaaZ0J2yv3lNvoRnfqxGQwDUhfBqs7T1zfevqwsPW24vNxXcAfySm9KMRmqymfYXeBz5M873RrYllnlgRjaGqNDwX2XytnXCJpE5HuM3M2likBWzGmDgcYlYyYENr13mG2FmedJWzW8NkwxyU+dzt3nA/Zfu/zlfcTdeYqnzGl0tohR3AR7iWQvZnABw3hfhxk7+7SizUVzMGPN+FOmizB34BoGtBQ9UfHKHYGfJUTCFPivpQWFnA3YDPEL78rYzdQ2HK7dgR9AmZyAC9L7I+/RBTsE5AkB3nfbwbbbNa7ZPZBNSNz30RPUpzdABtex7xrmQ6iAdwtawq88SR+za+6JqMxT3G37yrjc/E44cyRZ7H7a3Lbxc5mZz04wNyS2MQ8VZ3CIF4eh64GZKxlfH9usC20iuIYpCCWpbCt8w0nWbpDNLxG1PbwWGHJzkL5nvbPLB7cN2/OHnp/VT0pFGr9ahZUxnJX62lqR/rtIHCvaB7mn0jeSoTASwaQbQikMy8s=
+    distributions: sdist bdist_wheel
 
 notifications:
     email: false

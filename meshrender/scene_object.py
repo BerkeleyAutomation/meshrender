@@ -117,7 +117,7 @@ class InstancedSceneObject(SceneObject):
             for i, pose in enumerate(self._poses):
                 self._raw_pose_data[i*4:(i+1)*4,:] = pose.matrix.T
 
-        self._n_instances = self._raw_pose_data.shape[0] / 4
+        self._n_instances = self._raw_pose_data.shape[0] // 4
 
         self._colors = colors
         if self._colors is None:
