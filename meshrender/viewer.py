@@ -3,7 +3,10 @@ import weakref
 try:
     from Tkinter import Tk, tkFileDialog as filedialog
 except ImportError:
-    from tkinter import Tk, filedialog as filedialog
+    try:
+        from tkinter import Tk, filedialog as filedialog
+    except:
+        pass
 
 import pyglet
 pyglet.options['shadow_window'] = False
