@@ -1,9 +1,14 @@
 import ctypes
 import numpy as np
 import weakref
+import os
 
-import pyglet
-pyglet.options['shadow_window'] = False
+_USE_EGL_OFFSCREEN = False
+if 'MESHRENDER_EGL_OFFSCREEN' in os.environ:
+    os.environ['PYOPENGL_PLATFORM'] = 'egl'
+    _USE_EGL_OFFSCREEN = True
+
+import OpenGL
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from OpenGL.arrays import *
@@ -36,19 +41,9 @@ class OpenGLRenderer(object):
         self._vaids = None
         self._colorbuf, self._depthbuf = None, None
         self._framebuf = None
-        self._window = None
 
-        # Initialize the OpenGL context with a 1x1 window and hide it immediately
-        try:
-            conf = pyglet.gl.Config(
-                depth_size=24,
-                double_buffer=True,
-                major_version=3,
-                minor_version=2
-            )
-            self._window = pyglet.window.Window(config=conf, visible=False, resizable=False, width=1, height=1)
-        except:
-            raise ValueError('Meshrender requires OpenGL 3+!')
+        # Initialize the OpenGL context
+        self._init_gl_context()
 
         # Bind the frame buffer for offscreen rendering
         self._bind_frame_buffer()
@@ -68,6 +63,90 @@ class OpenGLRenderer(object):
         self._full_shader = self._load_shaders(vertex_shader, fragment_shader)
         self._depth_shader = self._load_shaders(depth_vertex_shader, depth_fragment_shader)
         glBindVertexArray(0)
+
+    def _init_gl_context(self):
+        if _USE_EGL_OFFSCREEN:
+            self._init_egl()
+        else:
+            self._init_pyglet()
+
+
+    def _init_pyglet(self):
+        import pyglet
+        pyglet.options['shadow_window'] = False
+
+        self._window = None
+        conf = pyglet.gl.Config(
+            depth_size=24,
+            double_buffer=True,
+            major_version=3,
+            minor_version=2
+        )
+        try:
+            self._window = pyglet.window.Window(config=conf, visible=False,
+                                                resizable=False, width=1, height=1)
+        except Exception as e:
+            raise ValueError('Failed to initialize Pyglet window with an OpenGL >= 3+ context. ' \
+                             'If you\'re logged in via SSH, ensure that you\'re running your script ' \
+                             'with vglrun (i.e. VirtualGL). Otherwise, the internal error message was: ' \
+                             '"{}"'.format(e.message))
+
+    def _init_egl(self):
+        from OpenGL.EGL import EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_BLUE_SIZE,    \
+                               EGL_RED_SIZE, EGL_GREEN_SIZE, EGL_DEPTH_SIZE,        \
+                               EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER, EGL_HEIGHT,   \
+                               EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT, EGL_CONFORMANT, \
+                               EGL_OPENGL_BIT, EGL_CONFIG_CAVEAT, EGL_NONE,         \
+                               EGL_DEFAULT_DISPLAY, EGL_NO_CONTEXT, EGL_WIDTH,      \
+                               EGL_OPENGL_API,                                      \
+                               eglGetDisplay, eglInitialize, eglChooseConfig,       \
+                               eglBindAPI, eglCreatePbufferSurface,                 \
+                               eglCreateContext, eglMakeCurrent, EGLConfig
+
+        self._egl_display = None
+        self._egl_surface = None
+        self._egl_context = None
+
+        config_attributes = arrays.GLintArray.asArray([
+            EGL_SURFACE_TYPE, EGL_PBUFFER_BIT,
+            EGL_BLUE_SIZE, 8,
+            EGL_RED_SIZE, 8,
+            EGL_GREEN_SIZE, 8,
+            EGL_DEPTH_SIZE, 24,
+            EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER,
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+            EGL_CONFORMANT, EGL_OPENGL_BIT,
+            EGL_NONE
+        ])
+        major, minor = ctypes.c_long(), ctypes.c_long()
+        num_configs = ctypes.c_long()
+        configs = (EGLConfig*1)()
+
+        # Cache DISPLAY if necessary and get an off-screen EGL display
+        orig_dpy = None
+        if 'DISPLAY' in os.environ:
+            orig_dpy = os.environ['DISPLAY']
+            del os.environ['DISPLAY']
+        self._egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY)
+        if orig_dpy is not None:
+            os.environ['DISPLAY'] = orig_dpy
+
+        # Initialize EGL
+        eglInitialize(self._egl_display, major, minor)
+        eglChooseConfig(self._egl_display, config_attributes, configs, 1, num_configs)
+
+        # Bind EGL to the OpenGL API
+        eglBindAPI(EGL_OPENGL_API)
+
+        # Create an EGL pbuffer
+        self._egl_surface = eglCreatePbufferSurface(self._egl_display, configs[0],
+                [EGL_WIDTH, self._width, EGL_HEIGHT, self._height, EGL_NONE])
+
+        # Create an EGL context
+        self._egl_context = eglCreateContext(self._egl_display, configs[0], EGL_NO_CONTEXT, None)
+
+        # Make the EGL context current
+        eglMakeCurrent(self._egl_display, self._egl_surface, self._egl_surface, self._egl_context)
 
     @property
     def scene(self):
@@ -128,10 +207,22 @@ class OpenGLRenderer(object):
         -------
         Once this has been called, the OpenGLRenderer object should be discarded.
         """
-        if self._window is not None:
-            OpenGL.contextdata.cleanupContext()
-            self._window.close()
-            self._window = None
+        OpenGL.contextdata.cleanupContext()
+        if _USE_EGL_OFFSCREEN:
+            from OpenGL.EGL import eglDestroySurface, eglDestroyContext, eglTerminate
+            if self._egl_display is not None:
+                if self._egl_context is not None:
+                    eglDestroyContext(self._egl_display, self._egl_context)
+                    self._egl_context = None
+                if self._egl_surface:
+                    eglDestroySurface(self._egl_display, self._egl_surface)
+                    self._egl_surface = None
+                eglTerminate(self._egl_display)
+                self._egl_display = None
+        else:
+            if self._window is not None:
+                self._window.close()
+                self._window = None
 
     def _bind_frame_buffer(self):
         """Bind the frame buffer for offscreen rendering.
@@ -446,3 +537,4 @@ class OpenGLRenderer(object):
 
     def __del__(self):
         self.close()
+
