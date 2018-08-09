@@ -3,6 +3,8 @@ import trimesh
 from autolab_core import RigidTransform
 from perception import CameraIntrinsics, RenderMode, ColorImage, DepthImage
 
+import os
+#os.environ['MESHRENDER_EGL_OFFSCREEN'] = 't'
 from meshrender import Scene, MaterialProperties, AmbientLight, PointLight, SceneObject, VirtualCamera, DirectionalLight, SceneViewer, UniformPlanarWorksurfaceImageRandomVariable, InstancedSceneObject
 
 # Start with an empty scene

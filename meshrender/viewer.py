@@ -1,4 +1,4 @@
-
+import os
 import weakref
 try:
     from Tkinter import Tk, tkFileDialog as filedialog
@@ -15,12 +15,16 @@ from pyglet import clock
 
 import numpy as np
 import imageio
+import logging
+
+_USE_EGL_OFFSCREEN = False
+if 'MESHRENDER_EGL_OFFSCREEN' in os.environ:
+    _USE_EGL_OFFSCREEN = True
 
 import OpenGL
 from OpenGL.GL import *
 from OpenGL.GL import shaders
 from OpenGL.arrays import *
-from OpenGL.GLUT import *
 
 from .constants import MAX_N_LIGHTS, OPEN_GL_MAJOR, OPEN_GL_MINOR
 from .light import AmbientLight, PointLight, DirectionalLight
@@ -121,6 +125,8 @@ class SceneViewer(pyglet.window.Window):
         kwargs : other kwargs
             Other optional keyword arguments.
         """
+        if _USE_EGL_OFFSCREEN:
+            raise ValueError('Cannot initialize SceneViewer when MESHRENDER_EGL_OFFSCREEN is set.')
         self._gl_initialized = False
 
         # Save basic information
@@ -161,17 +167,18 @@ class SceneViewer(pyglet.window.Window):
         self.scene.close_renderer()
         try:
             conf = gl.Config(sample_buffers=1, samples=4,
-                             depth_size=24, double_buffer=True,
-                             major_version=OPEN_GL_MAJOR,
-                             minor_version=OPEN_GL_MINOR)
+                                depth_size=24, double_buffer=True,
+                                major_version=OPEN_GL_MAJOR,
+                                minor_version=OPEN_GL_MINOR)
             super(SceneViewer, self).__init__(config=conf, resizable=True,
-                                              width=self._size[0],
-                                              height=self._size[1])
-        except:
-            raise ValueError(
-                'Meshrender requires OpenGL {}.{}!'.format(OPEN_GL_MAJOR,
-                                                           OPEN_GL_MINOR)
-            )
+                                                width=self._size[0],
+                                                height=self._size[1])
+        except Exception as e:
+            raise ValueError('Failed to initialize Pyglet window with an OpenGL 3+ context. ' \
+                             'If you\'re logged in via SSH, ensure that you\'re running your script ' \
+                             'with vglrun (i.e. VirtualGL). Otherwise, the internal error message was: ' \
+                             '"{}"'.format(e.message))
+
         self.set_caption(title)
 
         # Initialize OpenGL
@@ -415,16 +422,21 @@ class SceneViewer(pyglet.window.Window):
 
     def _save_image(self):
         # Get save file location
-        root = Tk()
-        fn = ''
-        if self._save_filename:
-            fn = '{}.png'.format(self._save_filename)
-        filename = filedialog.asksaveasfilename(initialfile = fn,
-                                                initialdir = (self._save_directory or os.getcwd()),
-                                                title = 'Select file save location',
-                                                filetypes = (('png files','*.png'),
-                                                            ('jpeg files', '*.jpg'),
-                                                            ('all files','*.*')))
+        try:
+            root = Tk()
+            fn = ''
+            if self._save_filename:
+                fn = '{}.png'.format(self._save_filename)
+            filename = filedialog.asksaveasfilename(initialfile = fn,
+                                                    initialdir = (self._save_directory or os.getcwd()),
+                                                    title = 'Select file save location',
+                                                    filetypes = (('png files','*.png'),
+                                                                ('jpeg files', '*.jpg'),
+                                                                ('all files','*.*')))
+        except:
+            logging.warning('Cannot use Tkinter file dialogs over SSH')
+            return
+
         root.destroy()
         if filename == ():
             return
@@ -445,15 +457,21 @@ class SceneViewer(pyglet.window.Window):
 
     def _save_gif(self):
         # Get save file location
-        root = Tk()
-        fn = ''
-        if self._save_filename:
-            fn = '{}.gif'.format(self._save_filename)
-        filename = filedialog.asksaveasfilename(initialfile = fn,
-                                                initialdir = (self._save_directory or os.getcwd()),
-                                                title = 'Select file save location',
-                                                filetypes = (('gif files','*.gif'),
-                                                            ('all files','*.*')))
+        try:
+            root = Tk()
+            fn = ''
+            if self._save_filename:
+                fn = '{}.gif'.format(self._save_filename)
+            filename = filedialog.asksaveasfilename(initialfile = fn,
+                                                    initialdir = (self._save_directory or os.getcwd()),
+                                                    title = 'Select file save location',
+                                                    filetypes = (('gif files','*.gif'),
+                                                                ('all files','*.*')))
+        except:
+            logging.warning('Cannot use Tkinter file dialogs over SSH')
+            self._saved_frames = []
+            return
+
         root.destroy()
         if filename == ():
             self._saved_frames = []
@@ -782,3 +800,4 @@ class SceneViewer(pyglet.window.Window):
 
         SceneViewer._raymond_lights = raymond_lights
         return raymond_lights
+
