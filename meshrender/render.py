@@ -64,11 +64,18 @@ class OpenGLRenderer(object):
         self._depth_shader = self._load_shaders(depth_vertex_shader, depth_fragment_shader)
         glBindVertexArray(0)
 
+
     def _init_gl_context(self):
         if _USE_EGL_OFFSCREEN:
             self._init_egl()
         else:
             self._init_pyglet()
+
+
+    def _make_gl_context_current(self):
+        if not _USE_EGL_OFFSCREEN:
+            if self._window:
+                self._window.switch_to()
 
 
     def _init_pyglet(self):
@@ -187,6 +194,8 @@ class OpenGLRenderer(object):
         Values listed as 0.0 in the depth image are actually at infinity
         (i.e. no object present at that pixel).
         """
+        self._make_gl_context_current()
+
         # Reload the frame buffers if the width or height of the camera changed
         width = self.scene.camera.intrinsics.width
         height = self.scene.camera.intrinsics.height
