@@ -55,6 +55,7 @@ class OpenGLRenderer(object):
         glDepthRange(0.0, 1.0)
 
         # Load the meshes into VAO's
+        self._buffers = None
         self._vaids = self._load_meshes()
 
         # Load the shaders
@@ -216,6 +217,29 @@ class OpenGLRenderer(object):
         -------
         Once this has been called, the OpenGLRenderer object should be discarded.
         """
+        # Delete shaders
+        if self._full_shader:
+            glDeleteProgram(self._full_shader)
+            self._full_shader = None
+        if self._depth_shader:
+            glDeleteProgram(self._depth_shader)
+            self._depth_shader = None
+
+        # Delete all mesh geometry
+        if self._buffers:
+            glDeleteBuffers(len(self._buffers), self._buffers)
+            self._buffers = None
+
+        # Delete framebuffers and renderbuffers
+        if self._colorbuf and self._depthbuf:
+            glDeleteRenderbuffers(2, [self._colorbuf, self._depthbuf])
+            self._colorbuf = None
+            self._depthbuf = None
+
+        if self._framebuf:
+            glDeleteFramebuffers(1, [self._framebuf])
+            self._framebuf = None
+
         OpenGL.contextdata.cleanupContext()
         if _USE_EGL_OFFSCREEN:
             from OpenGL.EGL import eglDestroySurface, eglDestroyContext, eglTerminate
@@ -230,6 +254,7 @@ class OpenGLRenderer(object):
                 self._egl_display = None
         else:
             if self._window is not None:
+                self._window.context.destroy()
                 self._window.close()
                 self._window = None
 
@@ -239,7 +264,7 @@ class OpenGLRenderer(object):
         # Release the color and depth buffers if they exist:
         if self._framebuf is not None:
             glDeleteRenderbuffers(2, [self._colorbuf, self._depthbuf])
-            glDeleteFramebuffers([self._framebuf])
+            glDeleteFramebuffers(1, [self._framebuf])
 
         # Initialize the Framebuffer into which we will perform off-screen rendering
         self._colorbuf, self._depthbuf = glGenRenderbuffers(2)
@@ -267,6 +292,7 @@ class OpenGLRenderer(object):
         """Load the scene's meshes into vertex buffers.
         """
         VA_ids = glGenVertexArrays(len(self.scene.objects))
+        self._buffers = []
 
         if len(self.scene.objects) == 1:
             VA_ids = [VA_ids]
@@ -308,7 +334,7 @@ class OpenGLRenderer(object):
                              4*3*len(mesh.faces),
                              np.array(mesh.faces.flatten(), dtype=np.int32),
                              GL_STATIC_DRAW)
-
+                self._buffers.extend([vertexbuffer, elementbuffer, normalbuffer])
             else:
                 # If smooth is False, we treat each triangle independently
                 # and set vertex normals to corresponding face normals.
@@ -335,11 +361,14 @@ class OpenGLRenderer(object):
                              normals,
                              GL_STATIC_DRAW)
 
+                self._buffers.extend([vertexbuffer, normalbuffer])
+
             glVertexAttribDivisor(0, 0)
             glVertexAttribDivisor(1, 0)
 
             # Set up model matrix buffer
             modelbuf = glGenBuffers(1)
+            self._buffers.extend([modelbuf])
             glBindBuffer(GL_ARRAY_BUFFER, modelbuf)
             for i in range(4):
                 glEnableVertexAttribArray(2 + i)
@@ -356,6 +385,7 @@ class OpenGLRenderer(object):
 
             # Set up color buffer
             colorbuf = glGenBuffers(1)
+            self._buffers.extend([colorbuf])
             glBindBuffer(GL_ARRAY_BUFFER, colorbuf)
             glEnableVertexAttribArray(6)
             glVertexAttribPointer(6, 3, GL_FLOAT, GL_FALSE, 0, C_VOID_PS[0])
