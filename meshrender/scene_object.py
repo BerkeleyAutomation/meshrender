@@ -13,8 +13,8 @@ class SceneObject(object):
     """
 
     def __init__(self, mesh,
-                 T_obj_world=RigidTransform(from_frame='obj', to_frame='world'),
-                 material=MaterialProperties(),
+                 T_obj_world=None,
+                 material=None,
                  enabled=True):
         """Initialize a scene object with the given mesh, pose, and material.
 
@@ -36,6 +36,11 @@ class SceneObject(object):
 
         if material.smooth:
             mesh = mesh.smoothed()
+
+        if T_obj_world is None:
+            T_obj_world = RigidTransform(from_frame='obj', to_frame='world')
+        if material is None:
+            material = MaterialProperties()
 
         self._mesh = mesh
         self._material = material
@@ -80,8 +85,8 @@ class InstancedSceneObject(SceneObject):
     """A scene object which consists as a set of identical objects.
     """
     def __init__(self, mesh, poses=None, raw_pose_data=None, colors=None,
-                 T_obj_world=RigidTransform(from_frame='obj', to_frame='world'),
-                 material=MaterialProperties(),
+                 T_obj_world=None,
+                 material=None,
                  enabled=True):
         """Initialize a scene object with the given mesh, pose, and material.
 
