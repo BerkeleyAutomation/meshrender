@@ -1,3 +1,5 @@
+import pyglet
+pyglet.options['shadow_window'] = False
 import numpy as np
 import trimesh
 from autolab_core import RigidTransform

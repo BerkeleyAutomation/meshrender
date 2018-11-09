@@ -254,8 +254,11 @@ class OpenGLRenderer(object):
                 self._egl_display = None
         else:
             if self._window is not None:
-                self._window.context.destroy()
-                self._window.close()
+                try:
+                    self._window.context.destroy()
+                    self._window.close()
+                except:
+                    pass
                 self._window = None
 
     def _bind_frame_buffer(self):
