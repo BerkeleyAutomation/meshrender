@@ -31,8 +31,6 @@ class SceneObject(object):
         """
         if not isinstance(mesh, Trimesh):
             raise ValueError('mesh must be an object of type Trimesh')
-        if not isinstance(material, MaterialProperties):
-            raise ValueError('material must be an object of type MaterialProperties')
 
         if material.smooth:
             mesh = mesh.smoothed()
