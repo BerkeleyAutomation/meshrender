@@ -31,14 +31,12 @@ class SceneObject(object):
         """
         if not isinstance(mesh, Trimesh):
             raise ValueError('mesh must be an object of type Trimesh')
-
-        if material.smooth:
-            mesh = mesh.smoothed()
-
         if T_obj_world is None:
             T_obj_world = RigidTransform(from_frame='obj', to_frame='world')
         if material is None:
             material = MaterialProperties()
+        if material.smooth:
+            mesh = mesh.smoothed()
 
         self._mesh = mesh
         self._material = material
