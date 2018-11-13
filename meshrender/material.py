@@ -76,3 +76,14 @@ class MaterialProperties(object):
         """bool: If True, the mesh will be rendered as a wireframe.
         """
         return self._wireframe
+
+    def copy(self):
+        return MaterialProperties(
+            self.color.copy(),
+            self.k_a,
+            self.k_d,
+            self.k_s,
+            self.alpha,
+            self.smooth,
+            self.wireframe
+        )
