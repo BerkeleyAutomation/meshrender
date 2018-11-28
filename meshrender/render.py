@@ -433,6 +433,8 @@ class OpenGLRenderer(object):
         glUniformMatrix4fv(p_id, 1, GL_TRUE, camera.P)
 
         for vaid, obj in zip(self._vaids, self.scene.objects.values()):
+            if not obj.enabled:
+                continue
             material = obj.material
             mesh = obj.mesh
 
