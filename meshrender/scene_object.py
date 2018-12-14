@@ -1,149 +1,220 @@
+import abc
 import numpy as np
+import six
 
-from trimesh import Trimesh
-from autolab_core import RigidTransform
+from .material import Material
 
-from .material import MaterialProperties
+from .constants import Shading
 
+@six.add_metaclass(abc.ABCMeta)
 class SceneObject(object):
-    """A complete description of an object in a Scene.
+    """An object in a scene.
 
-    This includes its geometry (represented as a Trimesh), its pose in the world,
-    and its material properties.
+    Attributes
+    ----------
+    vertices : (n,3) float
+        Object vertices.
+    """
+    def __init__(self):
+        pass
+
+    @property
+    def transparent(self):
+        pass
+
+    @property
+    def shading_mode(self):
+        pass
+
+class PointCloudSceneObject(SceneObject):
+    """A cloud of points.
+
+    Attributes
+    ----------
+    vertices : (n,3) float
+        Object vertices.
+    vertex_colors : (n,3) or (n,4) float
+        Colors of each vertex.
     """
 
-    def __init__(self, mesh,
-                 T_obj_world=None,
-                 material=None,
-                 enabled=True):
-        """Initialize a scene object with the given mesh, pose, and material.
+    def __init__(self, vertices, vertex_colors=None):
+        self.vertices = vertices
+        self.vertex_colors = vertex_colors
+
+        if self.vertex_colors is None:
+            self.vertex_colors = 0.5 * np.ones(size=self.vertices.size)
+
+    @property
+    def transparent(self):
+        if self.vertex_colors.shape[1] == 4:
+            if np.any(self.vertex_colors[:,3] < 1.0):
+                return True
+        return False
+
+    @property
+    def shading_mode(self):
+        return Shading.POINT_CLOUD
+
+class MeshSceneObject(SceneObject):
+    """A triangular mesh.
+
+    Attributes
+    ----------
+    vertices : (n,3) float
+        Object vertices.
+    vertex_normals : (n,3) float, optional
+        Vertex normals.
+    faces : (m,3) int, optional
+        Specification of faces, if this object is a triangular mesh.
+        These integer indices are indexes into the vertices array.
+    face_normals : (m,3) float, optional
+        Face normals, optionally specified.
+    vertex_colors : (n,3) or (n,4), float
+        Colors for each vertex, if desired. This is overridden by any texture maps.
+    face_colors : (m,3) or (m,4), float
+        Colors for each face, if desired. This is overridden by any texture maps or vertex colors.
+    material : :obj:`Material`
+        The material of the object. If not specified, a default grey material
+        will be used.
+    texture_coords : (n, 2) float, optional
+        Texture coordinates for vertices, if needed.
+    visible : bool
+        If False, the object will not be rendered.
+    """
+
+    def __init__(self, vertices, vertex_normals=None, faces=None, face_normals=None,
+                 vertex_colors=None, face_colors=None, material=None, texture_coords=None, visible=True):
+        self.vertices = vertices
+        self.vertex_normals = vertex_normals
+        self.faces = faces
+        self.face_normals = face_normals
+        self.vertex_colors = vertex_colors
+        self.face_colors = face_colors
+        self.material = material
+        self.texture_coords = texture_coords
+        self.visible = visible
+
+        if texture_coords is not None:
+            if not texture_coords.shape == (self.vertices.shape[0], 2):
+                raise ValueError('Incorrect texture coordinate shape: {}'.format(texture_coords.shape))
+
+        if vertex_colors is not None:
+            if not vertex_colors.shape[0] == self.vertices.shape[0]:
+                raise ValueError('Incorrect vertex colors shape: {}'.format(vertex_colors.shape))
+
+        if face_colors is not None:
+            if not face_colors.shape[0] == self.face_colors.shape[0]:
+                raise ValueError('Incorrect vertex colors shape: {}'.format(vertex_colors.shape))
+
+        if self.material is None:
+            self.material = Material(
+                diffuse=np.array([0.5, 0.5, 0.5]),
+                specular=np.array([0.1, 0.1, 0.1]),
+                shininess=10.0,
+                smooth=False,
+                wireframe=False,
+            )
+
+    @property
+    def transparent(self):
+        shading_mode = self.shading_mode
+
+        if shading_mode & (Shading.TEX_DIFF | Shading.TEX_SPEC):
+            if shading_mode & Shading.TEX_DIFF:
+                if self.material.diffuse.ndim == 3 and self.material.diffuse.shape[2] == 4:
+                    if np.any(self.material.diffuse[:,:,3]) < 1.0:
+                        return True
+            if shading_mode & Shading.TEX_SPEC:
+                if self.material.specular.ndim == 3 and self.material.specular.shape[2] == 4:
+                    if np.any(self.material.specular[:,:,3]) < 1.0:
+                        return True
+        elif shading_mode & Shading.VERT_COLORS:
+            if self.vertex_colors.shape[1] == 4:
+                if np.any(self.vertex_colors[:,3] < 1.0):
+                    return True
+        elif shading_mode & Shading.FACE_COLORS:
+            if self.face_colors.shape[1] == 4:
+                if np.any(self.face_colors[:,3] < 1.0):
+                    return True
+        else:
+            if len(self.material.diffuse) == 4 and self.material.diffuse[3] < 1.0:
+                return True
+            if len(self.material.specular) == 4 and self.material.specular[3] < 1.0:
+                return True
+        return False
+
+    @property
+    def shading_mode(self):
+        mode = Shading.DEFAULT
+        if self.texture_coords is not None:
+            if self.material.diffuse.ndim > 1:
+                mode |= Shading.TEX_DIFF
+            if self.material.specular.ndim > 1:
+                mode |= Shading.TEX_SPEC
+            if self.material.normal is not None and self.material.normal.ndim > 1:
+                mode |= Shading.TEX_NORM
+            if self.material.emission is not None and self.material.emission.ndim > 1:
+                mode |= Shading.TEX_EMIT
+        if mode == Shading.DEFUALT:
+            if self.vertex_colors is not None:
+                mode |= Shading.VERT_COLORS
+            elif self.face_colors is not None:
+                mode |= Shading.FACE_COLORS
+
+    @staticmethod
+    def from_trimesh(mesh, material=None, texture_coords=None, visible=True):
+        """Create a SceneObject from a :obj:`trimesh.Trimesh`.
 
         Parameters
         ----------
-        mesh : trimesh.Trimesh
-            A mesh representing the object's geometry.
-        T_obj_world : autolab_core.RigidTransform
-            A rigid transformation from the object's frame to the world frame.
-        material : MaterialProperties
-            A set of material properties for the object.
-        enabled : bool
+        mesh : :obj:`trimesh.Trimesh`
+            A triangular mesh.
+        material : :obj:`Material`
+            The material of the object. If not specified, a default grey material
+            will be used.
+        texture_coords : (n, 2) float, optional
+            Texture coordinates for vertices, if needed.
+        visible : bool
             If False, the object will not be rendered.
+
+        Returns
+        -------
+        scene_object : :obj:`SceneObject`
+            The scene object created from the triangular mesh.
         """
-        if not isinstance(mesh, Trimesh):
-            raise ValueError('mesh must be an object of type Trimesh')
-        if T_obj_world is None:
-            T_obj_world = RigidTransform(from_frame='obj', to_frame='world')
-        if material is None:
-            material = MaterialProperties()
-        if material.smooth:
-            mesh = mesh.smoothed()
+        vertex_colors = None
+        face_colors = None
 
-        self._mesh = mesh
-        self._material = material
-        self.T_obj_world = T_obj_world
-        self._enabled = True
+        if mesh.visual.defined:
+            if mesh.visual.kind == 'vertex':
+                vertex_colors = mesh.visual.vertex_colors / 255.0
+            elif mesh.visual.kind == 'face':
+                face_colors = mesh.visual.face_colors / 255.0
 
-    @property
-    def enabled(self):
-        """bool: If False, the object will not be rendered.
-        """
-        return self._enabled
-
-    @enabled.setter
-    def enabled(self, enabled):
-        self._enabled = enabled
-
-    @property
-    def mesh(self):
-        """trimesh.Trimesh: A mesh representing the object's geometry.
-        """
-        return self._mesh
-
-    @property
-    def material(self):
-        """MaterialProperties: A set of material properties for the object.
-        """
-        return self._material
-
-    @property
-    def T_obj_world(self):
-        """autolab_core.RigidTransform: A rigid transformation from the object's frame to the world frame.
-        """
-        return self._T_obj_world
-
-    @T_obj_world.setter
-    def T_obj_world(self, T):
-        if not isinstance(T, RigidTransform):
-            raise ValueError('transform must be an object of type RigidTransform')
-        self._T_obj_world = T
+        return SceneObject(vertices=mesh.vertices, vertex_normals=mesh.vertex_normals,
+                           faces=mesh.faces, face_normals=mesh.face_normals,
+                           vertex_colors=vertex_colors, face_colors=face_colors, material=material,
+                           texture_coords=texture_coords, visible=visible)
 
 class InstancedSceneObject(SceneObject):
-    """A scene object which consists as a set of identical objects.
+    """An instanced triangular mesh scene object.
+
+    Attributes
+    ----------
+    scene_object : :obj:`SceneObject`
+        Base scene object to instance.
+    poses : (n,4,4) float
+        List of poses for each instance relative to base frame.
     """
-    def __init__(self, mesh, poses=None, raw_pose_data=None, colors=None,
-                 T_obj_world=None,
-                 material=None,
-                 enabled=True):
-        """Initialize a scene object with the given mesh, pose, and material.
 
-        Parameters
-        ----------
-        mesh : trimesh.Trimesh
-            A mesh representing the object's geometry.
-        poses : list of autolab_core.RigidTransform
-            A set of poses, one for each instance of the scene object,
-            relative to the full object's origin.
-        raw_pose_data : (4*n,4) float or None
-            A numpy array containing raw pose data, where each row is a column of a point's
-            homogenous transform matrix. If not present, poses must be present.
-        colors : (n,3) float or None
-            A set of colors for each instanced object. If None, the color specified in material
-            properties is used for all instances.
-        T_obj_world : autolab_core.RigidTransform
-            A rigid transformation from the object's frame to the world frame.
-        material : MaterialProperties
-            A set of material properties for the object.
-        enabled : bool
-            If False, the object will not be rendered.
-        """
-
-        super(InstancedSceneObject, self).__init__(mesh, T_obj_world, material, enabled)
-        self._poses = poses
-        self._raw_pose_data = raw_pose_data
-
-        if self._raw_pose_data is None:
-            if self._poses is None:
-                raise ValueError('Either poses or raw_pose_data must be specified')
-            self._raw_pose_data = np.zeros((4*len(self._poses), 4))
-            for i, pose in enumerate(self._poses):
-                self._raw_pose_data[i*4:(i+1)*4,:] = pose.matrix.T
-
-        self._n_instances = self._raw_pose_data.shape[0] // 4
-
-        self._colors = colors
-        if self._colors is None:
-            self._colors = np.tile(material.color, (self._n_instances,1))
+    def __init__(self, scene_object, poses):
+        self.scene_object = scene_object
+        self.poses = poses
 
     @property
-    def poses(self):
-        """list of autolab_core.RigidTransform: A set of poses for each instance relative to the object's origin.
-        """
-        return self._poses
+    def transparent(self):
+        return self.scene_object.transparent
 
     @property
-    def raw_pose_data(self):
-        """(4*n,4) float: Raw data for pose matrices.
-        """
-        return self._raw_pose_data
-
-    @property
-    def colors(self):
-        """(n,3) float: The color of each instance.
-        """
-        return self._colors
-
-    @property
-    def n_instances(self):
-        """int: The number of instances of this object.
-        """
-        return self._n_instances
+    def shading_mode(self):
+        return self.scene_object.shading_mode | Shading.INSTANCED
