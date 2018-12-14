@@ -521,6 +521,7 @@ class SceneViewer(pyglet.window.Window):
         glDepthFunc(GL_LESS)
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
+        self._scene_obj_to_vaid = {}
         self._vaids = self._load_meshes()
         glBindVertexArray(self._vaids[0])
         self._shader = self._load_shaders(vertex_shader, fragment_shader)
@@ -543,14 +544,27 @@ class SceneViewer(pyglet.window.Window):
     def _load_meshes(self):
         """Load the scene's meshes into vertex buffers.
         """
-        VA_ids = glGenVertexArrays(len(self.scene.objects))
 
-        if len(self.scene.objects) == 1:
+        # Add objects that aren't already in the viewer
+        objs_to_add = set()
+        objs_to_remove = set()
+        for obj in self.scene.objects.values():
+            if obj not in self._scene_obj_to_vaid:
+                objs_to_add.add(obj)
+        for obj in self._scene_obj_to_vaid:
+            if obj not in self.scene.objects.values():
+                objs_to_remove.add(obj)
+
+        VA_ids = glGenVertexArrays(len(objs_to_add))
+
+        if len(objs_to_add) == 1
             VA_ids = [VA_ids]
 
         for VA_id, obj in zip(VA_ids, self.scene.objects.values()):
             mesh = obj.mesh
             material = obj.material
+
+            self._scene_obj_to_vaid[obj] = VA_id
 
             glBindVertexArray(VA_id)
 
@@ -650,6 +664,10 @@ class SceneViewer(pyglet.window.Window):
             glBindVertexArray(0)
             glBindBuffer(GL_ARRAY_BUFFER, 0)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0)
+
+            # Now, remove objects
+            for obj in objs_to_remove:
+                VA_id = self._scene_obj_to_vaid[obj]
 
         return VA_ids
 
