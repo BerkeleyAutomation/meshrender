@@ -124,5 +124,5 @@ class SpotLight(Light):
         self.constant = constant
         self.linear = linear
         self.quadratic = quadratic
-        self.inner_angle = inner_angle
-        self.outer_angle = outer_angle
+        self.inner_angle = np.deg2rad(inner_angle)
+        self.outer_angle = np.deg2rad(outer_angle)

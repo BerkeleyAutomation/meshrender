@@ -14,21 +14,21 @@ class SceneObject(object):
     ----------
     vertices : (n,3) float
         Object vertices.
-    visible : bool
+    is_visible : bool
         If False, the object will not be rendered.
     poses : (n,4,4) float
         If specified, makes this object an instanced object.
         List of poses for each instance relative to object base frame.
     """
-    def __init__(self, vertices, visible=True, poses=None):
+    def __init__(self, vertices, is_visible=True, poses=None):
         self.vertices = vertices
         self.poses = poses
+        self.is_visible = is_visible
+        self.is_transparent = self._compute_transparency()
+        self.is_instanced = (self.poses is not None)
+        self.shading_mode = self._compute_shading_mode()
 
         self._bounds = None
-
-    @property
-    def is_instanced(self):
-        return (self.poses is not None)
 
     @property
     def bounds(self):
@@ -44,13 +44,13 @@ class SceneObject(object):
             self._bounds = bounds
         return self._bounds
 
-    @property
-    def is_transparent(self):
-        return False
+    @abc.abstractmethod
+    def _compute_transparency(self):
+        pass
 
-    @property
-    def shading_mode(self):
-        return Shading.DEFUALT
+    @abc.abstractmethod
+    def _compute_shading_mode(self):
+        pass
 
 class PointCloudSceneObject(SceneObject):
     """A cloud of points.
@@ -61,29 +61,27 @@ class PointCloudSceneObject(SceneObject):
         Object vertices.
     vertex_colors : (n,3) or (n,4) float
         Colors of each vertex.
-    visible : bool
+    is_visible : bool
         If False, the object will not be rendered.
     poses : (n,4,4) float
         If specified, makes this object an instanced object.
         List of poses for each instance relative to object base frame.
     """
 
-    def __init__(self, vertices, vertex_colors=None, visible=True, poses=None):
-        super(PointCloudSceneObject, self).__init__(vertices, visible, poses)
+    def __init__(self, vertices, vertex_colors=None, is_visible=True, poses=None):
+        super(PointCloudSceneObject, self).__init__(vertices, is_visible, poses)
         self.vertex_colors = vertex_colors
 
         if self.vertex_colors is None:
             self.vertex_colors = 0.5 * np.ones(size=self.vertices.size)
 
-    @property
-    def transparent(self):
+    def _compute_transparency(self):
         if self.vertex_colors.shape[1] == 4:
             if np.any(self.vertex_colors[:,3] < 1.0):
                 return True
         return False
 
-    @property
-    def shading_mode(self):
+    def _compute_shading_mode(self):
         return Shading.POINT_CLOUD
 
 class MeshSceneObject(SceneObject):
@@ -111,7 +109,7 @@ class MeshSceneObject(SceneObject):
         will be used.
     texture_coords : (n, 2) float, optional
         Texture coordinates for vertices, if needed.
-    visible : bool
+    is_visible : bool
         If False, the object will not be rendered.
     poses : (n,4,4) float
         If specified, makes this object an instanced object.
@@ -120,8 +118,8 @@ class MeshSceneObject(SceneObject):
 
     def __init__(self, vertices, vertex_normals=None, faces=None, face_normals=None,
                  vertex_colors=None, face_colors=None, material=None, texture_coords=None,
-                 visible=True, poses=None):
-        super(MeshSceneObject, self).__init__(vertices, visible, poses)
+                 is_visible=True, poses=None):
+        super(MeshSceneObject, self).__init__(vertices, is_visible, poses)
         self.vertex_normals = vertex_normals
         self.faces = faces
         self.face_normals = face_normals
@@ -158,10 +156,8 @@ class MeshSceneObject(SceneObject):
             if not face_colors.shape[0] == self.face_colors.shape[0]:
                 raise ValueError('Incorrect vertex colors shape: {}'.format(vertex_colors.shape))
 
-
-    @property
-    def transparent(self):
-        shading_mode = self.shading_mode
+    def _compute_transparency(self):
+        shading_mode = self._compute_shading_mode()
 
         if shading_mode & (Shading.TEX_DIFF | Shading.TEX_SPEC):
             if shading_mode & Shading.TEX_DIFF:
@@ -187,8 +183,7 @@ class MeshSceneObject(SceneObject):
                 return True
         return False
 
-    @property
-    def shading_mode(self):
+    def _compute_shading_mode(self):
         mode = Shading.DEFAULT
         if self.texture_coords is not None:
             if self.material.diffuse.ndim > 1:
@@ -204,9 +199,10 @@ class MeshSceneObject(SceneObject):
                 mode |= Shading.VERT_COLORS
             elif self.face_colors is not None:
                 mode |= Shading.FACE_COLORS
+        return mode
 
     @staticmethod
-    def from_trimesh(mesh, material=None, texture_coords=None, visible=True, poses=None):
+    def from_trimesh(mesh, material=None, texture_coords=None, is_visible=True, poses=None):
         """Create a SceneObject from a :obj:`trimesh.Trimesh`.
 
         Parameters
@@ -218,7 +214,7 @@ class MeshSceneObject(SceneObject):
             will be used.
         texture_coords : (n, 2) float, optional
             Texture coordinates for vertices, if needed.
-        visible : bool
+        is_visible : bool
             If False, the object will not be rendered.
         poses : (n,4,4) float
             If specified, makes this object an instanced object.
@@ -241,4 +237,4 @@ class MeshSceneObject(SceneObject):
         return MeshSceneObject(vertices=mesh.vertices, vertex_normals=mesh.vertex_normals,
                                faces=mesh.faces, face_normals=mesh.face_normals,
                                vertex_colors=vertex_colors, face_colors=face_colors, material=material,
-                               texture_coords=texture_coords, visible=visible, poses=poses)
+                               texture_coords=texture_coords, is_visible=is_visible, poses=poses)

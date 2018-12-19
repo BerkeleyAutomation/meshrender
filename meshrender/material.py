@@ -35,6 +35,9 @@ class Material(object):
         self.smooth = smooth
         self.wireframe = wireframe
 
+        if self.emission is None:
+            self.emission = np.zeros(3)
+
         # Change diffuse to a 4-vec
         if self.diffuse.ndim == 1:
             if self.diffuse.shape[0] == 3:
