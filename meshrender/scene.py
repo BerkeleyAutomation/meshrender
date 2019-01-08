@@ -18,12 +18,26 @@ class Scene(object):
     def __init__(self, bg_color=None):
         self.bg_color = bg_color
         if self.bg_color is None:
-            self.bg_color = np.ones(3)
+            self.bg_color = np.ones(4)
+        if len(self.bg_color) == 3:
+            self.bg_color = np.hstack((self.bg_color, 1.0))
 
         self._objects = {}
         self._lights = {}
         self._camera = None
         self._tree = TransformTree()
+
+    @property
+    def object_names(self):
+        return list(self._objects.keys())
+
+    @property
+    def light_names(self):
+        return list(self._lights.keys())
+
+    @property
+    def camera(self):
+        return self._camera
 
     def add_object(self, obj, name=None, parent_name=None, pose=None):
         self._add(obj, name, parent_name, pose)

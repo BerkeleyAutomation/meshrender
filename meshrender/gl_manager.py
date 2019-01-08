@@ -29,7 +29,6 @@ class OpenGLObject(object):
 
     def __init__(self, obj):
         self.obj = obj
-        self.shading_mode = obj.shading_mode
 
         self._buffers = []
         self._vaid = None
@@ -142,7 +141,12 @@ class OpenGLObject(object):
         # Delete vertex array
         glDeleteVertexArrays(1, [self._vaid])
 
-class GLManager(object):
+class GLContext(object):
+    """An OpenGL context used for rendering.
+
+    Assumes an active OpenGL context + window and handles all other OpenGL
+    functions.
+    """
 
     def __init__(self, use_framebuffer, width, height, background_color):
         self._use_framebuffer = use_framebuffer
@@ -160,7 +164,7 @@ class GLManager(object):
         if self.use_framebuffer:
             self._bind_framebuffer()
 
-        # Map from scene objects to VAOs
+        self._objects
 
     @property
     def use_framebuffer(self):
@@ -192,8 +196,16 @@ class GLManager(object):
             self._bind_framebuffer()
         glViewport(0, 0, width, height)
 
-    # Initialize basics
+    def add_object(self, name, scene_object):
+        pass
 
+    def remove_object(self, name, scene_object):
+        pass
+
+    def clear(self):
+        pass
+
+    # Initialize basics
     def _init_basic_configuration(self):
         """Initialize simple, global OpenGL constants.
         """

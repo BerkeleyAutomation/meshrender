@@ -1,10 +1,56 @@
-import abc
-import six
+"""OpenGL shader program wrapper.
+"""
+import os
 
 from OpenGL.GL import *
 from OpenGL.GL import shaders as gl_shader_utils
 
-class Program(object):
+class ShaderProgramCache(object):
+    """A cache for shader programs.
+    """
+
+    def __init__(self):
+        self._program_cache = {}
+
+    def get_program(self, shader_filenames):
+        """Get a program via a list of shader files to include in the program.
+
+        Parameters
+        ----------
+        shader_filenames : list of str
+            Path to shader files that should be compiled into this program.
+            Acceptable file extensions are .vert, .geom, and .frag.
+        """
+        shader_names = []
+        for fn in shader_filenames:
+            _, name = os.path.split(fn)
+            shader_names.append(name)
+        shader_names = tuple(sorted(shader_names))
+
+        if shader_names not in self._program_cache:
+            self._program_cache[shader_names] = ShaderProgram(shader_filenames)
+        return self._program_cache[shader_names]
+
+    def clear(self):
+        self.delete()
+
+    def delete(self):
+        """Delete all cached shader programs.
+        """
+        for key in self._program_cache:
+            self._program_cache[key].delete()
+        self._program_cache = {}
+
+class ShaderProgram(object):
+    """A thin wrapper about OpenGL shader programs that supports easy creation,
+    binding, and uniform-setting.
+
+    Attributes
+    ----------
+    shader_filenames: list of str
+        Path to shader files that should be compiled into this program.
+        Acceptable file extensions are .vert, .geom, and .frag.
+    """
 
     def __init__(self, shader_filenames):
 
@@ -32,28 +78,46 @@ class Program(object):
             shaders_ids.append(shader_id)
 
         # Compile program
-        self.program_id = gl_shader_utils.compileProgram(shader_ids)
+        self._program_id = gl_shader_utils.compileProgram(shader_ids)
 
         # Free shaders
         for sid in shader_ids:
             glDeleteShader(sid)
 
     def bind(self):
-        glUseProgram(self.program_id)
+        """Bind this shader program to the current OpenGL context.
+        """
+        glUseProgram(self._program_id)
 
     def unbind(self):
+        """Unbind this shader program from the current OpenGL context.
+        """
         glUseProgram(0)
 
     def delete(self):
-        if self.program_id is not None:
-            glDeleteProgram(self.program_id)
-            self.program_id = None
+        """Delete this shader program from the current OpenGL context.
+        """
+        if self._program_id is not None:
+            glDeleteProgram(self._program_id)
+            self._program_id = None
 
     def __del__(self):
-        self.delete()
+        if self._program_id is not None:
+            self.delete()
 
     def set_uniform(self, name, value, unsigned=False):
-        loc = glGetUniformLocation(self.program_id, name)
+        """Set a uniform value in the current shader program.
+
+        Parameters
+        ----------
+        name : str
+            Name of the uniform to set.
+        value : int, float, or ndarray
+            Value to set the uniform to.
+        unsigned : bool
+            If True, ints will be treated as unsigned values.
+        """
+        loc = glGetUniformLocation(self._program_id, name)
 
         # Call correct uniform function
         if isinstance(value, float):

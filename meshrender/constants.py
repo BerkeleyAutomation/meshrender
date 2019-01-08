@@ -17,6 +17,7 @@ class Shading(object):
     TEX_NORM = 32
     TEX_EMIT = 64
     INSTANCED = 128
+    VERT_NORMALS = 256
 
     # Other
     TEX = 8 | 16 | 32 | 64
