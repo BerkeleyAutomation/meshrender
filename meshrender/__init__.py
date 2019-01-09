@@ -1,11 +1,6 @@
-from .version import __version__
 from .camera import VirtualCamera
-from .material import MaterialProperties
-from .scene_object import SceneObject, InstancedSceneObject
-from .light import Light, AmbientLight, DirectionalLight, PointLight
+from .light import PointLight, DirectionalLight, SpotLight
+from .material import Material
+from .pyglet_viewer import SceneViewer
 from .scene import Scene
-from .random_variables import CameraSample, RenderSample, \
-                              ViewsphereDiscretizer, \
-                              UniformPlanarWorksurfaceRandomVariable, \
-                              UniformPlanarWorksurfaceImageRandomVariable
-from .viewer import SceneViewer
+from .scene_object import PointCloudSceneObject, MeshSceneObject

@@ -12,45 +12,38 @@ class VirtualCamera(object):
     ----------
     intrinsics : :obj:`percetion.CameraIntrinsics`
         The intrinsic properties of the camera, from the Berkeley AUTOLab's perception module.
-    pose : (4,4) float
-        A transform from camera to world coordinates that indicates
-        the camera's pose. The camera frame's x axis points right,
-        its y axis points down, and its z axis points towards
-        the scene (i.e. standard OpenCV coordinates).
     z_near : float
-        The near-plane clipping distance.
+        The near-plane clipping distance, in meters.
     z_far : float
-        The far-plane clipping distance.
+        The far-plane clipping distance, in meters.
     """
 
-    def __init__(self, intrinsics, pose=None, z_near=Z_NEAR, z_far=Z_FAR):
-        """Initialize a virtual camera with the given intrinsics and initial pose in the world.
-
-        Parameters
-        ----------
-        """
-        if not isinstance(intrinsics, CameraIntrinsics):
-            raise ValueError('intrinsics must be an object of type CameraIntrinsics')
-
+    def __init__(self, intrinsics, z_near=Z_NEAR, z_far=Z_FAR):
         self.intrinsics = intrinsics
-        self.pose = pose
         self.z_near = z_near
         self.z_far = z_far
 
-    @property
-    def V(self):
+    def V(self, pose):
         """(4,4) float: A homogenous rigid transform matrix mapping world coordinates
         to camera coordinates. Equivalent to the OpenGL View matrix.
+
+        Parameters
+        ----------
+        pose : (4,4) float
+            A transform from camera to world coordinates that indicates
+            the camera's pose. The camera frame's x axis points right,
+            its y axis points down, and its z axis points towards
+            the scene (i.e. standard OpenCV coordinates).
 
         Note that the OpenGL camera coordinate system has x to the right, y up, and z away
         from the scene towards the eye!
         """
         # Create inverse V (map from camera to world)
-        V_inv = self.pose.copy()
+        V_inv = pose.copy()
         V_inv[:3,1:3] *= -1 # Reverse Y and Z axes
 
         # Compute V (map from world to camera
-        V = np.linalg.inv(V_inv_GL)
+        V = np.linalg.inv(V_inv)
         return V
 
     @property

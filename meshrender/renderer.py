@@ -1,3 +1,10 @@
+import numpy as np
+
+from .constants import *
+from .shader_program import ShaderProgramCache
+from .texture import TextureCache
+
+from OpenGL.GL import *
 
 class Renderer(object):
     """Class for handling all rendering operations on a scene.
@@ -21,29 +28,54 @@ class Renderer(object):
         # Texture Cache
         self._texture_cache = TextureCache()
 
-    def render(self, scene, render_flags, render_modes):
+        self._objects = set()
+
+        # Set up framebuffer if needed / TODO
+
+    def render(self, scene, render_flags):
         self._texture_count = 0
         self._pre_obj_texture_count = 0
 
+        # Delete old textures
+        self._delete_old_textures(scene)
+
         # If using shadow maps, render scene into each light's shadow map
         # first.
+        if render_flags & RenderFlags.SHADOWS:
+            raise NotImplementedError('Shadows not yet implemented')
 
-        # Set up normal render
+        # Else, set up normal render
+        else:
+            self._standard_forward_pass(scene, render_flags)
 
     def _standard_forward_pass(self, scene, render_flags):
         if render_flags & RenderFlags.OFFSCREEN:
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._framebuf)
         else:
-            glBindFramebuffer(0)
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
+
+        # Add objects to context
+        added_objects = set()
+        for obj_name in scene.objects:
+            obj = scene.objects[obj_name]
+            if obj not in self._objects:
+                obj._add_to_context()
+            added_objects.add(obj)
+        objs_to_remove = set()
+        for obj in self._objects:
+            if obj not in added_objects:
+                objs_to_remove.add(obj)
+        for obj in objs_to_remove:
+            self._objects.remove(obj)
+        self._objects = added_objects
 
         # Clear viewport
-        glViewport(0, 0, scene.camera.intrinsics.width, scene.camera.intrinsics.height)
-        glClearColor(*scene.bg_color)
+        self._init_standard_render(scene, render_flags)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Set up camera matrices
         cam_pose = scene.get_pose(scene.camera_name)
-        V = scene.camera.V(pose)
+        V = scene.camera.V(cam_pose)
         P = scene.camera.P
 
         # Now, render each object
@@ -53,19 +85,32 @@ class Renderer(object):
             # Skip the object if it's not visible
             if not obj.is_visible:
                 continue
-            # SET GL BLEND MODE
+            # TODO SET GL BLEND MODE
+
             # First, get the appropriate program
             program = self._get_program(obj) # TODO
+            program.bind()
+
+            # Next, bind the object and its materials
+            obj._bind()
+            # Bind material properties unless using a depth-only render.
+            if not (render_flags & RenderFlags.DEPTH_ONLY):
+                self._bind_object_material(name, obj, program)
+
+            # Bind M matrix
+            M = scene.get_pose(name)
+            program.set_uniform('M', M)
+
+            # First, set V and P matrices
+            program.set_uniform('V', V)
+            program.set_uniform('P', P)
+
             # Next, set lighting if not doing a depth-only render and not using
             # prior program, which already had its uniforms bound for lighting.
             if program != prior_program:
                 if not render_flags & RenderFlags.DEPTH_ONLY:
                     self._bind_lighting_uniforms(scene, program, render_flags)
 
-
-            # same shader
-            # Next, bind the object and its materials
-            self._bind_object(name, scene, program, render_flags)
 
             # Next, set the polygon mode if necessary
             if obj.material.wireframe:
@@ -75,24 +120,49 @@ class Renderer(object):
 
             vaf = obj.vertex_array_flags
 
+            n_instances = 1
+            if vaf & VertexArrayFlags.INSTANCED:
+                n_instances = len(obj.poses)
             if vaf & VertexArrayFlags.TRIANGLES:
-                if vaf & VertexArrayFlags.INSTANCED:
-                    if vaf & VertexArrayFlags.ELEMENTS:
-                        glDrawElementsInstanced(GL_TRIANGLES, 3*len(obj.faces), GL_UNSIGNED_INT,
-                                ctypes.c_void_p(0), len(obj.poses))
-                    else:
-                        glDrawArraysInstanced(GL_TRIANGLES, 0, 3*len(obj.faces), len(obj.poses))
+                if vaf & VertexArrayFlags.ELEMENTS:
+                    glDrawElementsInstanced(GL_TRIANGLES, 3*len(obj.faces), GL_UNSIGNED_INT,
+                            ctypes.c_void_p(0), n_instances)
                 else:
-                    if vaf & VertexArrayFlags.ELEMENTS:
-                    else:
-                        glDrawArrays(GL_TRIANGLES, 0, 3*len(obj.faces))
+                    glDrawArraysInstanced(GL_TRIANGLES, 0, 3*len(obj.faces), n_instances)
             else:
-                if vaf & VertexArrayFlags.INSTANCED:
-                    glDrawArraysInstanced(GL_POINTS, 0, len(obj.vertices), len(obj.poses))
-                else:
-                    glDrawArrays(GL_POINTS, 0, len(obj.vertices))
+                glDrawArraysInstanced(GL_POINTS, 0, len(obj.vertices), n_instances)
 
             prior_program = program
+            #program._print_uniforms()
+
+            # Unbind the object
+            obj._unbind()
+
+        # Unbind the shader and flush the output
+        glUseProgram(0)
+        glFlush()
+
+        if not render_flags & RenderFlags.OFFSCREEN:
+            return
+        else:
+            width, height = self._framebuf_dims[0], self._framebuf_dims[1]
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, self._framebuf)
+            color_buf = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+            depth_buf = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
+
+            color_im = np.frombuffer(color_buf, dtype=np.uint8).reshape((height, width, 3))
+            color_im = np.flip(color_im, axis=0)
+
+            depth_im = np.frombuffer(depth_buf, dtype=np.float32).reshape((height, width))
+            depth_im = np.flip(depth_im, axis=0)
+
+            inf_inds = (depth_im == 1.0)
+            depth_im = 2.0 * depth_im - 1.0
+            z_near, z_far = scene.camera.z_near, scene.camera.z_far
+            depth_im = 2.0 * z_near * z_far / (z_far + z_near - depth_im * (z_far - z_near))
+            depth_im[inf_inds] = 0.0
+
+            return color_im, depth_im
 
     def _sorted_object_names(self, scene):
         """Sort object names so that we iterate front-to-back on solid objects,
@@ -109,42 +179,15 @@ class Renderer(object):
             else:
                 solid_names.append(obj_name)
 
+        # TODO BETTER SORTING METHOD
         transparent_names.sort(
-            key=lambda n : -np.linalg.norm(scene.objects[n].bbox_center - cam_loc)
+            key=lambda n : -np.linalg.norm(scene.get_pose(n)[:3,3] - cam_loc)
         )
         solid_names.sort(
-            key=lambda n : -np.linalg.norm(scene.objects[n].bbox_center - cam_loc)
+            key=lambda n : -np.linalg.norm(scene.get_pose(n)[:3,3] - cam_loc)
         )
 
         return solid_names + transparent_names
-
-    def _bind_camera(self, name='camera', camera, scene, program, render_flags):
-        pass
-
-    def _bind_object(self, name, scene, program, render_flags):
-        """Bind a scene object to a shader program's uniforms.
-
-        Parameters
-        ----------
-        name : str
-            Name of object in scene.
-        scene : :obj:`Scene`
-            Scene containing object.
-        program : :obj:`ShaderProgram`
-            Shader program to bind materials for.
-        render_flags : int
-            Flags for rendering
-        """
-        obj = scene.objects[name]
-        obj.bind()
-
-        # Bind material properties unless using a depth-only render.
-        if render_flags & RenderFlags.DEPTH_ONLY:
-            self._bind_object_material(name, obj, program)
-
-        # Bind M matrix
-        M = scene.get_pose(name)
-        program.set_uniform('M', M)
 
     def _bind_object_material(self, name, obj, program):
         """Bind object's material to shader program uniforms.
@@ -166,7 +209,10 @@ class Renderer(object):
             tex_idx = self._bind_texture(tex)
             program.set_uniform('material.diffuse', tex_idx)
         else:
-            program.set_uniform('material.diffuse', obj.material.diffuse)
+            diffuse = obj.material.diffuse
+            if len(diffuse) == 3:
+                diffuse = np.hstack((diffuse, 1.0))
+            program.set_uniform('material.diffuse', diffuse)
 
         if tm & TextureFlags.SPECULAR:
             tex = self._texture_cache.get_texture(name='{}.specular'.format(name),
@@ -229,6 +275,7 @@ class Renderer(object):
         direc_lights = scene.directional_lights
         spot_lights = scene.spot_lights
 
+        program.set_uniform('n_point_lights', len(scene.point_lights))
         for i, ln in enumerate(scene.point_lights.keys()):
             base = 'point_lights[{}].'.format(i)
             l = scene.point_lights[ln]
@@ -242,6 +289,7 @@ class Renderer(object):
             program.set_uniform(base + 'linear', l.linear)
             program.set_uniform(base + 'quadratic', l.quadratic)
 
+        program.set_uniform('n_spot_lights', len(scene.spot_lights))
         for i, ln in enumerate(scene.spot_lights.keys()):
             base = 'spot_lights[{}].'.format(i)
             l = scene.spot_lights[ln]
@@ -259,6 +307,7 @@ class Renderer(object):
             program.set_uniform(base + 'inner_angle', np.deg2rad(l.inner_angle))
             program.set_uniform(base + 'outer_angle', np.deg2rad(l.outer_angle))
 
+        program.set_uniform('n_direc_lights', len(scene.directional_lights))
         for i, ln in enumerate(scene.directional_lights.keys()):
             base = 'directional_lights[{}].'.format(i)
             l = scene.directional_lights[ln]
@@ -276,6 +325,28 @@ class Renderer(object):
         glDepthMask(GL_TRUE)
         glDepthFunc(GL_LESS)
         glDepthRange(0.0, 1.0)
+
+    def _get_program(self, obj):
+        vbf = obj.vertex_buffer_flags
+        vaf = obj.vertex_array_flags
+        tf = obj.texture_flags
+
+        # Trimesh
+        if vaf & VertexArrayFlags.TRIANGLES:
+            # Per-Vertex Color only
+            if vbf & VertexBufferFlags.COLOR:
+                if not vbf & VertexBufferFlags.TEXTURE:
+                    return self._program_cache.get_program(['vertex_color.vert', 'vertex_color.frag'])
+                else:
+                    raise NotImplementedError('STILL NEED TO IMP TEXTURE SHADERS')
+            else:
+                if vbf & VertexBufferFlags.TEXTURE:
+                    raise NotImplementedError('STILL NEED TO IMP TEXTURE SHADERS')
+                else:
+                    return self._program_cache.get_program(['monochrome.vert', 'vertex_color.frag'])
+        # Point Cloud
+        else:
+            return self._program_cache.get_program(['point_cloud.vert', 'point_cloud.frag'])
 
     def _init_framebuffer(self, scene):
         camera = scene.camera

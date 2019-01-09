@@ -1,18 +1,15 @@
 import numpy as np
+import networkx as nx
+import trimesh
 import uuid
 
-from perception import BinaryImage, ColorImage, DepthImage, RgbdImage, GdImage, RenderMode
-
+from .scene_object import SceneObject
 from .camera import VirtualCamera
-from .scene_object import SceneObject, PointCloudSceneObject, MeshSceneObject, InstancedSceneObject
-from .material import MaterialProperties
 from .light import Light, PointLight, DirectionalLight, SpotLight
-from .constants import MAX_N_LIGHTS
-from .render import OpenGLRenderer
-from .transform_tree import TransformTree
 
 class Scene(object):
-    """A scene containing objects and lights for 3D OpenGL rendering.
+    """Implementation of a scene graph, which contains objects, lights, and a camera
+    for 3D OpenGL rendering.
     """
 
     def __init__(self, bg_color=None):
@@ -20,93 +17,46 @@ class Scene(object):
         if self.bg_color is None:
             self.bg_color = np.ones(4)
         if len(self.bg_color) == 3:
-            self.bg_color = np.hstack((self.bg_color, 1.0))
+            self.bg_color = np.hstack((bg_color, 1.0))
 
         self._objects = {}
         self._lights = {}
         self._camera = None
+        self._camera_name = None
+        self._name_map = {}
         self._tree = TransformTree()
 
     @property
-    def object_names(self):
-        return list(self._objects.keys())
+    def objects(self):
+        """dict : Map from object node names to SceneObject instances.
+        """
+        return self._objects.copy()
 
     @property
-    def light_names(self):
-        return list(self._lights.keys())
+    def lights(self):
+        return self._lights.copy()
 
+    @property
+    def point_lights(self):
+        return {k : self._lights[k] for k in self._lights if
+                    isinstance(self._lights[k], PointLight)}
+
+    @property
+    def directional_lights(self):
+        return {k : self._lights[k] for k in self._lights if
+                    isinstance(self._lights[k], DirectionalLight)}
+
+    @property
+    def spot_lights(self):
+        return {k : self._lights[k] for k in self._lights if
+                    isinstance(self._lights[k], SpotLight)}
     @property
     def camera(self):
         return self._camera
 
-    def add_object(self, obj, name=None, parent_name=None, pose=None):
-        self._add(obj, name, parent_name, pose)
-
-    def remove_object(self, name):
-        self._remove(name)
-
-    def get_object_pose(self, name, to_frame=None):
-        if to_frame is None:
-            to_frame = self._tree.base_frame
-        return self._tree.get_pose(name, to_frame)
-
-    def update_object_pose(self, name, pose):
-        self._tree.set_pose(name, pose)
-        self._bounds = None
-
-    def add_light(self, light, name=None, parent_name=None):
-        self._add(light, name, parent_name)
-
-    def remove_light(self, name):
-        self._remove(name)
-
-    def get_light_pose(self, name, to_frame=None):
-        if to_frame is None:
-            to_frame = self._tree.base_frame
-        return self._tree.get_pose(name, to_frame)
-
-    def add_camera(self, camera, parent_name=None, pose=None):
-        self._add(camera, '__camera__', parent_name, pose)
-
-    def remove_camera(self):
-        self._remove('__camera__')
-
-    def update_camera_pose(self, pose):
-        self._tree.set_pose('__camera__', pose)
-
-    def get_camera_pose(self, to_frame=None):
-        if to_frame is None:
-            to_frame = self._tree.base_frame
-        return self._tree.get_pose('__camera__', to_frame)
-
-    def _add(self, obj, name=None, parent_name=None, pose=None):
-        if name is None:
-            name = uuid.uuid4().hex
-        if parent_name is None:
-            parent_name = self._tree.base_frame
-        if pose is None:
-            pose = np.eye(4)
-        self._tree.add_node(name, parent_name, pose)
-
-        if isinstance(obj, Light):
-            self._lights[name] = light
-        elif isinstance(obj, SceneObject):
-            self._objects[name] = obj
-        elif isinstance(obj, VirtualCamera):
-            self._camera = obj
-        else:
-            raise TypeError('Unsupported type {}'.format(obj.__class__.__name__))
-
-    def _remove(self, name):
-        removed_names = self._tree.remove_node(name)
-        for n in removed_names:
-            if n in self._lights:
-                self._lights.pop(n)
-            elif n in self._objects:
-                self._objects.pop(n)
-            elif n == '__camera__':
-                self._camera = None
-        self._bounds = None
+    @property
+    def camera_name(self):
+        return self._camera_name
 
     @property
     def bounds(self):
@@ -114,9 +64,9 @@ class Scene(object):
         corners = []
         for obj_name in self._objects:
             obj = self._objects[obj_name]
-            pose = self.get_object_pose(obj_name)
+            pose = self.get_pose(obj_name)
             corners_local = trimesh.bounds.corners(obj.bounds)
-            corners_world = pose[:3,:3].dot(bounds.T).T + pose[:3,3]
+            corners_world = pose[:3,:3].dot(corners_local.T).T + pose[:3,3]
             corners.append(corners_world)
         corners = np.vstack(corners)
         bounds = np.array([np.min(corners, axis=0), np.max(corners, axis=0)])
@@ -134,3 +84,132 @@ class Scene(object):
     @property
     def scale(self):
         return np.linalg.norm(self.extents)
+
+    def add(self, obj, name=None, parent_name=None, pose=None):
+        if name in self._lights:
+            raise ValueError('Light with name {} already exists!'.format(name))
+        if name in self._objects:
+            raise ValueError('Object with name {} already exists!'.format(name))
+
+        if name is None:
+            if isinstance(obj, VirtualCamera):
+                name = 'camera'
+            elif isinstance(obj, SceneObject):
+                name = 'object_' + uuid.uuid4().hex
+            elif isinstance(obj, PointLight):
+                name = 'point_light_' + uuid.uuid4().hex
+            elif isinstance(obj, DirectionalLight):
+                name = 'dir_light_' + uuid.uuid4().hex
+            elif isinstance(obj, SpotLight):
+                name = 'spot_light_' + uuid.uuid4().hex
+        if parent_name is None:
+            parent_name = self._tree.base_frame
+        if pose is None:
+            pose = np.eye(4)
+        else:
+            pose = pose.copy()
+
+        if isinstance(obj, VirtualCamera):
+            self._camera = obj
+            self._camera_name = name
+        elif isinstance(obj, SceneObject):
+            self._objects[name] = obj
+        elif isinstance(obj, Light):
+            self._lights[name] = obj
+
+        self._tree.add_node(name, parent_name, pose)
+        self._name_map[name] = obj
+
+        return name
+
+    def remove(self, name):
+        removed_names = self._tree.remove_node(name)
+        for n in removed_names:
+            if n in self._lights:
+                self._lights.pop(n)
+            elif n in self._objects:
+                self._objects.pop(n)
+                self._bounds = None
+            elif name == self._camera_name:
+                self._camera = None
+                self._camera_name = None
+            else:
+                raise ValueError('Name {} not in scene'.format(name))
+            self._name_map.pop(n)
+
+    def get_pose(self, name, to_frame=None):
+        if to_frame is None:
+            to_frame = self._tree.base_frame
+        return self._tree.get_pose(name, to_frame)
+
+    def set_pose(self, name, pose):
+        self._tree.set_pose(name, pose.copy())
+        if isinstance(self._name_map[name], SceneObject):
+            self._bounds = None
+
+class TransformTree(object):
+    """Borrowed and adapted from mikedh/trimesh/scene/transforms.py.
+    """
+
+    def __init__(self, base_frame='world'):
+        self.base_frame = base_frame
+        # Digraph contains directed edges from parents to children,
+        # plus pose matrices on nodes.
+        self._digraph = nx.DiGraph()
+
+        # Udgraph contains undirected edges, for search.
+        self._udgraph = nx.Graph()
+
+        self._digraph.add_node(base_frame, pose=np.eye(4))
+        self._udgraph.add_node(base_frame)
+
+        self._path_cache = {} # TODO FIGURE OUT CACHING
+
+    def add_node(self, frame, parent_frame=None, pose=None):
+        if parent_frame is None:
+            parent_frame = self.base_frame
+        elif not parent_frame in self._digraph.nodes:
+            raise ValueError('Frame {} not in transform tree'.format(parent_frame))
+
+        if pose is None:
+            pose = np.eye(4)
+
+        self._digraph.add_node(frame, pose=pose)
+        self._udgraph.add_node(frame)
+        self._digraph.add_edge(parent_frame, frame)
+        self._udgraph.add_edge(parent_frame, frame)
+
+    def remove_node(self, frame):
+        removed_children = []
+        self._remove_node(frame, removed_children)
+        return removed_children
+
+    def _remove_node(self, frame, removed_children):
+        # Find children
+        for child in self._digraph[frame]:
+            self._remove_node(child, removed_children)
+        self._digraph.remove_node(frame)
+        self._udgraph.remove_node(frame)
+        removed_children.append(frame)
+
+    def get_pose(self, from_frame, to_frame=None):
+        if to_frame is None:
+            to_frame = self.base_frame
+
+        # Get path from from_frame to to_frame
+        path = nx.shortest_path(self._udgraph, from_frame, to_frame)
+
+        # Traverse from from_node to to_node
+        pose = np.eye(4)
+        for i in range(len(path) - 1):
+            if self._digraph.has_edge(path[i], path[i+1]):
+                # Path[i] is parent of path[i+1], so invert matrix
+                matrix = np.linalg.inv(self._digraph.nodes[path[i]]['pose'])
+            else:
+                matrix = self._digraph.nodes[path[i]]['pose']
+            pose = np.dot(pose, matrix)
+
+        return pose
+
+    def set_pose(self, frame, pose):
+        self._digraph.nodes[frame]['pose'] = pose

@@ -3,15 +3,15 @@ class Material(object):
 
     Attributes
     ----------
-    diffuse : (3,) or (4,) float or (n,n,d) uint8
+    diffuse : (3,) or (4,) float or (n,n,d) float
         Either a single RGB diffuse color or a texture map image.
         Final dimension of texture map can be 1,3, or 4.
-    specular : (1,) or (3,) float or (n,n,d) uint8
+    specular : (1,) or (3,) float or (n,n,d) float
         Either a single RGB specular color or a texture map image.
         Final dimension of texture map can be 1 or 3.
     shininess : float
         Exponential shininess term.
-    emission : (3,) float or (n,n,d) uint8
+    emission : (3,) float or (n,n,d) float
         Either a single RGB emission color or a texture map image.
         Final dimension of texture map can be 1,3, or 4.
     normal : (n,n,3) float
@@ -38,7 +38,7 @@ class Material(object):
         if self.emission is None:
             self.emission = np.zeros(3)
 
-        # Change diffuse to a 4-vec to support transparency
+        # Change diffuse to a 4-vec
         if self.diffuse.ndim == 1:
             if self.diffuse.shape[0] == 3:
                 self.diffuse = np.hstack((self.diffuse, 1.0))

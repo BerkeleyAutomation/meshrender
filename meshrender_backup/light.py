@@ -1,4 +1,4 @@
-"""Scene lighting effects.
+"""Lighting options
 """
 import numpy as np
 
@@ -21,7 +21,7 @@ class Light(object):
         self.specular = specular
 
 class DirectionalLight(Light):
-    """A directional light source, which casts light along a given
+    """A directional light source, which casts light along a given\
     direction with parallel rays.
 
     Attributes
@@ -124,5 +124,5 @@ class SpotLight(Light):
         self.constant = constant
         self.linear = linear
         self.quadratic = quadratic
-        self.inner_angle = inner_angle
-        self.outer_angle = inner_angle
+        self.inner_angle = np.deg2rad(inner_angle)
+        self.outer_angle = np.deg2rad(outer_angle)

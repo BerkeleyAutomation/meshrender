@@ -1,5 +1,6 @@
 """OpenGL shader program wrapper.
 """
+import numpy as np
 import os
 
 from OpenGL.GL import *
@@ -9,8 +10,12 @@ class ShaderProgramCache(object):
     """A cache for shader programs.
     """
 
-    def __init__(self):
+    def __init__(self, shader_dir=None):
         self._program_cache = {}
+        self.shader_dir = shader_dir
+        if self.shader_dir is None:
+            base_dir, _ = os.path.split(os.path.realpath(__file__))
+            self.shader_dir = os.path.join(base_dir, 'shaders')
 
     def get_program(self, shader_filenames):
         """Get a program via a list of shader files to include in the program.
@@ -28,6 +33,7 @@ class ShaderProgramCache(object):
         shader_names = tuple(sorted(shader_names))
 
         if shader_names not in self._program_cache:
+            shader_filenames = [os.path.join(self.shader_dir, fn) for fn in shader_filenames]
             self._program_cache[shader_names] = ShaderProgram(shader_filenames)
         return self._program_cache[shader_names]
 
@@ -55,9 +61,11 @@ class ShaderProgram(object):
     def __init__(self, shader_filenames):
 
         shader_ids = []
+        self.shader_filenames = shader_filenames
 
         # Load and compile shaders
         for shader_filename in shader_filenames:
+            # Add proper directory to shader filename
             # Get shader type
             path, base = os.path.split(shader_filename)
             _, ext = os.path.splitext(base)
@@ -75,10 +83,10 @@ class ShaderProgram(object):
                 shader_str = f.read()
 
             shader_id = gl_shader_utils.compileShader(shader_str, shader_type)
-            shaders_ids.append(shader_id)
+            shader_ids.append(shader_id)
 
         # Compile program
-        self._program_id = gl_shader_utils.compileProgram(shader_ids)
+        self._program_id = gl_shader_utils.compileProgram(*shader_ids)
 
         # Free shaders
         for sid in shader_ids:
@@ -93,6 +101,17 @@ class ShaderProgram(object):
         """Unbind this shader program from the current OpenGL context.
         """
         glUseProgram(0)
+
+    def _print_uniforms(self):
+        print '============================='
+        x = glGetProgramiv(self._program_id, GL_ACTIVE_UNIFORMS)
+        data = (GLfloat * 16)()
+        for i in range(x):
+            name, _, _ = glGetActiveUniform(self._program_id, i)
+            loc = glGetUniformLocation(self._program_id, name)
+            a = glGetUniformfv(self._program_id, loc, data)
+            print name, list(data)
+        print '-----------------------------'
 
     def delete(self):
         """Delete this shader program from the current OpenGL context.
@@ -119,6 +138,9 @@ class ShaderProgram(object):
         """
         loc = glGetUniformLocation(self._program_id, name)
 
+        if loc == -1:
+            raise ValueError('Invalid shader name variable: {}'.format(name))
+
         # Call correct uniform function
         if isinstance(value, float):
             glUniform1f(loc, value)
@@ -134,7 +156,7 @@ class ShaderProgram(object):
                 glUniform1i(loc, int(value))
         elif isinstance(value, np.ndarray):
             # Set correct data type
-            if value.dtype in set([np.uint8, np.uint16, np.uint32, np.uint64]) or unsigned:
+            if np.issubdtype(value.dtype, np.unsignedinteger) or unsigned:
                 value = value.astype(np.uint32)
                 if value.ndim == 1:
                     if value.shape[0] == 1:
@@ -149,7 +171,7 @@ class ShaderProgram(object):
                         raise ValueError('Invalid data type')
                 else:
                     raise ValueError('Invalid data type')
-            elif value.dtype in set([np.int8, np.int16, np.int32, np.int64]):
+            elif np.issubdtype(value.dtype, np.signedinteger):
                 value = value.astype(np.int32)
                 if value.ndim == 1:
                     if value.shape[0] == 1:
@@ -164,7 +186,7 @@ class ShaderProgram(object):
                         raise ValueError('Invalid data type')
                 else:
                     raise ValueError('Invalid data type')
-            elif value.dtype in set([np.float16, np.float32, np.float64]):
+            elif np.issubdtype(value.dtype, np.floating):
                 value = value.astype(np.float32)
                 if value.ndim == 1:
                     if value.shape[0] == 1:
@@ -184,7 +206,7 @@ class ShaderProgram(object):
                         glUniformMatrix2x3fv(loc, 1, GL_TRUE, value)
                     elif value.shape == (2,4):
                         glUniformMatrix2x4fv(loc, 1, GL_TRUE, value)
-                    if value.shape == (3,2):
+                    elif value.shape == (3,2):
                         glUniformMatrix3x2fv(loc, 1, GL_TRUE, value)
                     elif value.shape == (3,3):
                         glUniformMatrix3fv(loc, 1, GL_TRUE, value)
@@ -200,5 +222,7 @@ class ShaderProgram(object):
                         raise ValueError('Invalid data type')
                 else:
                     raise ValueError('Invalid data type')
+            else:
+                raise ValueError('Invalid data type')
         else:
             raise ValueError('Invalid data type')

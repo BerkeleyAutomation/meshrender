@@ -2,11 +2,9 @@ import abc
 import numpy as np
 import six
 
-from OpenGL.GL import *
-
 from .material import Material
 
-from .constants import VertexBufferFlags, VertexArrayFlags, TextureFlags, FLOAT_SZ, UINT_SZ
+from .constants import Shading
 
 @six.add_metaclass(abc.ABCMeta)
 class SceneObject(object):
@@ -26,14 +24,12 @@ class SceneObject(object):
         If False, the object will not be rendered.
     is_transparent : bool
         If True, the object contains some transparency.
+    is_instanced : bool
+        If True, the object is instanced.
     in_context : bool
         If True, the object has been loaded into an OpenGL context.
-    vertex_buffer_flags : int
-        Flags for data included in the vertex buffer.
-    vertex_array_flags : int
-        Flags for type of data to be rendered for this object.
-    texture_flags : int
-        Flags for type of texture data available for this object.
+    shading_mode : int
+        The shading mode flags for this object.
     bounds : (2,3) float
         The least and greatest corners of the object's AABB, in its own frame.
     """
@@ -42,40 +38,35 @@ class SceneObject(object):
         self.poses = poses
         self.is_visible = is_visible
         self._is_transparent = self._compute_transparency()
+        self._shading_mode = self._compute_shading_mode()
         self._in_context = False
         self._bounds = None
-
-        # Compute render flags
-        self._vertex_buffer_flags = VertexBufferFlags.POSITION
-        self._vertex_array_flags = VertexArrayFlags.POINTS
-        self._texture_flags = TextureFlags.NONE
-        self._update_flags()
 
     @property
     def is_transparent(self):
         return self._is_transparent
 
     @property
+    def is_instanced(self):
+        return (self.poses is not None)
+
+    @property
     def in_context(self):
         return self._in_context
 
     @property
-    def vertex_buffer_flags(self):
-        return self._vertex_buffer_flags
-
-    @property
-    def vertex_array_flags(self):
-        return self._vertex_array_flags
-
-    @property
-    def texture_flags(self):
-        return self._texture_flags
+    def shading_mode(self):
+        return self._shading_mode
 
     @property
     def bounds(self):
         if self._bounds is None:
             self._bounds = self._compute_bounds()
         return self._bounds
+
+    @property
+    def bbox_center(self):
+        return np.mean(self.bounds, axis=0)
 
     @abc.abstractmethod
     def _add_to_context(self):
@@ -102,13 +93,19 @@ class SceneObject(object):
         pass
 
     @abc.abstractmethod
+    def _render(self):
+        """Render this object.
+        """
+        pass
+
+    @abc.abstractmethod
     def _compute_transparency(self):
         """Compute whether or not this object is transparent.
         """
         pass
 
     @abc.abstractmethod
-    def _update_flags(self):
+    def _compute_shading_mode(self):
         """Compute the shading flags for this object.
         """
         pass
@@ -127,7 +124,7 @@ class SceneObject(object):
         return bounds
 
 
-class PointCloudSceneObject(object):
+class PointCloudSceneObject(SceneObject):
     """A cloud of points.
 
     Attributes
@@ -136,23 +133,11 @@ class PointCloudSceneObject(object):
         Object vertices.
     vertex_colors : (n,3) or (n,4) float
         Colors of each vertex.
+    is_visible : bool
+        If False, the object will not be rendered.
     poses : (n,4,4) float
         If specified, makes this object an instanced object.
         List of poses for each instance relative to object base frame.
-    is_visible : bool
-        If False, the object will not be rendered.
-    is_transparent : bool
-        If True, the object contains some transparency.
-    in_context : bool
-        If True, the object has been loaded into an OpenGL context.
-    vertex_buffer_flags : int
-        Flags for data included in the vertex buffer.
-    vertex_array_flags : int
-        Flags for type of data to be rendered for this object.
-    texture_flags : int
-        Flags for type of texture data available for this object.
-    bounds : (2,3) float
-        The least and greatest corners of the object's AABB, in its own frame.
     """
 
     def __init__(self, vertices, vertex_colors=None, is_visible=True, poses=None):
@@ -217,14 +202,21 @@ class PointCloudSceneObject(object):
             glDeleteBuffers(len(self._buffers), self._buffers)
             self._in_context = False
 
-    def _bind(self):
+    def _bind(self, program_cache, render_mode):
         """Bind this object in the current OpenGL context and load its shader.
         """
         if not self._in_context:
             raise ValueError('Cannot bind a SceneObject that has not been added to a context')
 
+        # Bind Program
+        program = program_cache.get_program(['point_cloud.vert', 'point_cloud.frag'])
+        program.bind()
+        self._program = program
+
         # Bind Vertex Arrays
         glBindVertexArray(self._vaid)
+
+        return program
 
     def _unbind(self):
         """Unbind this object in the current OpenGL context.
@@ -234,20 +226,44 @@ class PointCloudSceneObject(object):
 
         glBindVertexArray(0)
 
+        if self._program is not None:
+            self._program.unbind()
+            self._program = None
+
+    def _render(self, M, V, P, program_cache):
+        """Render this object using the given shader program.
+        """
+        if not self.is_visible:
+            return
+
+        # Load the correct program
+        program = program_cache.get_program(['point_cloud.vert', 'point_cloud.frag'])
+        program.bind()
+
+        # Bind self
+        self._bind()
+
+        # Set the MVP matrices
+        program.set_uniform('M', M)
+        program.set_uniform('V', V)
+        program.set_uniform('P', P)
+
+        if self.is_instanced:
+            glDrawArraysInstanced(GL_POINTS, 0, len(self.vertices), len(self.poses))
+        else:
+            glDrawArrays(GL_POINTS, 0, len(self.vertices))
+
+        self._unbind()
+        glUseProgram(0)
+
     def _compute_transparency(self):
         if self.vertex_colors.shape[1] == 4:
             if np.any(self.vertex_colors[:,3] < 1.0):
                 return True
         return False
 
-    def _update_flags(self):
-        """Compute the shading flags for this object.
-        """
-        self._vertex_buffer_flags = (VertexBufferFlags.POSITION | VertexBufferFlags.COLOR)
-        self._vertex_array_flags = (VertexArrayFlags.POINTS)
-        if self.poses is not None:
-            self._vertex_array_flags |= VertexArrayFlags.INSTANCED
-        self._texture_flags = TextureFlags.NONE
+    def _compute_shading_mode(self):
+        return Shading.POINT_CLOUD
 
 class MeshSceneObject(SceneObject):
     """A triangular mesh.
@@ -274,23 +290,11 @@ class MeshSceneObject(SceneObject):
         will be used.
     texture_coords : (n, 2) float, optional
         Texture coordinates for vertices, if needed.
+    is_visible : bool
+        If False, the object will not be rendered.
     poses : (n,4,4) float
         If specified, makes this object an instanced object.
         List of poses for each instance relative to object base frame.
-    is_visible : bool
-        If False, the object will not be rendered.
-    is_transparent : bool
-        If True, the object contains some transparency.
-    in_context : bool
-        If True, the object has been loaded into an OpenGL context.
-    vertex_buffer_flags : int
-        Flags for data included in the vertex buffer.
-    vertex_array_flags : int
-        Flags for type of data to be rendered for this object.
-    texture_flags : int
-        Flags for type of texture data available for this object.
-    bounds : (2,3) float
-        The least and greatest corners of the object's AABB, in its own frame.
     """
 
     def __init__(self, vertices, vertex_normals=None, faces=None, face_normals=None,
@@ -304,9 +308,6 @@ class MeshSceneObject(SceneObject):
         self.face_colors = face_colors
         self.material = material
         self.texture_coords = texture_coords
-
-        self._vaid = None
-        self._buffers = []
 
         if self.material is None:
             self.material = Material(
@@ -335,177 +336,51 @@ class MeshSceneObject(SceneObject):
         if face_colors is not None:
             if not face_colors.shape[0] == self.face_colors.shape[0]:
                 raise ValueError('Incorrect vertex colors shape: {}'.format(vertex_colors.shape))
-    def _add_to_context(self):
-        """Add the object to the current OpenGL context.
-        """
-        if self._in_context:
-            raise ValueError('SceneObject is already bound to a context')
-
-        # Generate and bind VAO
-        self._vaid = glGenVertexArrays(1)
-        glBindVertexArray(self._vaid)
-
-        # Generate and bind vertex buffer
-        vertexbuffer = glGenBuffers(1)
-        self._buffers.append(vertex_buffer)
-        glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer)
-
-        # First, fill vertex buffer with positions and normals
-        if self.material.smooth:
-            vp = self.vertices
-            vn = self.vertex_normals
-        else:
-            vp = self.vertices[self.faces].reshape(3*len(self.faces), 3)
-            vn = np.repeat(self.face_normals, 3, axis=0)
-        vertex_data = np.hstack((vp, vn))
-        attr_sizes = [3,3] # Ordered sizes of attributes
-
-        # Next, add vertex colors if present
-        if self.vertex_colors is not None of self.face_colors is not None:
-            if self.vertex_colors is not None:
-                if self.material.smooth:
-                    vc = self.vertex_colors
-                else:
-                    vc = self.vertex_colors[self.faces].\
-                            reshape(3*len(self.faces), self.vertex_colors.shape[1])
-            else:
-                if self.material.smooth:
-                    raise ValueError('Cannot have face colors for smooth mesh')
-                else:
-                    vc = np.repeat(self.face_colors, 3, axis=0)
-            if vc.shape[1] == 3:
-                vc = np.concatenate(vc, np.ones((vc.shape[0], vc.shape[1], 1)), axis=2)
-            vertex_data = np.hstack((vertex_data, vc))
-            attr_sizes.append(4)
-
-        # Next, add texture coordinates if needed
-        if self.texture_coords is not None:
-            if self.material.smooth:
-                    vt = self.texture_coords
-                else:
-                    vt = self.texture_coords[self.faces].reshape(3*len(self.faces), 2)
-            vertex_data = np.hstack((vertex_data, vt))
-            attr_sizes.append(2)
-
-            # Compute and bind the tangent/bitangent vectors if needed for
-            # normal mapping
-            if self.material.normal is not None:
-                raise NotImplementedError('Still need to implement normal mapping')
-
-        # Create vertex buffer data
-        vertex_data = vertex_data.astype(np.float32)
-        glBufferData(GL_ARRAY_BUFFER, FLOAT_SZ*len(vertex_data), vertex_data, GL_STATIC_DRAW)
-        total_sz = sum(attr_sizes)
-        offset = 0
-        for i, sz in enumerate(attr_sizes):
-            glVertexAttribPointer(i, sz, GL_FLOAT, GL_FALSE, FLOAT_SZ*total_sz, ctypes.c_void_p(FLOAT_SZ*offset))
-            glEnableVertexAttribArray(i)
-            offset += sz
-
-        # If the object is instanced, bind the model matrix buffer
-        if self.is_instanced:
-            # Load Transposed 
-            pose_data = self.poses.flatten().astype(np.float32)
-            modelbuffer = glGenBuffers(1)
-            self._buffers.append(modelbuffer)
-            glBindBuffer(GL_ARRAY_BUFFER, modelbuffer)
-            glBufferData(GL_ARRAY_BUFFER, FLOAT_SZ*len(pose_data), pose_data, GL_STATIC_DRAW)
-
-            for i in range(0, 4):
-                idx = i + len(attr_sizes)
-                glEnableVertexAttribArray(idx)
-                glVertexAttribPointer(idx, 4, GL_FLOAT, GL_FALSE, FLOAT_SZ*4, ctypes.c_void_p(4*FLOAT_SZ*i))
-                glVertexAttribDivisor(idx, 1);
-
-        # If a smooth mesh, bind the element buffer
-        if self.material.smooth:
-            elementbuffer = glGenBuffers(1)
-            self._buffers.append(elementbuffer)
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer)
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, UINT_SZ*3*len(mesh.faces),
-                         mesh.faces.flatten().astype(np.uint32), GL_STATIC_DRAW)
-
-        glBindVertexArray(0)
-        self._in_context = True
-
-    def _remove_from_context(self):
-        """Remove the object from the current OpenGL context.
-        """
-        if self._in_context:
-            glDeleteVertexArrays(1, [self._vaid])
-            glDeleteBuffers(len(self._buffers), self._buffers)
-            self._in_context = False
-
-    def _bind(self):
-        """Bind this object in the current OpenGL context and load its shader.
-        """
-        if not self._in_context:
-            raise ValueError('Cannot bind a SceneObject that has not been added to a context')
-
-        # Bind Vertex Arrays
-        glBindVertexArray(self._vaid)
-
-    def _unbind(self):
-        """Unbind this object in the current OpenGL context.
-        """
-        if not self._in_context:
-            raise ValueError('Cannot unbind a SceneObject that has not been added to a context')
-
-        glBindVertexArray(0)
 
     def _compute_transparency(self):
-        # Check diffuse material color first
-        if self.material.diffuse.ndim == 1 and self.material.diffuse.shape[0] == 4:
-            if self.material.diffuse[3] < 1.0:
-                return True
-        elif self.material.diffuse.ndim == 3 and self.material.diffuse.shape[2] == 4:
-            if np.any(self.material.diffuse[:,:,3] < 1.0):
-                return True
+        shading_mode = self._compute_shading_mode()
 
-        # Check vertex or face colors
-        if self.vertex_colors is not None and self.vertex_colors.shape[1] == 4:
-            if np.any(self.vertex_colors[:,3] < 1.0):
+        if shading_mode & (Shading.TEX_DIFF | Shading.TEX_SPEC):
+            if shading_mode & Shading.TEX_DIFF:
+                if self.material.diffuse.ndim == 3 and self.material.diffuse.shape[2] == 4:
+                    if np.any(self.material.diffuse[:,:,3]) < 1.0:
+                        return True
+            if shading_mode & Shading.TEX_SPEC:
+                if self.material.specular.ndim == 3 and self.material.specular.shape[2] == 4:
+                    if np.any(self.material.specular[:,:,3]) < 1.0:
+                        return True
+        elif shading_mode & Shading.VERT_COLORS:
+            if self.vertex_colors.shape[1] == 4:
+                if np.any(self.vertex_colors[:,3] < 1.0):
+                    return True
+        elif shading_mode & Shading.FACE_COLORS:
+            if self.face_colors.shape[1] == 4:
+                if np.any(self.face_colors[:,3] < 1.0):
+                    return True
+        else:
+            if len(self.material.diffuse) == 4 and self.material.diffuse[3] < 1.0:
                 return True
-        if self.face_colors is not None and self.face_colors.shape[1] == 4:
-            if np.any(self.face_colors[:,3] < 1.0):
+            if len(self.material.specular) == 4 and self.material.specular[3] < 1.0:
                 return True
-
         return False
 
-    def _update_flags(self):
-        """Compute the shading flags for this object.
-        """
-        self._vertex_buffer_flags = VertexBufferFlags.POSITION | VertexBufferFlags.NORMAL
-        self._vertex_array_flags = VertexArrayFlags.TRIANGLES
-        self._texture_flags = TextureFlags.NONE
-
-        # Compute buffer flags
-        if self.vertex_colors is not None or self.face_colors is not None:
-            self._vertex_buffer_flags |= VertexBufferFlags.COLOR
+    def _compute_shading_mode(self):
+        mode = Shading.DEFAULT
         if self.texture_coords is not None:
-            self._vertex_buffer_flags |= VertexBufferFlags.TEXTURE
-        if self.material.normal is not None and self.material.normal.ndim > 1:
-            self._vertex_buffer_flags |= VertexBufferFlags.TANGENT
-            self._vertex_buffer_flags |= VertexBufferFlags.BITANGENT
-
-        # Compute array flags
-        if self.poses is not None:
-            self._vertex_array_flags |= VertexArrayFlags.INSTANCED
-        if self.material.smooth:
-            self._vertex_array_flags |= VertexArrayFlags.ELEMENTS
-
-        # Compute texture flags
-        if self.material.diffuse.ndim > 1:
-            self._texture_flags |= TextureFlags.DIFFUSE
-        if self.material.specular.ndim > 1:
-            self._texture_flags |= TextureFlags.SPECULAR
-        if self.material.emission is not None and self.material.emission.ndim > 1:
-            self._texture_flags |= TextureFlags.EMISSION
-        if self.material.normal is not None:
-            self._texture_flags |= TextureFlags.NORMAL
-        if self.material.height is not None:
-            self._texture_flags |= TextureFlags.HEIGHT
-
+            if self.material.diffuse.ndim > 1:
+                mode |= Shading.TEX_DIFF
+            if self.material.specular.ndim > 1:
+                mode |= Shading.TEX_SPEC
+            if self.material.normal is not None and self.material.normal.ndim > 1:
+                mode |= Shading.TEX_NORM
+            if self.material.emission is not None and self.material.emission.ndim > 1:
+                mode |= Shading.TEX_EMIT
+        if mode == Shading.DEFUALT:
+            if self.vertex_colors is not None:
+                mode |= Shading.VERT_COLORS
+            elif self.face_colors is not None:
+                mode |= Shading.FACE_COLORS
+        return mode
 
     @staticmethod
     def from_trimesh(mesh, material=None, texture_coords=None, is_visible=True, poses=None):
@@ -542,6 +417,5 @@ class MeshSceneObject(SceneObject):
 
         return MeshSceneObject(vertices=mesh.vertices, vertex_normals=mesh.vertex_normals,
                                faces=mesh.faces, face_normals=mesh.face_normals,
-                               vertex_colors=vertex_colors, face_colors=face_colors,
-                               material=material, texture_coords=texture_coords,
-                               is_visible=is_visible, poses=poses)
+                               vertex_colors=vertex_colors, face_colors=face_colors, material=material,
+                               texture_coords=texture_coords, is_visible=is_visible, poses=poses)

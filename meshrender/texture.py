@@ -58,7 +58,7 @@ class TextureCache(object):
     def delete(self):
         """Delete all cached shader programs.
         """
-        for key in self._hash_cache::
+        for key in self._hash_cache:
             self._hash_cache[key].delete()
         self._name_cache = {}
         self._hash_cache = {}
