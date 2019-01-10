@@ -1,44 +1,96 @@
-"""Scene lighting effects.
+"""Punctual light sources as defined by the glTF 2.0 KHR extension.
+https://github.com/KhronosGroup/glTF/blob/master/extensions/2.0/Khronos/KHR_lights_punctual/README.md
 """
+import abc
 import numpy as np
+import six
 
+from .utils import format_color_vector
+
+@six.add_metaclass(abc.ABCMeta)
 class Light(object):
     """Base class for all light objects.
 
     Attributes
     ----------
-    ambient : (3,) float
-        The ambient color of the light.
-    diffuse : (3,) float
-        The diffuse color of the light.
-    specular : (3,) float
-        The specular color of the light.
+    name : str, optional
+        Name for the light.
+    color : (3,) float
+        RGB value for the light's color in linear space.
+    intensity : float
+        Brightness of the light. Point and Spot lights define
+        this in candela (lm/sr), while directional lights use lux (lm/m^2).
+    range : float
+        Cutoff distance at which light's intensity may be considered to
+        have reached zero. Supported only for point and spot lights, must be > 0.
+        If None, range is infinite.
     """
+    def __init__(self,
+                 name=None,
+                 color=None,
+                 intensity=None,
+                 range=None):
+        self.name = name
+        self.color = color
+        self.intensity = intensity
+        self.range = range
 
-    def __init__(self, ambient, diffuse, specular):
-        self.ambient = ambient
-        self.diffuse = diffuse
-        self.specular = specular
+    @property
+    def color(self):
+        return self._color
+
+    @color.setter
+    def color(self, value):
+        self._color = format_color_vector(value)
+
+    @property
+    def intensity(self):
+        return self._intensity
+
+    @intensity.setter
+    def intensity(self, value):
+        self.__intensity = float(value)
+
+    @property
+    def range(self):
+        return self._range
+
+    @range.setter
+    def range(self, value):
+        if value is None or value < 0.0:
+            self._range = value
+        else:
+            self._range = float(value)
 
 class DirectionalLight(Light):
     """A directional light source, which casts light along a given
     direction with parallel rays.
+    Light is emitted in the positive z-direction in the local frame.
 
     Attributes
     ----------
-    ambient : (3,) float
-        The ambient color of the light.
-    diffuse : (3,) float
-        The diffuse color of the light.
-    specular : (3,) float
-        The specular color of the light.
-    direction : (3,) float
-        The direction along which the light travels in world frame.
+    name : str, optional
+        Name for the light.
+    color : (3,) float
+        RGB value for the light's color in linear space.
+    intensity : float
+        Brightness of the light. Point and Spot lights define
+        this in candela (lm/sr), while directional lights use lux (lm/m^2).
+    range : float
+        Unused for directional lights.
     """
 
-    def __init__(self, ambient, diffuse, specular, direction):
-        super(DirectionalLight, self).__init__(ambient, diffuse, specular)
-        self.direction = direction
+    def __init__(self,
+                 name=None,
+                 color=None,
+                 intensity=None,
+                 range=None):
+        super(DirectionalLight, self).__init__(
+            name=name,
+            color=color,
+            intensity=intensity,
+            range=range
+        )
 
 class PointLight(Light):
     """A point light source, which casts light in all directions and attenuates with
@@ -53,76 +105,86 @@ class PointLight(Light):
 
     Attributes
     ----------
-    ambient : (3,) float
-        The ambient color of the light.
-    diffuse : (3,) float
-        The diffuse color of the light.
-    specular : (3,) float
-        The specular color of the light.
-    position : (3,) float
-        The position of the light in world frame.
-    constant : float
-        Constant attenuation term.
-    linear : float
-        Linear attenuation term.
-    quadratic : float
-        Quadratic attenuation term.
+    name : str, optional
+        Name for the light.
+    color : (3,) float
+        RGB value for the light's color in linear space.
+    intensity : float
+        Brightness of the light. Point and Spot lights define
+        this in candela (lm/sr), while directional lights use lux (lm/m^2).
+    range : float
+        Cutoff distance at which light's intensity may be considered to
+        have reached zero. Supported only for point and spot lights, must be > 0.
+        If None, range is infinite.
     """
 
-    def __init__(self, ambient, diffuse, specular, position, constant, linear, quadratic):
-        super(PointLight, self).__init__(ambient, diffuse, specular)
-        self.position = position
-        self.constant = constant
-        self.linear = linear
-        self.quadratic = quadratic
+    def __init__(self,
+                 name=None,
+                 color=None,
+                 intensity=None,
+                 range=None):
+        super(PointLight, self).__init__(
+            name=name,
+            color=color,
+            intensity=intensity,
+            range=range
+        )
 
 class SpotLight(Light):
     """A spot light source, which casts light in a particular direction in a cone.
 
-    The attenuation is computed as
-
-    F_att = 1.0 / (K_c + K_l * d + K_q * d^2),
-
-    where K_c is the constant term, K_l is the linear term,
-    and K_q is the quadratic term.
-
-    Light intensity is computed with the following formula:
-
-    theta = dot(light_dir, -direction) # light_dir is vector from fragment to light
-    epsilon = inner_angle - outer_angle # (in radians)
-    intensity = clamp((theta - outer_angle) / epsilon, 0.0, 1.0)
-
     Attributes
     ----------
-    ambient : (3,) float
-        The ambient color of the light.
-    diffuse : (3,) float
-        The diffuse color of the light.
-    specular : (3,) float
-        The specular color of the light.
-    position : (3,) float
-        The position of the light in world frame.
-    direction : (3,) float
-        The direction of the light in world frame.
-    constant : float
-        Constant attenuation term.
-    linear : float
-        Linear attenuation term.
-    quadratic : float
-        Quadratic attenuation term.
-    inner_angle : float
-        Inner cutoff angle, in degrees.
-    outer_angle : float
-        Outer cutoff angle, in degrees.
+    name : str, optional
+        Name for the light.
+    color : (3,) float
+        RGB value for the light's color in linear space.
+    intensity : float
+        Brightness of the light. Point and Spot lights define
+        this in candela (lm/sr), while directional lights use lux (lm/m^2).
+    range : float
+        Cutoff distance at which light's intensity may be considered to
+        have reached zero. Supported only for point and spot lights, must be > 0.
+        If None, range is infinite.
+    inner_cone_angle : float
+        Inner cutoff angle, in radians.
+    outer_cone_angle : float
+        Outer cutoff angle, in radians.
     """
 
-    def __init__(self, ambient, diffuse, specular, position, direction,
-                 constant, linear, quadratic, inner_angle, outer_angle):
-        super(SpotLight, self).__init__(ambient, diffuse, specular)
-        self.position = position
-        self.direction = direction
-        self.constant = constant
-        self.linear = linear
-        self.quadratic = quadratic
-        self.inner_angle = inner_angle
-        self.outer_angle = inner_angle
+    def __init__(self,
+                 name=None,
+                 color=None,
+                 intensity=None,
+                 range=None,
+                 inner_cone_angle=0.0,
+                 outer_cone_angle=np.pi/4.0):
+        super(PointLight, self).__init__(
+            name=name,
+            color=color,
+            intensity=intensity,
+            range=range
+        )
+        self.outer_cone_angle = outer_cone_angle
+        self.inner_cone_angle = inner_cone_angle
+
+    @property
+    def inner_cone_angle(self):
+        return self._inner_cone_angle
+
+    @inner_cone_angle.setter
+    def inner_cone_angle(self, value):
+        if value < 0.0 or value > self.outer_cone_angle:
+            raise ValueError('Invalid value for inner cone angle')
+        self._inner_cone_angle = float(value)
+
+    @property
+    def outer_cone_angle(self):
+        return self._outer_cone_angle
+
+    @outer_cone_angle.setter
+    def outer_cone_angle(self, value):
+        if value < 0.0 or value > np.pi / 2.0 + 1e-9:
+            raise ValueError('Invalid value for outer cone angle')
+        self._outer_cone_angle = float(value)
+

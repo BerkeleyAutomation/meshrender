@@ -1,11 +1,21 @@
-Z_NEAR = 0.05     # Near clipping plane, in meters
-Z_FAR = 100.0     # Far clipping plane, in meters
+DEFAULT_Z_NEAR = 0.05     # Near clipping plane, in meters
+DEFAULT_Z_FAR = 100.0     # Far clipping plane, in meters
 MAX_N_LIGHTS = 4  # Maximum number of lights allowed
 OPEN_GL_MAJOR = 4 # Target OpenGL Major Version
 OPEN_GL_MINOR = 1 # Target OpenGL Minor Version
 FLOAT_SZ = 4      # Byte size of GL float32
 UINT_SZ = 4       # Byte size of GL uint32
 
+class GLTF(object):
+    NEAREST = 9728
+    LINEAR = 9729
+    NEAREST_MIPMAP_NEAREST = 9984
+    LINEAR_MIPMAP_NEAREST = 9985
+    NEAREST_MIPMAP_LINEAR = 9986
+    LINEAR_MIPMAP_LINEAR = 9987
+    CLAMP_TO_EDGE = 33071
+    MIRRORED_REPEAT = 33648
+    REPEAT = 10497
 
 # Type of vertex data available (in order of appearance)
 class VertexBufferFlags(object):

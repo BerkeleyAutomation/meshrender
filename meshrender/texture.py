@@ -1,157 +1,105 @@
-import hashlib
 import numpy as np
-import uuid
 
 from OpenGL.GL import *
 
-class TextureCache(object):
-    """A cache for textures.
-    """
-
-    def __init__(self):
-        self._name_cache = {}
-        self._hash_cache = {}
-
-    def get_texture(self, name=None, data=None,
-                    width=None, height=None, n_components=None):
-        """Get a texture from a numpy array.
-
-        Parameters
-        ----------
-        data : np.ndarray
-            Array containing texture data.
-        """
-        if name is not None:
-            if name in self._name_cache:
-                return self._name_cache[name]
-        else:
-            name = uuid.uuid4().hex
-
-        # Hash data to find shader
-        if data is not None:
-            data = np.ascontiguousarray(data)
-            hasher = hashlib.md5(data)
-            md5 = hasher.hexdigest()
-            if md5 in self._hash_cache:
-                tex = self._hash_cache[md5]
-                if name not in self._name_cache:
-                    self._name_cache[name] = tex
-                return tex
-
-        # If none found, create shader
-        tex = Texture(data=data, width=width, height=height,
-                      n_components=n_components)
-
-        self._name_cache[name] = tex
-        self._hash_cache[md5] = tex
-
-        return tex
-
-    @property
-    def texture_names(self):
-        return set(self._name_cache.keys())
-
-    @property
-    def cache_size(self):
-        return len(self._hash_cache)
-
-    def clear(self):
-        self.delete()
-
-    def delete(self):
-        """Delete all cached shader programs.
-        """
-        for key in self._hash_cache:
-            self._hash_cache[key].delete()
-        self._name_cache = {}
-        self._hash_cache = {}
-
-    def delete_texture(self, name):
-        if name in self._name_cache:
-            tex = self._name_cache.pop(key)
-            for k in self._hash_cache:
-                if self._hash_cache[k] == tex:
-                    self._hash_cache.pop(k)
-            tex.delete()
+from .utils import format_texture_source
+from .sampler import Sampler
 
 class Texture(object):
 
-    def __init__(self, data=None, width=None, height=None, n_components=None):
+    def __init__(self,
+                 name=None,
+                 sampler=None,
+                 source=None,
+                 source_channels=None,
+                 width=None,
+                 height=None):
+        self.name = name
+        self.sampler = sampler
+        self.source = source
+        self.source_channels = source_channels
+        self.width = width
+        self.height = height
 
-        if data is not None:
-            # Process Data Format
-            width = data.shape[1]
-            height = data.shape[0]
-            if np.issubdtype(data.dtype, np.integer):
-                data = data.astype(np.uint8)
-                dfmt = GL_UNSIGNED_BYTE
-            else:
-                data = data.astype(np.float32)
-                dfmt = GL_FLOAT
+        self._texid = None
 
-            if data.ndim == 2:
-                if data.dtype == np.float:
-                    fmt = GL_DEPTH_COMPONENT
-                else:
-                    fmt = GL_RED
-            elif data.ndim == 3:
-                if data.shape[2] == 1:
-                    if data.dtype == np.float:
-                        fmt = GL_DEPTH_COMPONENT
-                    else:
-                        fmt = GL_RED
-                elif data.shape[2] == 2:
-                    fmt = GL_RG
-                elif data.shape[2] == 3:
-                    fmt = GL_RGB
-                elif data.shape[2] == 4:
-                    fmt = GL_RGBA
-                else:
-                    raise ValueError('Unsupported data shape for texture')
-            else:
-                raise ValueError('Unsupported data shape for texture')
+    @property
+    def sampler(self):
+        return self._sampler
 
+    @sampler.setter
+    def sampler(self, value):
+        if value is None:
+            value = Sampler()
+        self._sampler = value
+
+    @property
+    def source(self):
+        return self._source
+
+    @source.setter
+    def source(self, value):
+        if value is None:
+            self._source = None
         else:
-            width = width
-            height = height
+            self._source = format_texture_source(value, source_channels)
 
-            fmt = GL_DEPTH_COMPONENT
-            if n_components == 1:
-                fmt = GL_RED
-            elif n_components == 2:
-                fmt = GL_RG
-            elif n_components == 3:
-                fmt = GL_RGB
-            elif n_components == 4:
-                fmt = GL_RGBA
-            else:
-                raise ValueError('Unsupported number of components for texture.')
-            dfmt = GL_FLOAT
+    ##################
+    # OpenGL code
+    ##################
+    def _add_to_context(self):
+        if self._texid is not None:
+            raise ValueError('Texture already loaded into OpenGL context')
 
+        fmt = GL_DEPTH_COMPONENT
+        if self.source_channels == 'R':
+            fmt = GL_RED
+        elif self.source_channels == 'RG' or self.source_channels == 'GB':
+            fmt = GL_RG
+        elif self.source_channels == 'RGB':
+            fmt = GL_RGB
+        elif self.source_channels == 'RGBA':
+            fmt = GL_RGBA
 
         # Generate the OpenGL texture
         self._texid = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, self._texid)
-        data = np.flip(data, axis=0)
-        data = np.ascontiguousarray(data.flatten())
-        glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height, 0, fmt, dfmt, data)
+
+        # Flip data for OpenGL buffer
+        data = None
+        width = self.width
+        height = self.height
+        if self.source is not None:
+            data = np.ascontiguousarray(np.flip(self.source, axis=0).flatten())
+            width = self.source.shape[1]
+            height = self.source.shape[0]
+
+        # Bind texture and generate mipmaps
+        glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height, 0, fmt, GL_FLOAT, data)
         glGenerateMipmap(GL_TEXTURE_2D)
 
-    def bind(self):
-        glBindTexture(GL_TEXTURE_2D, self._texid)
-
-    def unbind(self):
+        # Unbind texture
         glBindTexture(GL_TEXTURE_2D, 0)
 
-    def bind_as_depth_attachment(self):
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, self._texid, 0)
-
-    def bind_as_color_attachment(self):
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self._texid, 0)
-
-    def delete(self):
+    def _remove_from_context(self):
         if self._texid is not None:
             # TODO OPENGL BUG?
             #glDeleteTextures(1, [self._texid])
             glDeleteTextures([self._texid])
             self._texid = None
+
+    def _bind(self):
+        glBindTexture(GL_TEXTURE_2D, self._texid)
+
+    def _unbind(self):
+        glBindTexture(GL_TEXTURE_2D, 0)
+
+    def _bind_as_depth_attachment(self):
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, self._texid, 0)
+
+    def _bind_as_color_attachment(self):
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self._texid, 0)
+
+    def delete(self):
+        self._unbind()
+        self._remove_from_context()

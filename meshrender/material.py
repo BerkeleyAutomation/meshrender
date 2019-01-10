@@ -1,11 +1,41 @@
+"""Material properties, conforming to the glTF 2.0 standard.
+https://git.io/fhkPZ
+"""
 import abc
 import numpy as np
 import PIL
 import six
 
+from .utils import format_color_vector
+
 @six.add_metaclass(abc.ABCMeta)
 class Material(object):
     """Base for standard glTF 2.0 materials.
+
+    Attributes
+    ----------
+    name : str, optional
+        The user-defined name of this object.
+    normal_texture : (n,n,3) float, optional
+        A tangent-space normal map. The texture contains RGB components in linear space.
+        Red maps X to [-1,1], green maps Y to [-1, 1] and blue maps Z to [-1, 1].
+    occlusion_texture : (n,n,1) float, optional
+        The occlusion texture map. If channel size is >1, occlusion values are sampled
+        from the R channel.
+    emissive_texture : (n,n,3) float, optional
+        The emissive lighting map. Colors should be specified in sRGB space.
+    emissive_factor : (3,) float
+        The RGB components of the emissive color of the material in linear space.
+    alpha_mode : str, optional
+        One of 'OPAQUE', 'MASK', or 'BLEND'.
+    alpha_cutoff : float, optional
+        Specifies cutoff threshold when in MASK mode.
+    double_sided : bool, optional
+        If True, the material is double sided. If False, back-face culling is enabled.
+    smooth : bool, optional
+        If True, the material is rendered smoothly by using only one normal per vertex.
+    wireframe : bool, optional
+        If True, the material is rendered in wireframe mode.
     """
 
     def __init__(self,
@@ -16,7 +46,9 @@ class Material(object):
                  emissive_factor=None,
                  alpha_mode=None,
                  alpha_cutoff=None,
-                 double_sided=False):
+                 double_sided=False,
+                 smooth=True,
+                 wireframe=False):
 
         # Set defaults
         if alpha_mode is None:
@@ -24,6 +56,9 @@ class Material(object):
 
         if alpha_cutoff is None:
             alpha_cutoff = 0.5
+
+        if emissive_factor is None:
+            emissive_factor = np.zeros(3).astype(np.float32)
 
         self.name = name
         self.normal_texture = normal_texture
@@ -33,6 +68,8 @@ class Material(object):
         self.alpha_mode = alpha_mode
         self.alpha_cutoff = alpha_cutoff
         self.double_sided = double_sided
+        self.smooth = smooth
+        self.wireframe = wireframe
 
     @property
     def name(self):
@@ -67,6 +104,14 @@ class Material(object):
         self._emissive_texture = self._format_texture(value, 'RGB')
 
     @property
+    def emissive_factor(self):
+        return self._emissive_factor
+
+    @emissive_factor.setter
+    def emissive_factor(self, value):
+        self._emissive_factor = format_color_vector(value, 3)
+
+    @property
     def alpha_mode(self):
         return self._alpha_mode
 
@@ -96,6 +141,26 @@ class Material(object):
             raise TypeError('Double sided must be a boolean value')
         self._double_sided = double_sided
 
+    @property
+    def smooth(self):
+        return self._smooth
+
+    @smooth.setter
+    def smooth(self, value):
+        if not isinstance(value, bool):
+            raise TypeError('Double sided must be a boolean value')
+        self._smooth = smooth
+
+    @property
+    def wireframe(self):
+        return self._wireframe
+
+    @wireframe.setter
+    def wireframe(self, value):
+        if not isinstance(value, bool):
+            raise TypeError('Wireframe must be a boolean value')
+        self._wireframe = wireframe
+
     def _format_texture(self, texture, target_channels='RGB'):
         """Format a texture as a float32 np array.
         """
@@ -124,12 +189,12 @@ class Material(object):
             if target_channels == 'R':
                 texture = texture[:,:,0]
                 texture = texture.squeeze()
-            elif target_channels == 'RG':
+            elif target_channels == 'RG'
                 if texture.shape[2] == 1:
                     texture = np.repeat(texture, 2, axis=2)
                 else:
                     texture = texture[:,:,(0,1)]
-            elif target_channels == 'GB':
+            elif target_channels == 'GB'
                 if texture.shape[2] == 1:
                     texture = np.repeat(texture, 2, axis=2)
                 elif texture.shape[2] > 2:
@@ -162,6 +227,46 @@ class Material(object):
 
 
 class MetallicRoughnessMaterial(Material):
+    """Base for standard glTF 2.0 materials.
+
+    Attributes
+    ----------
+    name : str, optional
+        The user-defined name of this object.
+    normal_texture : (n,n,3) float, optional
+        A tangent-space normal map. The texture contains RGB components in linear space.
+        Red maps X to [-1,1], green maps Y to [-1, 1] and blue maps Z to [-1, 1].
+    occlusion_texture : (n,n,1) float, optional
+        The occlusion texture map. If channel size is >1, occlusion values are sampled
+        from the R channel.
+    emissive_texture : (n,n,3) float, optional
+        The emissive lighting map. Colors should be specified in sRGB space.
+    emissive_factor : (3,) float
+        The RGB components of the emissive color of the material in linear space.
+    alpha_mode : str, optional
+        One of 'OPAQUE', 'MASK', or 'BLEND'.
+    alpha_cutoff : float, optional
+        Specifies cutoff threshold when in MASK mode.
+    double_sided : bool, optional
+        If True, the material is double sided. If False, back-face culling is enabled.
+    smooth : bool, optional
+        If True, the material is rendered smoothly by using only one normal per vertex.
+    wireframe : bool, optional
+        If True, the material is rendered in wireframe mode.
+    base_color_factor : (4,) float
+        The RGBA components of the base color of the material. If a texture is specified,
+        this factor is multiplied componentwise by the texture. These values are linear.
+    base_color_texture : (n,n,4) float
+        The base color texture in linear RGB(A) values.
+    metallic_factor : float
+        The metalness of the material in [0,1]. This value is linear.
+    roughness_factor : float
+        The roughness of the material in [0,1]. This value is linear.
+    metallic_roughness_texture : (n,n,2)
+        The metallic-roughness texture. If the number of channels is >2, the metalness
+        values are sampled from the B channel and the roughness form the G channel.
+        These values are linear.
+    """
 
     def __init__(self,
                  name=None,
@@ -172,6 +277,8 @@ class MetallicRoughnessMaterial(Material):
                  alpha_mode=None,
                  alpha_cutoff=None,
                  double_sided=False,
+                 smooth=True,
+                 wireframe=False,
                  base_color_factor=None,
                  base_color_texture=None,
                  metallic_factor=1.0,
@@ -185,7 +292,9 @@ class MetallicRoughnessMaterial(Material):
             emissive_factor=emissive_factor,
             alpha_mode=alpha_mode,
             alpha_cutoff=alpha_cutoff,
-            double_sided=double_sided
+            double_sided=double_sided,
+            smooth=smooth,
+            wireframe=wireframe
         )
 
         # Set defaults
@@ -204,17 +313,7 @@ class MetallicRoughnessMaterial(Material):
 
     @base_color_factor.setter
     def base_color_factor(self, value):
-        if not isinstance(value, np.ndarray) or value.ndim != 1 or value.shape[0] not in set([3,4]):
-            raise TypeError('Base color factor must be a (3,) or (4,) ndarray')
-
-        if np.issubdtype(value.dtype, np.integer):
-            value = (value / 255.0).astype(np.float32)
-        elif np.issubdtype(value.dtype, np.float):
-            value = value.astype(np.float32)
-        else:
-            raise ValueError('Base color factor must be a numerical ndarray')
-
-        self._base_color_factor = base_color_factor
+        self._base_color_factor = format_color_vector(value, 4)
 
     @property
     def base_color_texture(self):
@@ -241,7 +340,7 @@ class MetallicRoughnessMaterial(Material):
     @roughness_factor.setter
     def roughness_factor(self, value):
         if value < 0 or value > 1:
-            raise ValueError('roughness factor must be in range [0,1]')
+            raise ValueError('Roughness factor must be in range [0,1]')
         self._roughness_factor = float(value)
 
     @property
@@ -250,4 +349,4 @@ class MetallicRoughnessMaterial(Material):
 
     @metallic_roughness_texture.setter
     def metallic_roughness_texture(self, value):
-        self._metallic_roughness_texture = self._format_texture(value, 'BG')
+        self._metallic_roughness_texture = self._format_texture(value, 'GB')
