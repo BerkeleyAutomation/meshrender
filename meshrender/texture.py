@@ -1,5 +1,8 @@
 import hashlib
+import numpy as np
 import uuid
+
+from OpenGL.GL import *
 
 class TextureCache(object):
     """A cache for textures.
@@ -27,7 +30,7 @@ class TextureCache(object):
         # Hash data to find shader
         if data is not None:
             data = np.ascontiguousarray(data)
-            hasher = hashlib.md5(contiguous)
+            hasher = hashlib.md5(data)
             md5 = hasher.hexdigest()
             if md5 in self._hash_cache:
                 tex = self._hash_cache[md5]
@@ -69,6 +72,7 @@ class TextureCache(object):
             for k in self._hash_cache:
                 if self._hash_cache[k] == tex:
                     self._hash_cache.pop(k)
+            tex.delete()
 
 class Texture(object):
 
@@ -78,6 +82,12 @@ class Texture(object):
             # Process Data Format
             width = data.shape[1]
             height = data.shape[0]
+            if np.issubdtype(data.dtype, np.integer):
+                data = data.astype(np.uint8)
+                dfmt = GL_UNSIGNED_BYTE
+            else:
+                data = data.astype(np.float32)
+                dfmt = GL_FLOAT
 
             if data.ndim == 2:
                 if data.dtype == np.float:
@@ -101,12 +111,6 @@ class Texture(object):
             else:
                 raise ValueError('Unsupported data shape for texture')
 
-            if data.dtype == np.uint8:
-                dfmt = GL_UNSIGNED_BYTE
-            elif data.dtype == np.float32:
-                dfmt = GL_FLOAT
-
-            data = data.flatten()
         else:
             width = width
             height = height
@@ -128,6 +132,8 @@ class Texture(object):
         # Generate the OpenGL texture
         self._texid = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, self._texid)
+        data = np.flip(data, axis=0)
+        data = np.ascontiguousarray(data.flatten())
         glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height, 0, fmt, dfmt, data)
         glGenerateMipmap(GL_TEXTURE_2D)
 
@@ -145,8 +151,7 @@ class Texture(object):
 
     def delete(self):
         if self._texid is not None:
-            glDeleteTextures(1, self._texid)
+            # TODO OPENGL BUG?
+            #glDeleteTextures(1, [self._texid])
+            glDeleteTextures([self._texid])
             self._texid = None
-
-    def __del__(self):
-        self.delete()

@@ -18,8 +18,10 @@ scene = Scene()#np.array([1.0, 0.0, 0.0]))
 #====================================
 
 # Begin by loading meshes
-pawn_mesh = trimesh.load_mesh('./models/pawn.obj')
-pawn_mesh = trimesh.creation.icosahedron()
+pawn_mesh = trimesh.load_mesh('./models/textured.obj', process=False)
+#pawn_mesh = trimesh.creation.icosahedron()
+#colors = (255*np.random.uniform(size=pawn_mesh.vertices.shape)).astype(np.uint8)
+#pawn_mesh.visual.vertex_colors = colors
 #pawn_mesh = trimesh.load_mesh('./models/pawn_large.obj')
 bar_mesh = trimesh.load_mesh('./models/bar_clamp.obj')
 
@@ -42,7 +44,7 @@ pawn_material = Material(
     diffuse = np.array([0.5, 0.5, 0.0]),#0.5*np.ones(3),
     specular = 0.3*np.ones(3),
     shininess = 10.0,
-    smooth=False,
+    smooth=True,
     wireframe=False
 )
 

@@ -1,6 +1,7 @@
 import abc
 import numpy as np
 import six
+import trimesh
 
 from OpenGL.GL import *
 
@@ -316,6 +317,7 @@ class MeshSceneObject(SceneObject):
                 smooth=False,
                 wireframe=False,
             )
+        super(MeshSceneObject, self).__init__(vertices, is_visible, poses)
 
         if self.material.smooth:
             if face_colors is not None:
@@ -336,7 +338,6 @@ class MeshSceneObject(SceneObject):
             if not face_colors.shape[0] == self.face_colors.shape[0]:
                 raise ValueError('Incorrect vertex colors shape: {}'.format(vertex_colors.shape))
 
-        super(MeshSceneObject, self).__init__(vertices, is_visible, poses)
 
     def _add_to_context(self):
         """Add the object to the current OpenGL context.
@@ -427,8 +428,8 @@ class MeshSceneObject(SceneObject):
             elementbuffer = glGenBuffers(1)
             self._buffers.append(elementbuffer)
             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer)
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, UINT_SZ*3*len(mesh.faces),
-                         mesh.faces.flatten().astype(np.uint32), GL_STATIC_DRAW)
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, UINT_SZ*3*len(self.faces),
+                         np.array(self.faces.flatten()).astype(np.uint32), GL_STATIC_DRAW)
 
         glBindVertexArray(0)
         self._in_context = True
@@ -538,12 +539,32 @@ class MeshSceneObject(SceneObject):
         """
         vertex_colors = None
         face_colors = None
+        texture_coords = None
+
+        if material is None:
+            material = Material(
+                diffuse=np.array([0.5, 0.5, 0.5, 1.0]),
+                specular=np.array([0.1, 0.1, 0.1]),
+                shininess=10.0,
+                smooth=False,
+                wireframe=False,
+            )
 
         if mesh.visual.defined:
             if mesh.visual.kind == 'vertex':
                 vertex_colors = mesh.visual.vertex_colors / 255.0
             elif mesh.visual.kind == 'face':
                 face_colors = mesh.visual.face_colors / 255.0
+            elif mesh.visual.kind == 'texture':
+                texture_coords = np.array(mesh.visual.uv)
+                # Trimesh UV bug
+                if texture_coords.shape[1] == 3:
+                    texture_coords = texture_coords[:,:2]
+                # Load image into material
+                if isinstance(mesh.visual.material, trimesh.visual.texture.SimpleMaterial):
+                    material.diffuse = np.array(mesh.visual.material.image) / 255.0
+                elif isinstance(mesh.visual.material, trimesh.visual.texture.PBRMaterial):
+                    raise NotImplementedError('NOT IMPLEMENTED YET')
 
         return MeshSceneObject(vertices=mesh.vertices, vertex_normals=mesh.vertex_normals,
                                faces=mesh.faces, face_normals=mesh.face_normals,

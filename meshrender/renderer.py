@@ -336,14 +336,18 @@ class Renderer(object):
             # Per-Vertex Color only
             if vbf & VertexBufferFlags.COLOR:
                 if not vbf & VertexBufferFlags.TEXTURE:
-                    return self._program_cache.get_program(['vertex_color.vert', 'vertex_color.frag'])
+                    return self._program_cache.get_program(['vc_mesh.vert', 'bp_mesh.frag'])
                 else:
                     raise NotImplementedError('STILL NEED TO IMP TEXTURE SHADERS')
             else:
                 if vbf & VertexBufferFlags.TEXTURE:
-                    raise NotImplementedError('STILL NEED TO IMP TEXTURE SHADERS')
+                    # Singleton textures
+                    if tf == TextureFlags.DIFFUSE:
+                        return self._program_cache.get_program(['tex_mesh.vert', 'bp_d_tex_mesh.frag'])
+                    else:
+                        raise NotImplementedError('STILL NEED TO IMP TEXTURE SHADERS')
                 else:
-                    return self._program_cache.get_program(['monochrome.vert', 'vertex_color.frag'])
+                    return self._program_cache.get_program(['simple_mesh.vert', 'bp_mesh.frag'])
         # Point Cloud
         else:
             return self._program_cache.get_program(['point_cloud.vert', 'point_cloud.frag'])
