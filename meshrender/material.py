@@ -6,7 +6,8 @@ import numpy as np
 import PIL
 import six
 
-from .utils import format_color_vector
+from .constants import TexFlags
+from .utils import format_color_vector, format_texture_source
 
 @six.add_metaclass(abc.ABCMeta)
 class Material(object):
@@ -71,6 +72,9 @@ class Material(object):
         self.smooth = smooth
         self.wireframe = wireframe
 
+        self._is_transparent = None
+        self._tex_flags = None
+
     @property
     def name(self):
         return self._name
@@ -86,6 +90,7 @@ class Material(object):
     @normal_texture.setter
     def normal_texture(self, value):
         self._normal_texture = self._format_texture(value, 'RGB')
+        self._tex_flags = None
 
     @property
     def occlusion_texture(self):
@@ -94,6 +99,7 @@ class Material(object):
     @occlusion_texture.setter
     def occlusion_texture(self, value):
         self._occlusion_texture = self._format_texture(value, 'R')
+        self._tex_flags = None
 
     @property
     def emissive_texture(self):
@@ -102,6 +108,7 @@ class Material(object):
     @emissive_texture.setter
     def emissive_texture(self, value):
         self._emissive_texture = self._format_texture(value, 'RGB')
+        self._tex_flags = None
 
     @property
     def emissive_factor(self):
@@ -120,6 +127,7 @@ class Material(object):
         if value not in set(['OPAQUE', 'MASK', 'BLEND']):
             raise ValueError('Invalid alpha mode {}'.format(value))
         self._alpha_mode = alpha_mode
+        self._is_transparent = None
 
     @property
     def alpha_cutoff(self):
@@ -130,6 +138,7 @@ class Material(object):
         if value < 0 or value > 1:
             raise ValueError('Alpha cutoff must be in range [0,1]')
         self._alpha_cutoff = float(value)
+        self._is_transparent = None
 
     @property
     def double_sided(self):
@@ -161,70 +170,43 @@ class Material(object):
             raise TypeError('Wireframe must be a boolean value')
         self._wireframe = wireframe
 
+    @property
+    def is_transparent(self):
+        if self._is_transparent is None:
+            self._is_transparent = self._compute_transparency()
+        return self._is_transparent
+
+    @property
+    def requires_tangents(self):
+        return self.normal_texture is not None
+
+    @property
+    def tex_flags(self):
+        if self._tex_flags is None:
+            self._tex_flags = self._compute_tex_flags()
+        return self._tex_flags
+
+    def _compute_transparency(self):
+        return False
+
+    def _compute_tex_flags(self):
+        tex_flags = TexFlags.NONE
+        if self.normal_texture is not None:
+            tex_flags |= TexFlags.NORMAL
+        if self.occlusion_texture is not None:
+            tex_flags |= TexFlags.OCCLUSION
+        if self.emissive_texture is not None:
+            tex_flags |= TexFlags.EMISSIVE
+        return tex_flags
+
     def _format_texture(self, texture, target_channels='RGB'):
         """Format a texture as a float32 np array.
         """
-
-        # Pass through None
-        if texture is None:
-            return None
-
-        # Convert PIL images into numpy arrays
-        if isinstance(texture, PIL.Image.Image):
-            texture = np.array(texture)
-
-        # Format numpy arrays
-        if isinstance(texture, np.ndarray):
-            if np.issubdtype(texture.dtype, np.integer):
-                texture = (texture / 255.0).astype(np.float32)
-            elif np.issubdtype(texture.dtype, np.float):
-                texture = texture.astype(np.float32)
-            else:
-                raise TypeError('Invalid type {} for texture'.format(type(texture)))
-
-            # Format array by picking out correct texture channels or padding
-            if texture.ndim == 2:
-                texture = texture[:,:,np.newaxis]
-
-            if target_channels == 'R':
-                texture = texture[:,:,0]
-                texture = texture.squeeze()
-            elif target_channels == 'RG'
-                if texture.shape[2] == 1:
-                    texture = np.repeat(texture, 2, axis=2)
-                else:
-                    texture = texture[:,:,(0,1)]
-            elif target_channels == 'GB'
-                if texture.shape[2] == 1:
-                    texture = np.repeat(texture, 2, axis=2)
-                elif texture.shape[2] > 2:
-                    texture = texture[:,:,(1,2)]
-            elif target_channels == 'RGB':
-                if texture.shape[2] == 1:
-                    texture = np.repeat(texture, 3, axis=2)
-                elif texture.shape[2] == 2:
-                    raise ValueError('Cannot reformat texture with 2 channels into RGB')
-                else:
-                    texture = texture[:,:,(1,2,3)]
-            elif target_channels == 'RGBA':
-                if texture.shape[2] == 1:
-                    texture = np.repeat(texture, 4, axis=2)
-                    texture[:,:,3] = 1.0
-                elif texture.shape[2] == 2:
-                    raise ValueError('Cannot reformat texture with 2 channels into RGBA')
-                elif texture.shape[2] == 3:
-                    texture = np.concatenate((texture,
-                                                np.ones(texture.shape[0],
-                                                        texture.shape[1],
-                                                        target_n_channels - texture.shape[2])), axis=2)
-            else:
-                raise ValueError('Invalid texture channel specification: {}'.format(target_channels))
+        if isinstance(texture, Texture):
+            return texture
         else:
-            raise TypeError('Invalid type {} for texture'.format(type(texture)))
-
-        return texture.astype(np.float32)
-
-
+            source = format_texture_source(texture, target_channels)
+            return Texture(source=source, source_channels=target_channels)
 
 class MetallicRoughnessMaterial(Material):
     """Base for standard glTF 2.0 materials.
@@ -314,6 +296,7 @@ class MetallicRoughnessMaterial(Material):
     @base_color_factor.setter
     def base_color_factor(self, value):
         self._base_color_factor = format_color_vector(value, 4)
+        self._is_transparent = None
 
     @property
     def base_color_texture(self):
@@ -322,6 +305,8 @@ class MetallicRoughnessMaterial(Material):
     @base_color_texture.setter
     def base_color_texture(self, value):
         self._base_color_texture = self._format_texture(value, 'RGBA')
+        self._is_transparent = None
+        self._tex_flags = None
 
     @property
     def metallic_factor(self):
@@ -350,3 +335,24 @@ class MetallicRoughnessMaterial(Material):
     @metallic_roughness_texture.setter
     def metallic_roughness_texture(self, value):
         self._metallic_roughness_texture = self._format_texture(value, 'GB')
+        self._tex_flags = None
+
+    def _compute_tex_flags(self):
+        tex_flags = super(MetallicRoughnessMaterial, self)._compute_tex_flags()
+        if self.base_color_texture is not None:
+            tex_flags |= TexFlags.BASE_COLOR
+        if self.metallic_roughness_texture is not None
+            tex_flags |= TexFlags.METALLIC_ROUGHNESS
+        return tex_flags
+
+    def _compute_transparency(self):
+        if self.alpha_mode == 'OPAQUE':
+            return False
+        cutoff = self.alpha_cutoff
+        if self.alpha_mode == 'BLEND':
+            cutoff = 1.0
+        if self.base_color_factor[3] < cutoff:
+            return True
+        if np.any(self.base_color_factor < cutoff):
+            return True
+        return False

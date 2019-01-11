@@ -17,30 +17,31 @@ class GLTF(object):
     MIRRORED_REPEAT = 33648
     REPEAT = 10497
 
-# Type of vertex data available (in order of appearance)
-class VertexBufferFlags(object):
-    POSITION = 0    # Vertex position data available as 3-float
-    NORMAL = 1      # Vertex normal data available as 3-float
-    COLOR = 2       # Vertex color data available as 4-float
-    TEXTURE = 4     # Vertex texture coordinates available as 2-float
-    TANGENT = 8     # Tangent directions are available as 3-float
-    BITANGENT = 16  # Bitangent directions are available as 3-float
+class BufFlags(object):
+    POSITION = 0
+    NORMAL = 1
+    TANGENT = 2
+    TEXCOORD_0 = 4
+    TEXCOORD_1 = 8
+    COLOR_0 = 16
+    JOINTS_0 = 32
+    WEIGHTS_0 = 64
 
-# Type of rendering to be done
-class VertexArrayFlags(object):
-    POINTS = 0      # Render as points (mutually-exclusive with TRIANGLES)
-    TRIANGLES = 1   # Render as triangles (mutually-exclusive with POINTS)
-    INSTANCED = 2   # Instanced render with pose buffer
-    ELEMENTS = 4    # Render as triangles with element buffer
+class GeomFlags(object):
+    NONE = 0
+    POINTS = 1
+    TRIANGLES = 2
+    ELEMENTS = 4
 
-# Type of textures available to object (in order of appearance)
-class TextureFlags(object):
-    NONE = 0        # No texture data available
-    DIFFUSE = 1     # Diffuse texture map available (4-float)
-    SPECULAR = 2    # Specular texture map available (1-float)
-    EMISSION = 4    # Emission texture map available (3-float)
-    NORMAL = 8      # Normal bump map available (3-float)
-    HEIGHT = 16     # Height/displacement map available (1-float)
+class TexFlags(object):
+    NONE = 0
+    NORMAL = 1
+    OCCLUSION = 2
+    EMISSIVE = 4
+    BASE_COLOR = 8
+    METALLIC_ROUGHNESS = 16
+    DIFFUSE = 32
+    SPECULAR_GLOSSINESS = 4
 
 # Flags for render type
 class RenderFlags(object):

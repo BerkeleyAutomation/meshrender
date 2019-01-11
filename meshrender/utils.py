@@ -9,6 +9,8 @@ def format_color_vector(self, value, length):
         retval = np.repeat(value, length)
     elif isinstance(value, np.ndarray):
         value = value.squeeze()
+        if np.issubdtype(value, np.integer):
+            value = (value / 255.0).astype(np.float32)
         if value.ndim != 1:
             raise ValueError('Format vector takes only 1-D vectors')
         if length > value.shape[0]:
@@ -19,6 +21,15 @@ def format_color_vector(self, value, length):
         raise ValueError('Invalid vector data type')
 
     return value.squeeze().astype(np.float32)
+
+def format_color_array(self, value, n_channels):
+    if np.issubdtype(value, np.integer):
+        value = (value / 255.0).astype(np.float32)
+    if value.shape[1] < n_channels:
+        value = np.concatenate((value,
+                                np.ones(value.shape[0], n_channels - value.shape[1])), axis=1)
+    value = value[:,n_channels].astype(np.float32)
+    return value
 
 def format_texture_source(self, texture, target_channels='RGB'):
     """Format a texture as a float32 np array.
@@ -75,7 +86,7 @@ def format_texture_source(self, texture, target_channels='RGB'):
                 texture = np.concatenate((texture,
                                             np.ones(texture.shape[0],
                                                     texture.shape[1],
-                                                    target_n_channels - texture.shape[2])), axis=2)
+                                                    1)), axis=2)
         else:
             raise ValueError('Invalid texture channel specification: {}'.format(target_channels))
     else:

@@ -88,6 +88,9 @@ class Texture(object):
             glDeleteTextures([self._texid])
             self._texid = None
 
+    def _in_context(self):
+        return self._vaid is not None
+
     def _bind(self):
         glBindTexture(GL_TEXTURE_2D, self._texid)
 

@@ -33,6 +33,9 @@ class Camera(object):
 
     @zfar.setter
     def zfar(self):
+        if zfar is None:
+            self._zfar = None
+            return
         if value <= 0 or value <= self.znear:
             raise ValueError('zfar must be >0 and >znear')
         self._zfar = zfar
@@ -88,21 +91,23 @@ class PerspectiveCamera(Camera):
                 raise ValueError('Aspect ratio of camera must be defined')
             aspect_ratio = float(width) / float(height)
 
-        t = np.tan(self.yfov / 2.0) * self.znear
-        b = -t
-        r = t * aspect_ratio
-        l = -r
+        a = aspect_ratio
+        t = np.tan(self.yfov / 2.0)
         n = self.znear
         f = self.zfar
 
         P = np.zeros((4,4))
-        P[0][0] = 2.0 * n / (r - l)
-        P[1][1] = 2.0 * n / (t - b)
-        P[0][2] = (r + l) / (r - l)
-        P[1][2] = (t + b) / (t - b)
-        P[2][2] = -(f + n) / (f - n)
+        P[0][0] = 1.0 / (a * t)
+        P[1][1] = 1.0 / t
         P[3][2] = -1.0
-        P[2][3] = -(2*f*n) / (f - n)
+
+        if f is None:
+            P[2][2] = -1.0
+            P[2][3] = -2.0 * n
+        else:
+            P[2][2] = (f + n) / (n - f)
+            P[2][3] = (2*f*n) / (n - f)
+
         return P
 
 class OrthographicCamera(Camera):
