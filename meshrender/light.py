@@ -6,6 +6,7 @@ import numpy as np
 import six
 
 from .utils import format_color_vector
+from .texture import Texture
 
 @six.add_metaclass(abc.ABCMeta)
 class Light(object):
@@ -29,11 +30,18 @@ class Light(object):
                  name=None,
                  color=None,
                  intensity=None,
-                 range=None):
+                 range=None,
+                 casts_shadows=False):
         self.name = name
         self.color = color
         self.intensity = intensity
         self.range = range
+        self.casts_shadows = casts_shadows
+        self.depth_texture = None
+        self.depth_camera = None
+
+        if self.casts_shadows:
+            self.depth_texture = self._generate_depth_texture()
 
     @property
     def color(self):
@@ -61,6 +69,10 @@ class Light(object):
             self._range = value
         else:
             self._range = float(value)
+
+    @abc.abstractmethod
+    def _generate_depth_texture(self):
+        pass
 
 class DirectionalLight(Light):
     """A directional light source, which casts light along a given
@@ -91,6 +103,9 @@ class DirectionalLight(Light):
             intensity=intensity,
             range=range
         )
+
+    def _generate_depth_texture(self):
+        return Texture(width=1024, height=1024, source_channels='D')
 
 class PointLight(Light):
     """A point light source, which casts light in all directions and attenuates with
@@ -129,6 +144,9 @@ class PointLight(Light):
             intensity=intensity,
             range=range
         )
+
+    def _generate_depth_texture(self):
+        raise NotImplementedError('Shadows not yet implemented for point lights')
 
 class SpotLight(Light):
     """A spot light source, which casts light in a particular direction in a cone.
@@ -187,4 +205,7 @@ class SpotLight(Light):
         if value < 0.0 or value > np.pi / 2.0 + 1e-9:
             raise ValueError('Invalid value for outer cone angle')
         self._outer_cone_angle = float(value)
+
+    def _generate_depth_texture(self):
+        return Texture(width=1024, height=1024, source_channels='D')
 

@@ -63,7 +63,7 @@ class Scene(object):
 
     @property
     def meshes(self):
-        return [n.mesh for n in self.mesh_nodes]
+        return set([n.mesh for n in self.mesh_nodes])
 
     @property
     def mesh_nodes(self):
@@ -71,7 +71,7 @@ class Scene(object):
 
     @property
     def point_lights(self):
-        return [n.light for n in self.point_light_nodes]
+        return set([n.light for n in self.point_light_nodes])
 
     @property
     def point_light_nodes(self):
@@ -79,7 +79,7 @@ class Scene(object):
 
     @property
     def spot_lights(self):
-        return [n.light for n in self.spot_light_nodes]
+        return set([n.light for n in self.spot_light_nodes])
 
     @property
     def spot_light_nodes(self):
@@ -87,7 +87,7 @@ class Scene(object):
 
     @property
     def directional_lights(self):
-        return [n.light for n in self.directional_light_nodes]
+        return set([n.light for n in self.directional_light_nodes])
 
     @property
     def directional_light_nodes(self):
@@ -95,7 +95,7 @@ class Scene(object):
 
     @property
     def cameras(self):
-        return [n.light for n in self.camera_nodes]
+        return set([n.camera for n in self.camera_nodes])
 
     @property
     def camera_nodes(self):

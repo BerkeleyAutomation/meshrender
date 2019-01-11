@@ -186,6 +186,10 @@ class Material(object):
             self._tex_flags = self._compute_tex_flags()
         return self._tex_flags
 
+    @property
+    def textures(self):
+        return self._compute_textures()
+
     def _compute_transparency(self):
         return False
 
@@ -198,6 +202,11 @@ class Material(object):
         if self.emissive_texture is not None:
             tex_flags |= TexFlags.EMISSIVE
         return tex_flags
+
+    def _compute_textures(self):
+        all_textures = [self.normal_texture, self.occlusion_texture, self.emissive_texture]
+        textures = set([t for t in all_textures if t is not None])
+        return textures
 
     def _format_texture(self, texture, target_channels='RGB'):
         """Format a texture as a float32 np array.
@@ -356,3 +365,10 @@ class MetallicRoughnessMaterial(Material):
         if np.any(self.base_color_factor < cutoff):
             return True
         return False
+
+    def _compute_textures(self):
+        textures = super(MetallicRoughnessMaterial, self)._compute_textures()
+        all_textures = [self.base_color_texture, self.metallic_roughness_texture]
+        all_textures = [t for t in all_textures if t is not None]
+        textures |= all_textures
+        return textures

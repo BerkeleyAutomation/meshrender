@@ -38,11 +38,6 @@ class ShaderProgramCache(object):
         return self._program_cache[shader_names]
 
     def clear(self):
-        self.delete()
-
-    def delete(self):
-        """Delete all cached shader programs.
-        """
         for key in self._program_cache:
             self._program_cache[key].delete()
         self._program_cache = {}
@@ -60,11 +55,16 @@ class ShaderProgram(object):
 
     def __init__(self, shader_filenames):
 
-        shader_ids = []
         self.shader_filenames = shader_filenames
+        self._program_id = None
+
+    def _add_to_context(self):
+        if self._program_id is not None:
+            raise ValueError('Shader program already in context')
+        shader_ids = []
 
         # Load and compile shaders
-        for shader_filename in shader_filenames:
+        for shader_filename in self.shader_filenames:
             # Add proper directory to shader filename
             # Get shader type
             path, base = os.path.split(shader_filename)
@@ -79,8 +79,7 @@ class ShaderProgram(object):
                 raise ValueError('Unsupported shader file extension: {}'.format(ext))
 
             # Load shader file
-            with open(shader_filename) as f:
-                shader_str = f.read()
+            shader_str = self._load(shader_filename)
 
             shader_id = gl_shader_utils.compileShader(shader_str, shader_type)
             shader_ids.append(shader_id)
@@ -92,12 +91,39 @@ class ShaderProgram(object):
         for sid in shader_ids:
             glDeleteShader(sid)
 
-    def bind(self):
+    def _remove_from_context(self):
+        if self._program_id is not None:
+            glDeleteProgram(self._program_id)
+            self._program_id = None
+
+    def _load(self, shader_filename):
+        path, _ = os.path.split(shader_filename)
+        import_re = re.compile('^(.*)#import\s+(.*)\s+$', re.MULTILINE)
+
+        def recursive_load(matchobj, path):
+            indent = matchobj.group(1)
+            fname = os.path.join(path, matchobj.group(2))
+            new_path, _ = os.path.split(fname)
+            new_path = os.path.realpath(new_path)
+            with open(fname) as f:
+                text = f.read()
+            text = indent + text
+            text = text.replace('\n', '\n{}'.format(indent), text.count('\n') - 1)
+            return re.sub(import_re, lambda m : recursive_load(m, new_path), text)
+
+        with open(shader_filename) as f:
+            text = f.read()
+        text = re.sub(import_re, lambda m : recursive_load(m, path), text)
+        return text
+
+    def _bind(self):
         """Bind this shader program to the current OpenGL context.
         """
+        if self._program_id is None:
+            raise ValueError('Cannot bind program that is not in context')
         glUseProgram(self._program_id)
 
-    def unbind(self):
+    def _unbind(self):
         """Unbind this shader program from the current OpenGL context.
         """
         glUseProgram(0)
@@ -116,13 +142,7 @@ class ShaderProgram(object):
     def delete(self):
         """Delete this shader program from the current OpenGL context.
         """
-        if self._program_id is not None:
-            glDeleteProgram(self._program_id)
-            self._program_id = None
-
-    def __del__(self):
-        if self._program_id is not None:
-            self.delete()
+        self._remove_from_context()
 
     def set_uniform(self, name, value, unsigned=False):
         """Set a uniform value in the current shader program.

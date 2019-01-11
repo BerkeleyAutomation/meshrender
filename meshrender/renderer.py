@@ -2,7 +2,6 @@ import numpy as np
 
 from .constants import *
 from .shader_program import ShaderProgramCache
-from .texture import TextureCache
 
 from OpenGL.GL import *
 
@@ -24,11 +23,8 @@ class Renderer(object):
 
         # Shader Program Cache
         self._program_cache = ShaderProgramCache()
-
-        # Texture Cache
-        self._texture_cache = TextureCache()
-
-        self._objects = set()
+        self._meshes = set()
+        self._textures = set()
 
         # Set up framebuffer if needed / TODO
 
@@ -48,8 +44,63 @@ class Renderer(object):
         else:
             self._standard_forward_pass(scene, render_flags)
 
-    def _standard_forward_pass(self, scene, render_flags):
-        if render_flags & RenderFlags.OFFSCREEN:
+
+    def _update_context(self, scene, flags):
+
+        # Update meshes
+        scene_meshes = scene.meshes
+
+        # Add new meshes to context
+        for mesh in scene_meshes - self._meshes:
+            mesh._add_to_context()
+
+        # Remove old meshes from context
+        for mesh in self._meshes - scene_meshes:
+            mesh._unbind()
+            mesh._remove_from_context()
+
+        self._meshes = scene_meshes.copy()
+
+        # Update textures
+        scene_textures = set()
+        for m in scene_meshes:
+            scene_textures |= mesh.textures
+        for l in scene.lights:
+            if l.casts_shadows:
+                scene_textures.add(l.depth_texture)
+
+        # Add new textures to context
+        for texture in scene_textures - self._textures:
+            texture._add_to_context()
+
+        for texture in self._textures - scene_textures:
+            texture._unbind()
+            texture._remove_from_context()
+
+        # Update shaders
+
+    def delete(self):
+        # Free shaders
+        self._program_cache.clear()
+
+        # Free meshes
+        for mesh in self._meshes:
+            mesh.delete()
+
+        # Free textures
+        for texture in self._textures:
+            texture.delete()
+
+        self._meshes = set()
+        self._textures = set()
+
+        self._delete_framebuffer()
+
+
+
+    def _forward_pass(self, scene, flags):
+        # If we're rendering to the framebuffer, bind it
+        if flags & RenderFlags.OFFSCREEN:
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._framebuf)
         else:
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
