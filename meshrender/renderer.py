@@ -14,12 +14,15 @@ class Renderer(object):
     the context has already been created.
     """
 
-    def __init__(self):
+    def __init__(self, viewport_width, viewport_height):
+        self.viewport_width = viewport_width
+        self.viewport_height = viewport_height
+
         # Optional framebuffer for offscreen renders
-        self._framebuf = None
-        self._colorbuf = None
-        self._depthbuf = None
-        self._framebuf_dims = (None, None)
+        self._main_fb = None
+        self._main_cb = None
+        self._main_db = None
+        self._main_fb_dims = (None, None)
 
         # Shader Program Cache
         self._program_cache = ShaderProgramCache()
@@ -78,6 +81,24 @@ class Renderer(object):
             texture._remove_from_context()
 
         # Update shaders
+        # TODO
+
+    def _configure_forward_pass_viewport(self, scene, flags):
+
+        # If using offscreen render, bind main framebuffer
+        if flags & RenderFlags.OFFSCREEN:
+            self._configure_main_framebuffer()
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._main_fb)
+        else:
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
+
+        glClearColor(*scene.bg_color)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glViewport(0, 0, self.viewport_width, self.viewport_height)
+        glEnable(GL_DEPTH_TEST)
+        glDepthMask(GL_TRUE)
+        glDepthFunc(GL_LESS)
+        glDepthRange(0.0, 1.0)
 
     def delete(self):
         # Free shaders
@@ -94,49 +115,138 @@ class Renderer(object):
         self._meshes = set()
         self._textures = set()
 
-        self._delete_framebuffer()
+        self._delete_main_framebuffer()
 
+    def _configure_main_framebuffer(self):
+        # If mismatch with prior framebuffer, delete it
+        if (self._main_fb is not None and
+            self.viewport_width != self._main_fb_dims[0] or
+            self.viewport_height != self._main_fb_dims[1]):
+            self._delete_main_framebuffer()
+
+        # If framebuffer doesn't exist, create it
+        if self._main_fb is None:
+            self._main_cb, self._main_db = glGenRenderbuffers(2)
+            glBindRenderbuffer(GL_RENDERBUFFER, self._main_cb)
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, self.width, self.height)
+            glBindRenderbuffer(GL_RENDERBUFFER, self._main_db)
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, self.width, self.height)
+            self._main_fb = glGenFramebuffers(1)
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._main_fb)
+            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, self._main_cb)
+            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, self._main_db)
+            self._main_fb_dims = (self.viewport_width, self.viewport_height)
+
+    def _delete_main_framebuffer(self):
+        if self._main_fb is not None:
+            glDeleteFramebuffers(1, [self._main_fb])
+        if self._main_cb is not None:
+            glDeleteRenderbuffers(1, [self._main_cb])
+        if self._main_db is not None:
+            glDeleteRenderbuffers(1, [self._main_db])
+
+        self._main_fb = None
+        self._main_cb = None
+        self._main_db = None
+        self._main_fb_dims = (None, None)
+
+    def _get_camera_matrices(self, scene):
+        main_camera_node = scene.main_camera_node
+        if main_camera_node is None:
+            raise ValueError('Cannot render scene without a camera')
+        P = node.camera.get_projection_matrix(width=self.viewport_width, height=self.viewport_height)
+        pose = scene.get_pose(main_camera_node)
+        V = np.linalg.inv(pose) # V maps from world to camera
+        return V, P
+
+    def _bind_texture(self, texture, uniform_name, program):
+        """Bind a texture to an active texture unit and return
+        the texture unit index that was used.
+        """
+        tex_id = self._get_next_active_texture()
+        glActiveTexture(GL_TEXTURE0 + tex_id)
+        texture._bind()
+        program.set_uniform('material.{}'.format(uniform_name), tex_id)
+
+    def _draw_primitive(self, primitive, pose, program, flags):
+        # Set model pose matrix
+        program.set_uniform('M', pose)
+
+        # Bind mesh buffers
+        primitive._bind()
+
+        # Bind mesh material
+        if not flags & RenderFlags.DEPTH_ONLY:
+            material = primitive.material
+
+            # Bind textures
+            tf = material.tex_flags
+            if tf & TexFlags.NORMAL:
+                self._bind_texture(material.normalTexture,
+                                   'normal_texture', program)
+            if tf & TexFlags.OCCLUSION:
+                self._bind_texture(material.occlusionTexture,
+                                   'occlusion_texture', program)
+            if tf & TexFlags.EMISSIVE:
+                self._bind_texture(material.emissiveTexture,
+                                   'emissive_texture', program)
+            if tf & TexFlags.BASE_COLOR:
+                self._bind_texture(material.baseColorTexture,
+                                   'base_color_texture', program)
+            if tf & TexFlags.METALLIC_ROUGHNESS:
+                self._bind_texture(material.metallicRoughnessTexture,
+                                   'metallic_roughness_texture', program)
+            if tf & TexFlags.DIFFUSE:
+                self._bind_texture(material.diffuseTexture,
+                                   'diffuse_texture', program)
+            if tf & TexFlags.SPECULAR_GLOSSINESS:
+                self._bind_texture(material.specularGlossinessTexture,
+                                   'specular_glossiness_texture', program)
+
+            # Bind other uniforms
+            b = 'material.{}'
+            program.bind_uniform(b.format('emissive_factor'),
+                                 material.emissiveFactor)
+            if isinstance(material, MetallicRoughnessMaterial):
+                program.bind_uniform(b.format('base_color_factor'),
+                                     material.baseColorFactor)
+                program.bind_uniform(b.format('metallic_factor'),
+                                     material.metallicFactor)
+                program.bind_uniform(b.format('roughness_factor'),
+                                     material.roughnessFactor)
+            elif isinstance(material, SpecularGlossinessMaterial):
+                program.bind_uniform(b.format('diffuse_factor'),
+                                     material.diffuseFactor)
+                program.bind_uniform(b.format('specular_factor'),
+                                     material.specularFactor)
+                program.bind_uniform(b.format('glossiness_factor'),
+                                     material.glossinessFactor)
+
+
+
+
+
+        # Render mesh
 
 
     def _forward_pass(self, scene, flags):
-        # If we're rendering to the framebuffer, bind it
-        if flags & RenderFlags.OFFSCREEN:
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._framebuf)
-        else:
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
+        # Update context with meshes and textures
+        self._update_context(scene, flags)
 
-        # Add objects to context
-        added_objects = set()
-        for obj_name in scene.objects:
-            obj = scene.objects[obj_name]
-            if obj not in self._objects:
-                obj._add_to_context()
-            added_objects.add(obj)
-        objs_to_remove = set()
-        for obj in self._objects:
-            if obj not in added_objects:
-                objs_to_remove.add(obj)
-        for obj in objs_to_remove:
-            self._objects.remove(obj)
-        self._objects = added_objects
-
-        # Clear viewport
-        self._init_standard_render(scene, render_flags)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        # Set up viewport for render
+        self._configure_forward_pass_viewport()
 
         # Set up camera matrices
-        cam_pose = scene.get_pose(scene.camera_name)
-        V = scene.camera.V(cam_pose)
-        P = scene.camera.P
+        V, P = self._get_camera_matrices(scene)
 
-        # Now, render each object
+        # Now, render each object in sorted order
         prior_program = None
-        for name in self._sorted_object_names(scene):
-            obj = scene.objects[name]
-            # Skip the object if it's not visible
-            if not obj.is_visible:
+        for node in self._sorted_mesh_nodes(scene):
+            mesh = node.mesh
+            # Skip the mesh if it's not visible
+            if not mesh.is_visible:
                 continue
-            # TODO SET GL BLEND MODE
+
 
             # First, get the appropriate program
             program = self._get_program(obj) # TODO
@@ -148,11 +258,9 @@ class Renderer(object):
             if not (render_flags & RenderFlags.DEPTH_ONLY):
                 self._bind_object_material(name, obj, program)
 
-            # Bind M matrix
-            M = scene.get_pose(name)
+            # Set MVP matrices
+            M = scene.get_pose(node)
             program.set_uniform('M', M)
-
-            # First, set V and P matrices
             program.set_uniform('V', V)
             program.set_uniform('P', P)
 
@@ -161,7 +269,6 @@ class Renderer(object):
             if program != prior_program:
                 if not render_flags & RenderFlags.DEPTH_ONLY:
                     self._bind_lighting_uniforms(scene, program, render_flags)
-
 
             # Next, set the polygon mode if necessary
             if obj.material.wireframe:
@@ -196,8 +303,8 @@ class Renderer(object):
         if not render_flags & RenderFlags.OFFSCREEN:
             return
         else:
-            width, height = self._framebuf_dims[0], self._framebuf_dims[1]
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, self._framebuf)
+            width, height = self._main_fb_dims[0], self._main_fb_dims[1]
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, self._main_fb)
             color_buf = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
             depth_buf = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
 
@@ -215,30 +322,26 @@ class Renderer(object):
 
             return color_im, depth_im
 
-    def _sorted_object_names(self, scene):
-        """Sort object names so that we iterate front-to-back on solid objects,
-        and then back-to-front on transparent ones.
-        """
-        cam_loc = scene.get_pose(scene.camera_name)[:3,3]
-
-        solid_names = []
-        transparent_names = []
-        for obj_name in scene.objects:
-            obj = scene.objects[obj_name]
-            if obj.is_transparent:
-                transparent_names.append(obj_name)
+    def _sorted_mesh_nodes(self, scene):
+        cam_loc = scene.get_pose(scene.main_camera_node)[:3,3]
+        solid_nodes = []
+        trans_nodes = []
+        for node in scene.mesh_nodes:
+            mesh = scene.mesh
+            if mesh.is_transparent:
+                trans_nodes.append(node)
             else:
-                solid_names.append(obj_name)
+                solid_nodes.append(node)
 
         # TODO BETTER SORTING METHOD
-        transparent_names.sort(
+        trans_nodes.sort(
             key=lambda n : -np.linalg.norm(scene.get_pose(n)[:3,3] - cam_loc)
         )
         solid_names.sort(
             key=lambda n : -np.linalg.norm(scene.get_pose(n)[:3,3] - cam_loc)
         )
 
-        return solid_names + transparent_names
+        return solid_nodes + trans_nodes
 
     def _bind_object_material(self, name, obj, program):
         """Bind object's material to shader program uniforms.
@@ -403,37 +506,3 @@ class Renderer(object):
         else:
             return self._program_cache.get_program(['point_cloud.vert', 'point_cloud.frag'])
 
-    def _init_framebuffer(self, scene):
-        camera = scene.camera
-
-        # If mismatch with prior framebuffer, delete it
-        if (self._framebuf is not None and
-            camera.intrinsics.width != self._framebuf_dims[0] or
-            camera.intrinsics.height != self._framebuf_dims[1]):
-            self._delete_framebuffer()
-
-        # If framebuffer doesn't exist, create it
-        if self._framebuf is None:
-            self._colorbuf, self._depthbuf = glGenRenderbuffers(2)
-            glBindRenderbuffer(GL_RENDERBUFFER, self._colorbuf)
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, self.width, self.height)
-            glBindRenderbuffer(GL_RENDERBUFFER, self._depthbuf)
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, self.width, self.height)
-            self._framebuf = glGenFramebuffers(1)
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._framebuf)
-            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, self._colorbuf)
-            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, self._depthbuf)
-            self._framebuf_dims = (camera.intrinsics.width, camera.intrinsics.height)
-
-    def _delete_framebuffer(self):
-        if self._framebuf is not None:
-            glDeleteFramebuffers(1, [self._framebuf])
-        if self._colorbuf is not None:
-            glDeleteRenderbuffers(1, [self._colorbuf])
-        if self._depthbuf is not None:
-            glDeleteRenderbuffers(1, [self._depthbuf])
-
-        self._framebuf = None
-        self._colorbuf = None
-        self._depthbuf = None
-        self._framebuf_dims = (None, None)

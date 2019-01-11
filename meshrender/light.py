@@ -31,16 +31,16 @@ class Light(object):
                  color=None,
                  intensity=None,
                  range=None,
-                 casts_shadows=False):
+                 castsShadows=False):
         self.name = name
         self.color = color
         self.intensity = intensity
         self.range = range
-        self.casts_shadows = casts_shadows
+        self.castsShadows = castsShadows
         self.depth_texture = None
         self.depth_camera = None
 
-        if self.casts_shadows:
+        if self.castsShadows:
             self.depth_texture = self._generate_depth_texture()
 
     @property
@@ -57,7 +57,7 @@ class Light(object):
 
     @intensity.setter
     def intensity(self, value):
-        self.__intensity = float(value)
+        self._intensity = float(value)
 
     @property
     def range(self):
@@ -164,9 +164,9 @@ class SpotLight(Light):
         Cutoff distance at which light's intensity may be considered to
         have reached zero. Supported only for point and spot lights, must be > 0.
         If None, range is infinite.
-    inner_cone_angle : float
+    innerConeAngle : float
         Inner cutoff angle, in radians.
-    outer_cone_angle : float
+    outerConeAngle : float
         Outer cutoff angle, in radians.
     """
 
@@ -175,36 +175,36 @@ class SpotLight(Light):
                  color=None,
                  intensity=None,
                  range=None,
-                 inner_cone_angle=0.0,
-                 outer_cone_angle=np.pi/4.0):
+                 innerConeAngle=0.0,
+                 outerConeAngle=np.pi/4.0):
         super(PointLight, self).__init__(
             name=name,
             color=color,
             intensity=intensity,
             range=range
         )
-        self.outer_cone_angle = outer_cone_angle
-        self.inner_cone_angle = inner_cone_angle
+        self.outerConeAngle = outerConeAngle
+        self.innerConeAngle = innerConeAngle
 
     @property
-    def inner_cone_angle(self):
-        return self._inner_cone_angle
+    def innerConeAngle(self):
+        return self._innerConeAngle
 
-    @inner_cone_angle.setter
-    def inner_cone_angle(self, value):
-        if value < 0.0 or value > self.outer_cone_angle:
+    @innerConeAngle.setter
+    def innerConeAngle(self, value):
+        if value < 0.0 or value > self.outerConeAngle:
             raise ValueError('Invalid value for inner cone angle')
-        self._inner_cone_angle = float(value)
+        self._innerConeAngle = float(value)
 
     @property
-    def outer_cone_angle(self):
-        return self._outer_cone_angle
+    def outerConeAngle(self):
+        return self._outerConeAngle
 
-    @outer_cone_angle.setter
-    def outer_cone_angle(self, value):
+    @outerConeAngle.setter
+    def outerConeAngle(self, value):
         if value < 0.0 or value > np.pi / 2.0 + 1e-9:
             raise ValueError('Invalid value for outer cone angle')
-        self._outer_cone_angle = float(value)
+        self._outerConeAngle = float(value)
 
     def _generate_depth_texture(self):
         return Texture(width=1024, height=1024, source_channels='D')

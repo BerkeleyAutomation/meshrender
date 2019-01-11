@@ -31,7 +31,6 @@ class Scene(object):
         self.nodes = set(nodes)
         self.bg_color = bg_color
 
-
         self._name_to_nodes = {}
         self._obj_to_nodes = {}
         self._obj_name_to_nodes = {}
@@ -40,6 +39,7 @@ class Scene(object):
         self._spot_light_nodes = set()
         self._directional_light_nodes = set()
         self._camera_nodes = set()
+        self._main_camera_node = None
 
         # Transform tree
         self._digraph = nx.Digraph()
@@ -101,6 +101,10 @@ class Scene(object):
     def camera_nodes(self):
         return self._camera_nodes
 
+    @property
+    def main_camera_node(self):
+        return self._main_camera_node
+
     def add(self, obj, name=None, pose=None, parent_node=None, parent_name=None):
         if isinstance(obj, Mesh):
             node = Node(name=name, matrix=pose, mesh=obj)
@@ -108,6 +112,8 @@ class Scene(object):
             node = Node(name=name, matrix=pose, light=obj)
         elif isinstance(obj, Camera):
             node = Node(name=name, matrix=pose, camera=obj)
+            if self._main_camera_node is None:
+                self._main_camera_node = node
 
         if parent_node is None and parent_name is not None:
             parent_node = self.get_node(name=parent_name)
@@ -174,6 +180,8 @@ class Scene(object):
                 self._directional_light_nodes.add(node)
         if node.camera is not None:
             self._camera_nodes.add(node)
+            if self._main_camera_node is None:
+                self._main_camera_node = node
 
         # Connect to parent
         if parent_node is None:
@@ -219,6 +227,11 @@ class Scene(object):
                 self._directional_light_nodes.remove(node)
         if node.camera is not None:
             self._camera_nodes.remove(node)
+            if self._main_camera_node == node:
+                if len(self._camera_nodes) > 0:
+                    self._main_camera_node = next(iter(self._camera_nodes))
+                else:
+                    self._main_camera_node = None
 
         self._path_cache = {}
 

@@ -51,7 +51,7 @@ class PerspectiveCamera(Camera):
                  znear=DEFAULT_Z_NEAR,
                  zfar=DEFAULT_Z_FAR,
                  yfov=None,
-                 aspect_ratio=None):
+                 aspectRatio=None):
         super(PerspectiveCamera, self).__init__(
             name=name,
             znear=znear,
@@ -59,7 +59,7 @@ class PerspectiveCamera(Camera):
         )
 
         self.yfov = yfov
-        self.aspect_ratio = aspect_ratio
+        self.aspectRatio = aspectRatio
 
     @property
     def yfov(self):
@@ -72,20 +72,20 @@ class PerspectiveCamera(Camera):
         self._yfov = float(value)
 
     @property
-    def aspect_ratio(self):
-        return self._aspect_ratio
+    def aspectRatio(self):
+        return self._aspectRatio
 
-    @aspect_ratio.setter(self)
-    def aspect_ratio(self, value):
+    @aspectRatio.setter(self)
+    def aspectRatio(self, value):
         if value is None:
-            self._aspect_ratio = None
+            self._aspectRatio = None
             return
         if value <= 0.0:
             raise ValueError('Aspect ratio must be positive')
-        self._aspect_ratio = float(value)
+        self._aspectRatio = float(value)
 
     def get_projection_matrix(self, width=None, height=None):
-        aspect_ratio = self.aspect_ratio
+        aspect_ratio = self.aspectRatio
         if aspect_ratio is None:
             if width is None or height is None:
                 raise ValueError('Aspect ratio of camera must be defined')

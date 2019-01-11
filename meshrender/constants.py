@@ -16,6 +16,13 @@ class GLTF(object):
     CLAMP_TO_EDGE = 33071
     MIRRORED_REPEAT = 33648
     REPEAT = 10497
+    POINTS = 0
+    LINES = 1
+    LINE_LOOP = 2
+    LINE_STRIP = 3
+    TRIANGLES = 4
+    TRIANGLE_STRIP = 5
+    TRIANGLE_FAN = 6
 
 class BufFlags(object):
     POSITION = 0
@@ -26,12 +33,6 @@ class BufFlags(object):
     COLOR_0 = 16
     JOINTS_0 = 32
     WEIGHTS_0 = 64
-
-class GeomFlags(object):
-    NONE = 0
-    POINTS = 1
-    TRIANGLES = 2
-    ELEMENTS = 4
 
 class TexFlags(object):
     NONE = 0
