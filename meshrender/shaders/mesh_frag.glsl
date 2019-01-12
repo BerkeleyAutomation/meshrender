@@ -44,37 +44,37 @@ struct PointLight {
 struct Material {
     vec3 emissive_factor;
 
-#ifdef METALLIC_MATERIAL
+#ifdef USE_METALLIC_MATERIAL
     vec4 base_color_factor;
     float metallic_factor;
     float roughness_factor;
 #endif
 
-#ifdef GLOSSY_MATERIAL
+#ifdef USE_GLOSSY_MATERIAL
     vec4 diffuse_factor;
     vec3 specular_factor;
     float glossiness_factor;
 #endif
 
-#ifdef NORMAL
+#ifdef HAS_NORMAL_TEX
     sampler2D normal_texture;
 #endif
-#ifdef OCCLUSION
+#ifdef HAS_OCCLUSION_TEX
     sampler2D occlusion_texture;
 #endif
-#ifdef EMISSIVE
+#ifdef HAS_EMISSIVE_TEX
     sampler2D emissive_texture;
 #endif
-#ifdef BASE_COLOR
+#ifdef HAS_BASE_COLOR_TEX
     sampler2D base_color_texture;
 #endif
-#ifdef METALLIC_ROUGHNESS
+#ifdef HAS_METALLIC_ROUGHNESS_TEX
     sampler2D metallic_roughness_texture;
 #endif
-#ifdef DIFFUSE
+#ifdef HAS_DIFFUSE_TEX
     sampler2D diffuse_texture;
 #endif
-#ifdef SPECULAR_GLOSSINESS
+#ifdef HAS_SPECULAR_GLOSSINESS_TEX
     sampler2D specular_glossiness;
 #endif
 };
@@ -87,16 +87,8 @@ struct PBRInfo {
     float vh;
     float roughness;
     float metallic;
-    vec3 reflectance_0;
-    vec3 reflectance_90;
-    vec3 diffuse_color;
-    vec3 specular_color;
-};
-
-struct BRDFResult {
-    vec3 F;
-    float D;
-    float G;
+    vec3 f0;
+    vec3 c_diff;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -109,7 +101,7 @@ uniform DirectionalLight directional_lights[MAX_DIRECTIONAL_LIGHTS];
 uniform int n_directional_lights;
 uniform SpotLight spot_lights[MAX_SPOT_LIGHTS];
 uniform int n_spot_lights;
-uniform mat4 V;
+uniform vec3 cam_pos;
 
 #ifdef USE_IBL
 uniform samplerCube diffuse_env;
@@ -119,23 +111,29 @@ uniform samplerCube specular_env;
 ///////////////////////////////////////////////////////////////////////////////
 // Inputs
 ///////////////////////////////////////////////////////////////////////////////
-in vec3 frag_position;
 
-#ifdef HAS_NORMALS
+in vec3 frag_position;
+#ifdef NORMAL_LOC
 in vec3 frag_normal;
-#ifdef NORMALS
+#endif
+#ifdef HAS_NORMAL_TEX
 in mat3 tbn;
 #endif
+#ifdef TEXCOORD_0_LOC
+in vec2 uv_0;
+#endif
+#ifdef TEXCOORD_1_LOC
+in vec2 uv_1;
+#endif
+#ifdef COLOR_0_LOC
+in vec4 color_multiplier;
 #endif
 
-#ifdef HAS_TEXCOORD_0
-in vec2 uv;
-#endif
+///////////////////////////////////////////////////////////////////////////////
+// OUTPUTS
+///////////////////////////////////////////////////////////////////////////////
 
-#ifdef HAS_COLOR_0
-out vec4 color_0;
-#endif
-
+out vec4 frag_color;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Constants
@@ -163,51 +161,50 @@ vec4 srgb_to_linear(vec4 srgb)
 // Normal computation
 vec3 get_normal()
 {
-#ifdef HAS_NORMALS
-#ifdef NORMAL
-    // TODO
+#ifdef HAS_NORMAL_TEX
+    return frag_normal; // TODO NORMAL MAPPING
+#else
+#ifdef NORMAL_LOC
     return frag_normal;
 #else
-    return frag_normal;
+    return normalize(cam_pos - frag_position);
 #endif
-#else
-    // default is pointing right at camera
-    return normalize(vec3(V[3][0], V[3][1], V[3][2]) - frag_position);
 #endif
 }
 
 // Fresnel
 vec3 specular_reflection(PBRInfo info)
 {
-     vec3 res = info.reflectance_0 + (info.reflectance_90 - info.reflectance_0);
-     res = res * pow(clamp(1.0 - info.vh, 0.0, 1.0), 5.0);
+     vec3 res = info.f0 + (1.0 - info.f0) * pow(clamp(1.0 - info.vh, 0.0, 1.0), 5.0);
      return res;
 }
 
 // Smith
 float geometric_occlusion(PBRInfo info)
 {
-    float nl = info.nl;
-    float nv = info.nv;
-    float r = info.roughness;
-    float r2 = r * r;
-
-    float a_l = 2.0 * nl / (nl + sqrt(r2 + (1.0 - r2) * (nl * nl)));
-    float a_v = 2.0 * nv / (nv + sqrt(r2 + (1.0 - r2) * (nv * nv)));
-    return a_l * a_v;
+    float r = info.roughness + 1.0;
+    float k = r * r  / 8.0;
+    float g1 = info.nv / (info.nv * (1.0 - k) + k);
+    float g2 = info.nl / (info.nl * (1.0 - k) + k);
+    //float k = info.roughness * sqrt(2.0 / PI);
+    //float g1 = info.lh / (info.lh * (1.0 - k) + k);
+    //float g2 = info.nh / (info.nh * (1.0 - k) + k);
+    return g1 * g2;
 }
 
 float microfacet_distribution(PBRInfo info)
 {
-    float r2 = info.roughness * info.roughness;
-    float f = (info.nh * r2 - info.nh) * info.nh + 1.0;
-    return r2 / (PI * f * f);
+    float a = info.roughness * info.roughness;
+    float a2 = a * a;
+    float nh2 = info.nh * info.nh;
+
+    float denom = (nh2 * (a2 - 1.0) + 1.0);
+    return a2 / (PI * denom * denom);
 }
 
 vec3 compute_brdf(vec3 n, vec3 v, vec3 l,
                   float roughness, float metalness,
-                  vec3 reflectance_0, vec3 reflectance_90,
-                  vec3 diffuse_color, vec3 specular_color,
+                  vec3 f0, vec3 c_diff, vec3 albedo,
                   vec3 radiance)
 {
         vec3 h = normalize(l+v);
@@ -217,11 +214,7 @@ vec3 compute_brdf(vec3 n, vec3 v, vec3 l,
         float lh = clamp(dot(l, h), 0.0, 1.0);
         float vh = clamp(dot(v, h), 0.0, 1.0);
 
-        PBRInfo info = PBRInfo(
-            nl, nv, nh, lh, vh, roughness, metalness,
-            reflectance_0, reflectance_90,
-            diffuse_color, specular_color
-        );
+        PBRInfo info = PBRInfo(nl, nv, nh, lh, vh, roughness, metalness, f0, c_diff);
 
         // Compute PBR terms
         vec3 F = specular_reflection(info);
@@ -229,8 +222,8 @@ vec3 compute_brdf(vec3 n, vec3 v, vec3 l,
         float D = microfacet_distribution(info);
 
         // Compute BRDF
-        vec3 diffuse_contrib = (1.0 - F) * diffuse_color / PI;
-        vec3 spec_contrib = F * G * D / (4.0 * nl * nv);
+        vec3 diffuse_contrib = (1.0 - F) * c_diff / PI;
+        vec3 spec_contrib = F * G * D / (4.0 * nl * nv + 0.001);
 
         vec3 color = nl * radiance * (diffuse_contrib + spec_contrib);
         return color;
@@ -246,14 +239,14 @@ void main()
 ///////////////////////////////////////////////////////////////////////////////
 // Handle Metallic Materials
 ///////////////////////////////////////////////////////////////////////////////
-#ifdef METALLIC_MATERIAL
+#ifdef USE_METALLIC_MATERIAL
 
     // Compute metallic/roughness factors
     float roughness = material.roughness_factor;
     float metallic = material.metallic_factor;
-#ifdef METALLIC_ROUGHNESS
-    vec2 mr = texture2D(material.metallic_roughness_texture, uv);
-    roughess = roughness * mr.r;
+#ifdef HAS_METALLIC_ROUGHNESS_TEX
+    vec2 mr = texture2D(material.metallic_roughness_texture, uv_0);
+    roughness = roughness * mr.r;
     metallic = metallic * mr.g;
 #endif
     roughness = clamp(roughness, min_roughness, 1.0);
@@ -263,25 +256,21 @@ void main()
 
     // Compute albedo
     vec4 base_color = material.base_color_factor;
-#ifdef BASE_COLOR
-    base_color = base_color * srgb_to_linear(texture2D(material.base_color_texture, uv));
+#ifdef HAS_BASE_COLOR_TEX
+    base_color = base_color * srgb_to_linear(texture2D(material.base_color_texture, uv_0));
 #endif
 
     // Compute specular and diffuse colors
-    vec3 f0 = vec3(min_roughness);
-    vec3 diffuse_color = base_color.rgb * (vec3(1.0) - f0);
-    diffuse_color = diffuse_color * (1.0 - metallic);
-    vec3 specular_color = mix(f0, base_color.rgb, metallic);
+    vec3 dialectric_spec = vec3(min_roughness);
+    vec3 c_diff = mix(vec3(0.0), base_color.rgb * (1 - min_roughness), 1.0 - metallic);
+    vec3 f0 = mix(dialectric_spec, base_color.rgb, metallic);
 
     // Compute reflectance
     // For typical incident reflectance range (between 4% to 100%) set the grazing reflectance to 100% for typical fresnel effect.
     // For very low reflectance range on highly diffuse objects (below 4%), incrementally reduce grazing reflecance to 0%.
-    vec3 reflectance_0 = specular_color;
-    vec3 reflectance_90 = vec3(1.0) * clamp(max(max(specular_color.r, specular_color.g), specular_color.b), 0.0, 1.0);
 
     // Compute normal
-    vec3 n = get_normal();
-    vec3 cam_pos = vec3(V[3][0], V[3][1], V[3][2]);
+    vec3 n = normalize(get_normal());
 
     // Loop over lights
     for (int i = 0; i < n_directional_lights; i++) {
@@ -295,10 +284,13 @@ void main()
 
         // Compute outbound color
         vec3 res = compute_brdf(n, v, l, roughness, metallic,
-                                reflectance_0, reflectance_90,
-                                diffuse_color, specular_color,
-                                radiance);
+                                f0, c_diff, base_color.rgb, radiance);
         color += res;
+        //if (dot(n, l) < 0.8) {
+        //    color += vec3(0.0);
+        //} else {
+        //    color += vec3(base_color);
+        //}
     }
 
     for (int i = 0; i < n_point_lights; i++) {
@@ -313,9 +305,7 @@ void main()
 
         // Compute outbound color
         vec3 res = compute_brdf(n, v, l, roughness, metallic,
-                                reflectance_0, reflectance_90,
-                                diffuse_color, specular_color,
-                                radiance);
+                                f0, c_diff, base_color.rgb, radiance);
         color += res;
     }
     for (int i = 0; i < n_spot_lights; i++) {
@@ -336,9 +326,7 @@ void main()
 
         // Compute outbound color
         vec3 res = compute_brdf(n, v, l, roughness, metallic,
-                                reflectance_0, reflectance_90,
-                                diffuse_color, specular_color,
-                                radiance);
+                                f0, c_diff, base_color.rgb, radiance);
         color += res;
     }
 
@@ -348,20 +336,26 @@ void main()
 #endif
 
     // Apply occlusion
-#ifdef OCCLUSION
-    float ao = texture2D(material.occlusion_texture, uv).r;
+#ifdef HAS_OCCLUSION_TEX
+    float ao = texture2D(material.occlusion_texture, uv_0).r;
     color = color * ao;
 #endif
 
     // Apply emissive map
     vec3 emissive = material.emissive_factor;
-#ifdef EMISSIVE
-    emissive *= srgb_to_linear(texture2D(material.emissive_texture, uv)).rgb;
+#ifdef HAS_EMISSIVE_TEX
+    emissive *= srgb_to_linear(texture2D(material.emissive_texture, uv_0)).rgb;
 #endif
     color += emissive * material.emissive_factor;
 
-    gl_FragColor = vec4(pow(color, vec3(1.0/2.2)), base_color.a);
+#ifdef COLOR_0_LOC
+    color *= color_multiplier;
+#endif
 
+    frag_color = clamp(vec4(pow(color, vec3(1.0/2.2)), base_color.a), 0.0, 1.0);
+
+#else
+    // TODO GLOSSY MATERIAL BRDF
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////

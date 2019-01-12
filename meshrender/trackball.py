@@ -106,7 +106,7 @@ class Trackball(object):
 
         # Interpret drag as a rotation
         if self._state == Trackball.STATE_ROTATE:
-            x_angle = dx / mindim
+            x_angle = -dx / mindim
             x_rot_mat = transformations.rotation_matrix(x_angle, y_axis, target)
 
             y_angle = dy / mindim
@@ -122,7 +122,7 @@ class Trackball(object):
             v_init = v_init / np.linalg.norm(v_init)
             v_curr = v_curr / np.linalg.norm(v_curr)
 
-            theta = np.arctan2(v_curr[1], v_curr[0]) - np.arctan2(v_init[1], v_init[0])
+            theta = -np.arctan2(v_curr[1], v_curr[0]) + np.arctan2(v_init[1], v_init[0])
 
             rot_mat = transformations.rotation_matrix(theta, z_axis, target)
 
@@ -131,7 +131,7 @@ class Trackball(object):
         # Interpret drag as a camera pan in view plane
         elif self._state == Trackball.STATE_PAN:
             dx = -dx / (5.0*mindim) * self._scale
-            dy = dy / (5.0*mindim) * self._scale
+            dy = -dy / (5.0*mindim) * self._scale
 
             translation = dx * x_axis + dy * y_axis
             self._n_target = self._target + translation
@@ -143,11 +143,11 @@ class Trackball(object):
         elif self._state == Trackball.STATE_ZOOM:
             radius = np.linalg.norm(eye - target)
             ratio = 0.0
-            if dy < 0:
+            if dy > 0:
                 ratio = np.exp(abs(dy)/(0.5*self._size[1])) - 1.0
-            elif dy > 0:
-                ratio = 1.0 - np.exp(-dy/(0.5*(self._size[1])))
-            translation = np.sign(dy) * ratio * radius * z_axis
+            elif dy < 0:
+                ratio = 1.0 - np.exp(dy/(0.5*(self._size[1])))
+            translation = -np.sign(dy) * ratio * radius * z_axis
             t_tf = np.eye(4)
             t_tf[:3,3] = translation
             self._n_pose = t_tf.dot(self._pose)
@@ -166,7 +166,7 @@ class Trackball(object):
         z_axis = self._n_pose[:3,2].flatten()
         eye = self._n_pose[:3,3].flatten()
         radius = np.linalg.norm(eye - target)
-        translation = clicks * (1 - ratio) * radius * z_axis
+        translation = -clicks * (1 - ratio) * radius * z_axis
         t_tf = np.eye(4)
         t_tf[:3,3] = translation
         self._n_pose = t_tf.dot(self._n_pose)
@@ -174,7 +174,7 @@ class Trackball(object):
         z_axis = self._pose[:3,2].flatten()
         eye = self._pose[:3,3].flatten()
         radius = np.linalg.norm(eye - target)
-        translation = clicks * (1 - ratio) * radius * z_axis
+        translation = -clicks * (1 - ratio) * radius * z_axis
         t_tf = np.eye(4)
         t_tf[:3,3] = translation
         self._pose = t_tf.dot(self._pose)
@@ -192,11 +192,11 @@ class Trackball(object):
         y_axis = self._n_pose[:3,1].flatten()
         if axis is not None:
             y_axis = axis
-        x_rot_mat = transformations.rotation_matrix(-azimuth, y_axis, target)
+        x_rot_mat = transformations.rotation_matrix(azimuth, y_axis, target)
         self._n_pose = x_rot_mat.dot(self._n_pose)
 
         y_axis = self._pose[:3,1].flatten()
         if axis is not None:
             y_axis = axis
-        x_rot_mat = transformations.rotation_matrix(-azimuth, y_axis, target)
+        x_rot_mat = transformations.rotation_matrix(azimuth, y_axis, target)
         self._pose = x_rot_mat.dot(self._pose)

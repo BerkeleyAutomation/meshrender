@@ -29,14 +29,14 @@ class ShaderProgramCache(object):
         """
         shader_names = []
         if defines is None:
-            defines = []
+            defines = {}
         shader_filenames = [x for x in [vertex_shader, fragment_shader, geometry_shader] if x is not None]
         for fn in shader_filenames:
             if fn is None:
                 continue
             _, name = os.path.split(fn)
             shader_names.append(name)
-        key = tuple(sorted(shader_names + defines))
+        key = tuple(sorted(shader_names + list(defines.keys())))
 
         if key not in self._program_cache:
             shader_filenames = [os.path.join(self.shader_dir, fn) for fn in shader_filenames]
@@ -69,11 +69,13 @@ class ShaderProgram(object):
         self.fragment_shader = fragment_shader
         self.geometry_shader = geometry_shader
 
-        if defines is None:
-            self.defines = set()
-        else:
-            self.defines = set(defines)
+        self.defines = defines
+        if self.defines is None:
+            self.defines = {}
+
         self._program_id = None
+        # DEBUG
+        self._unif_map = {}
 
     def _add_to_context(self):
         if self._program_id is not None:
@@ -128,23 +130,26 @@ class ShaderProgram(object):
         with open(shader_filename) as f:
             text = f.read()
 
-        def defined(matchobj):
+        def ifdef(matchobj):
             if matchobj.group(1) in self.defines:
                 return '#if 1'
             else:
                 return '#if 0'
 
-        def ndefined(matchobj):
+        def ifndef(matchobj):
             if matchobj.group(1) in self.defines:
                 return '#if 0'
             else:
                 return '#if 1'
 
+        ifdef_regex = re.compile('#ifdef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*$', re.MULTILINE)
+        ifndef_regex = re.compile('#ifndef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*$', re.MULTILINE)
+        text = re.sub(ifdef_regex, ifdef, text)
+        text = re.sub(ifndef_regex, ifndef, text)
 
-        def_regex = re.compile('#ifdef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*$', re.MULTILINE)
-        ndef_regex = re.compile('#ifndef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*$', re.MULTILINE)
-        text = re.sub(def_regex, defined, text)
-        text = re.sub(ndef_regex, ndefined, text)
+        for define in self.defines:
+            value = str(self.defines[define])
+            text = text.replace(define, value)
 
         return text
 
@@ -162,13 +167,22 @@ class ShaderProgram(object):
 
     def _print_uniforms(self):
         print '============================='
-        x = glGetProgramiv(self._program_id, GL_ACTIVE_UNIFORMS)
+        print self.defines
+        #x = glGetProgramiv(self._program_id, GL_ACTIVE_UNIFORMS)
         data = (GLfloat * 16)()
-        for i in range(x):
-            name, _, _ = glGetActiveUniform(self._program_id, i)
+        tups = []
+        for name in self._unif_map:
+        #for i in range(x):
+            #name, _, _ = glGetActiveUniform(self._program_id, i)
+            size, shape = self._unif_map[name]
             loc = glGetUniformLocation(self._program_id, name)
             a = glGetUniformfv(self._program_id, loc, data)
-            print name, list(data)
+            d = np.array(list(data))[:size].reshape(shape)
+            tups.append((name, d))
+        tups = sorted(tups, key = lambda x : x[0])
+        for tup in tups:
+            print tup[0] + ': '
+            print tup[1]
         print '-----------------------------'
 
     def delete(self):
@@ -188,93 +202,98 @@ class ShaderProgram(object):
         unsigned : bool
             If True, ints will be treated as unsigned values.
         """
-        loc = glGetUniformLocation(self._program_id, name)
+        try:
+            self._unif_map[name] = 1, (1,)
+            loc = glGetUniformLocation(self._program_id, name)
 
-        if loc == -1:
-            raise ValueError('Invalid shader name variable: {}'.format(name))
+            if loc == -1:
+                raise ValueError('Invalid shader name variable: {}'.format(name))
 
-        # Call correct uniform function
-        if isinstance(value, float):
-            glUniform1f(loc, value)
-        elif isinstance(value, int):
-            if unsigned:
-                glUniform1ui(loc, value)
-            else:
-                glUniform1i(loc, value)
-        elif isinstance(value, bool):
-            if unsigned:
-                glUniform1ui(loc, int(value))
-            else:
-                glUniform1i(loc, int(value))
-        elif isinstance(value, np.ndarray):
-            # Set correct data type
-            if np.issubdtype(value.dtype, np.unsignedinteger) or unsigned:
-                value = value.astype(np.uint32)
-                if value.ndim == 1:
-                    if value.shape[0] == 1:
-                        glUniform1uiv(loc, 1, value)
-                    elif value.shape[0] == 2:
-                        glUniform2uiv(loc, 1, value)
-                    elif value.shape[0] == 3:
-                        glUniform3uiv(loc, 1, value)
-                    elif value.shape[0] == 4:
-                        glUniform4uiv(loc, 1, value)
-                    else:
-                        raise ValueError('Invalid data type')
+            # Call correct uniform function
+            if isinstance(value, float):
+                glUniform1f(loc, value)
+            elif isinstance(value, int):
+                if unsigned:
+                    glUniform1ui(loc, value)
                 else:
-                    raise ValueError('Invalid data type')
-            elif np.issubdtype(value.dtype, np.signedinteger):
-                value = value.astype(np.int32)
-                if value.ndim == 1:
-                    if value.shape[0] == 1:
-                        glUniform1iv(loc, 1, value)
-                    elif value.shape[0] == 2:
-                        glUniform2iv(loc, 1, value)
-                    elif value.shape[0] == 3:
-                        glUniform3iv(loc, 1, value)
-                    elif value.shape[0] == 4:
-                        glUniform4iv(loc, 1, value)
-                    else:
-                        raise ValueError('Invalid data type')
+                    glUniform1i(loc, value)
+            elif isinstance(value, bool):
+                if unsigned:
+                    glUniform1ui(loc, int(value))
                 else:
-                    raise ValueError('Invalid data type')
-            elif np.issubdtype(value.dtype, np.floating):
-                value = value.astype(np.float32)
-                if value.ndim == 1:
-                    if value.shape[0] == 1:
-                        glUniform1fv(loc, 1, value)
-                    elif value.shape[0] == 2:
-                        glUniform2fv(loc, 1, value)
-                    elif value.shape[0] == 3:
-                        glUniform3fv(loc, 1, value)
-                    elif value.shape[0] == 4:
-                        glUniform4fv(loc, 1, value)
+                    glUniform1i(loc, int(value))
+            elif isinstance(value, np.ndarray):
+                self._unif_map[name] = value.size, value.shape
+                # Set correct data type
+                if np.issubdtype(value.dtype, np.unsignedinteger) or unsigned:
+                    value = value.astype(np.uint32)
+                    if value.ndim == 1:
+                        if value.shape[0] == 1:
+                            glUniform1uiv(loc, 1, value)
+                        elif value.shape[0] == 2:
+                            glUniform2uiv(loc, 1, value)
+                        elif value.shape[0] == 3:
+                            glUniform3uiv(loc, 1, value)
+                        elif value.shape[0] == 4:
+                            glUniform4uiv(loc, 1, value)
+                        else:
+                            raise ValueError('Invalid data type')
                     else:
                         raise ValueError('Invalid data type')
-                elif value.ndim == 2:
-                    if value.shape == (2,2):
-                        glUniformMatrix2fv(loc, 1, GL_TRUE, value)
-                    elif value.shape == (2,3):
-                        glUniformMatrix2x3fv(loc, 1, GL_TRUE, value)
-                    elif value.shape == (2,4):
-                        glUniformMatrix2x4fv(loc, 1, GL_TRUE, value)
-                    elif value.shape == (3,2):
-                        glUniformMatrix3x2fv(loc, 1, GL_TRUE, value)
-                    elif value.shape == (3,3):
-                        glUniformMatrix3fv(loc, 1, GL_TRUE, value)
-                    elif value.shape == (3,4):
-                        glUniformMatrix3x4fv(loc, 1, GL_TRUE, value)
-                    if value.shape == (4,2):
-                        glUniformMatrix4x2fv(loc, 1, GL_TRUE, value)
-                    elif value.shape == (4,3):
-                        glUniformMatrix4x3fv(loc, 1, GL_TRUE, value)
-                    elif value.shape == (4,4):
-                        glUniformMatrix4fv(loc, 1, GL_TRUE, value)
+                elif np.issubdtype(value.dtype, np.signedinteger):
+                    value = value.astype(np.int32)
+                    if value.ndim == 1:
+                        if value.shape[0] == 1:
+                            glUniform1iv(loc, 1, value)
+                        elif value.shape[0] == 2:
+                            glUniform2iv(loc, 1, value)
+                        elif value.shape[0] == 3:
+                            glUniform3iv(loc, 1, value)
+                        elif value.shape[0] == 4:
+                            glUniform4iv(loc, 1, value)
+                        else:
+                            raise ValueError('Invalid data type')
+                    else:
+                        raise ValueError('Invalid data type')
+                elif np.issubdtype(value.dtype, np.floating):
+                    value = value.astype(np.float32)
+                    if value.ndim == 1:
+                        if value.shape[0] == 1:
+                            glUniform1fv(loc, 1, value)
+                        elif value.shape[0] == 2:
+                            glUniform2fv(loc, 1, value)
+                        elif value.shape[0] == 3:
+                            glUniform3fv(loc, 1, value)
+                        elif value.shape[0] == 4:
+                            glUniform4fv(loc, 1, value)
+                        else:
+                            raise ValueError('Invalid data type')
+                    elif value.ndim == 2:
+                        if value.shape == (2,2):
+                            glUniformMatrix2fv(loc, 1, GL_TRUE, value)
+                        elif value.shape == (2,3):
+                            glUniformMatrix2x3fv(loc, 1, GL_TRUE, value)
+                        elif value.shape == (2,4):
+                            glUniformMatrix2x4fv(loc, 1, GL_TRUE, value)
+                        elif value.shape == (3,2):
+                            glUniformMatrix3x2fv(loc, 1, GL_TRUE, value)
+                        elif value.shape == (3,3):
+                            glUniformMatrix3fv(loc, 1, GL_TRUE, value)
+                        elif value.shape == (3,4):
+                            glUniformMatrix3x4fv(loc, 1, GL_TRUE, value)
+                        if value.shape == (4,2):
+                            glUniformMatrix4x2fv(loc, 1, GL_TRUE, value)
+                        elif value.shape == (4,3):
+                            glUniformMatrix4x3fv(loc, 1, GL_TRUE, value)
+                        elif value.shape == (4,4):
+                            glUniformMatrix4fv(loc, 1, GL_TRUE, value)
+                        else:
+                            raise ValueError('Invalid data type')
                     else:
                         raise ValueError('Invalid data type')
                 else:
                     raise ValueError('Invalid data type')
             else:
                 raise ValueError('Invalid data type')
-        else:
-            raise ValueError('Invalid data type')
+        except:
+            self._unif_map.pop(name)

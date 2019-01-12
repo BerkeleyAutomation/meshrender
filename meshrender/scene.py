@@ -256,7 +256,7 @@ class Scene(object):
         # Traverse from from_node to to_node
         pose = np.eye(4)
         for n in path[:-1]:
-            pose = np.dot(pose, n.matrix)
+            pose = np.dot(n.matrix, pose)
 
         return pose
 

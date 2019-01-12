@@ -18,7 +18,7 @@ scene = Scene()#np.array([1.0, 0.0, 0.0]))
 #====================================
 
 # Begin by loading meshes
-pawn_mesh = trimesh.load_mesh('./models/textured.obj', process=False)
+pawn_mesh = trimesh.load_mesh('./models/fuze.obj', process=False)
 #pawn_mesh = trimesh.creation.icosahedron()
 #colors = (255*np.random.uniform(size=pawn_mesh.vertices.shape)).astype(np.uint8)
 #pawn_mesh.visual.vertex_colors = colors

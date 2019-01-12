@@ -265,6 +265,7 @@ class Primitive(object):
 
         # TODO JOINTS AND WEIGHTS
         # PASS
+        print attr_sizes
 
         # Copy data to buffer
         vertex_data = np.ascontiguousarray(vertex_data.flatten().astype(np.float32))
@@ -296,6 +297,16 @@ class Primitive(object):
             glEnableVertexAttribArray(idx)
             glVertexAttribPointer(idx, 4, GL_FLOAT, GL_FALSE, FLOAT_SZ*4, ctypes.c_void_p(4*FLOAT_SZ*i))
             glVertexAttribDivisor(idx, 1);
+
+        ########################################################################
+        # Fill element buffer
+        ########################################################################
+        if self.indices is not None:
+            elementbuffer = glGenBuffers(1)
+            self._buffers.append(elementbuffer)
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementbuffer)
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, UINT_SZ*self.indices.size,
+                         self.indices.flatten().astype(np.uint32), GL_STATIC_DRAW)
 
         glBindVertexArray(0)
 

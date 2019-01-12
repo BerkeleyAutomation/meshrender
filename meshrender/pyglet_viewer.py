@@ -23,7 +23,7 @@ if 'MESHRENDER_EGL_OFFSCREEN' in os.environ:
 import OpenGL
 
 from .constants import OPEN_GL_MAJOR, OPEN_GL_MINOR
-from .light import DirectionalLight
+from .light import DirectionalLight, PointLight
 from .node import Node
 from .camera import PerspectiveCamera
 from .trackball import Trackball
@@ -210,6 +210,8 @@ class SceneViewer(pyglet.window.Window):
         """
         self._size = (width, height)
         self._trackball.resize(self._size)
+        self._renderer.viewport_width = self._size[0]
+        self._renderer.viewport_height = self._size[1]
         self.on_draw()
 
     def on_mouse_press(self, x, y, buttons, modifiers):
@@ -433,6 +435,14 @@ class SceneViewer(pyglet.window.Window):
             for n in SceneViewer._raymond_lights:
                 if self.scene.has_node(n):
                     self.scene.remove_node(n)
+        #print '-------'
+        vec = scene.get_pose(self.scene.main_camera_node)[:3,2]
+        #print scene.get_pose(self.scene.main_camera_node)[:3,3]
+        #print np.linalg.inv(scene.get_pose(self.scene.main_camera_node)).T
+        for n in SceneViewer._raymond_lights:
+            #print np.dot(vec, scene.get_pose(n)[:3,2])
+            #print scene.get_pose(n)[:3,2]
+            pass
 
         self._renderer.render(self.scene, 0)
 
@@ -452,32 +462,42 @@ class SceneViewer(pyglet.window.Window):
 
         raymond_lights = []
 
-        # Create raymond lights
-        elevs = np.pi * np.array([1/6., 1/6., 1/4.])
-        azims = np.pi * np.array([1/6., 5/3., -1/4.])
-        l = 0
-        for az, el in zip(azims, elevs):
-            x = np.cos(el) * np.cos(az)
-            y = -np.cos(el) * np.sin(el)
-            z = -np.sin(el)
+        l = DirectionalLight(color=np.ones(3), intensity=10.0)
+        #l = PointLight(color=np.ones(3), intensity=100.0)
+        matrix = np.eye(4)
+        matrix[:3,:3] = np.array([
+            [1.0, 0.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [0.0, 0.0, -1.0]
+        ])
+        raymond_lights.append(Node(light=l, matrix=matrix))
 
-            d = -np.array([x, y, z])
-            d = d / np.linalg.norm(d)
-
-            x = np.array([-d[1], d[0], 0.0])
-            if np.linalg.norm(x) == 0.0:
-                x = np.array([1.0, 0.0, 0.0])
-            x = x / np.linalg.norm(x)
-            y = np.cross(d, x)
-
-            l = DirectionalLight(
-                color=np.ones(3),
-                intensity=0.3,
-            )
-            matrix = np.eye(4)
-            matrix[:3,:3]= np.c_[x,y,d]
-
-            raymond_lights.append(Node(light=l, matrix=matrix))
+#        # Create raymond lights
+#        elevs = np.pi * np.array([1/6., 1/6., 1/4.])
+#        azims = np.pi * np.array([1/6., 5/3., -1/4.])
+#        l = 0
+#        for az, el in zip(azims, elevs):
+#            x = np.cos(el) * np.cos(az)
+#            y = -np.cos(el) * np.sin(el)
+#            z = -np.sin(el)
+#
+#            d = np.array([x, y, z])
+#            d = d / np.linalg.norm(d)
+#
+#            x = np.array([-d[1], d[0], 0.0])
+#            if np.linalg.norm(x) == 0.0:
+#                x = np.array([1.0, 0.0, 0.0])
+#            x = x / np.linalg.norm(x)
+#            y = np.cross(d, x)
+#
+#            l = DirectionalLight(
+#                color=np.ones(3),
+#                intensity=10.0,
+#            )
+#            matrix = np.eye(4)
+#            matrix[:3,:3]= np.c_[x,y,d]
+#
+#            raymond_lights.append(Node(light=l, matrix=matrix))
 
         SceneViewer._raymond_lights = raymond_lights
         return raymond_lights

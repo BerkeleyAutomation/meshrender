@@ -48,7 +48,7 @@ def format_texture_source(texture, target_channels='RGB'):
     if isinstance(texture, np.ndarray):
         if np.issubdtype(texture.dtype, np.integer):
             texture = (texture / 255.0).astype(np.float32)
-        elif np.issubdtype(texture.dtype, np.float):
+        elif np.issubdtype(texture.dtype, np.floating):
             texture = texture.astype(np.float32)
         else:
             raise TypeError('Invalid type {} for texture'.format(type(texture)))

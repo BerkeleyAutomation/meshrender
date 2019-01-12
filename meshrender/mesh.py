@@ -123,7 +123,7 @@ class Mesh(object):
                     texcoord_0 = mesh.visual.uv.copy()
                     material = get_material(mesh.visual.material)
         else:
-            positions = mesh.vertices[mesh.faces]
+            positions = mesh.vertices[mesh.faces].reshape((3*len(mesh.faces), 3))
             normals = np.repeat(mesh.face_normals, 3, axis=0)
             if mesh.visual.defined and material is None:
                 if mesh.visual.kind == 'vertex':
@@ -134,7 +134,7 @@ class Mesh(object):
                     color_0 = np.repeat(mesh.face_colors, 3, axis=0)
                     material = default_material
                 elif mesh.visual.kind == 'texture':
-                    texcoord_0 = mesh.visual.uv[mesh.faces]
+                    texcoord_0 = mesh.visual.uv[mesh.faces].reshape((3*len(mesh.faces), mesh.visual.uv.shape[1]))
                     material = get_material(mesh.visual.material)
 
         primitive = Primitive(

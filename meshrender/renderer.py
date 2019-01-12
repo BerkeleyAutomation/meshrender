@@ -80,6 +80,8 @@ class Renderer(object):
             texture._unbind()
             texture._remove_from_context()
 
+        self._textures = scene_textures.copy()
+
         # Update shaders
         # TODO
 
@@ -251,7 +253,9 @@ class Renderer(object):
         if primitive.poses is not None:
             n_instances = len(primitive.poses)
 
+        #program._print_uniforms()
         if primitive.indices is not None:
+            #glDrawArraysInstanced(primitive.mode, 0, 3*len(primitive.positions), n_instances)
             glDrawElementsInstanced(primitive.mode, primitive.indices.size, GL_UNSIGNED_INT,
                                     ctypes.c_void_p(0), n_instances)
         else:
@@ -288,6 +292,7 @@ class Renderer(object):
                 # Set the camera uniforms
                 program.set_uniform('V', V)
                 program.set_uniform('P', P)
+                program.set_uniform('cam_pos', scene.get_pose(scene.main_camera_node)[:3,3])
 
                 # Next, bind the lighting
                 if program != prior_program:
@@ -400,7 +405,7 @@ class Renderer(object):
         vertex_shader = None
         fragment_shader = None
         geometry_shader = None
-        defines = []
+        defines = {}
         if flags & RenderFlags.DEPTH_ONLY:
             pass
         else:
@@ -409,37 +414,46 @@ class Renderer(object):
             tf = primitive.material.tex_flags
             bf = primitive.buf_flags
             if tf & TexFlags.NORMAL:
-                defines.append('NORMAL')
+                defines['HAS_NORMAL_TEX'] = 1
             if tf & TexFlags.OCCLUSION:
-                defines.append('OCCLUSION')
+                defines['HAS_OCCLUSION_TEX'] = 1
             if tf & TexFlags.EMISSIVE:
-                defines.append('EMISSIVE')
+                defines['HAS_EMISSIVE_TEX'] = 1
             if tf & TexFlags.BASE_COLOR:
-                defines.append('BASE_COLOR')
+                defines['HAS_BASE_COLOR_TEX'] = 1
             if tf & TexFlags.METALLIC_ROUGHNESS:
-                defines.append('METALLIC_ROUGHNESS')
+                defines['HAS_METALLIC_ROUGHNESS_TEX'] = 1
             if tf & TexFlags.DIFFUSE:
-                defines.append('DIFFUSE')
+                defines['HAS_DIFFUSE_TEX'] = 1
             if tf & TexFlags.SPECULAR_GLOSSINESS:
-                defines.append('SPECULAR_GLOSSINESS')
+                defines['HAS_SPECULAR_GLOSSINESS_TEX'] = 1
             if isinstance(primitive.material, MetallicRoughnessMaterial):
-                defines.append('METALLIC_MATERIAL')
+                defines['USE_METALLIC_MATERIAL'] = 1
             elif isinstance(material, SpecularGlossinessMaterial):
-                defines.append('GLOSSINESS_MATERIAL')
+                defines['USE_GLOSSY_MATERIAL'] = 1
+            buf_idx = 1
             if bf & BufFlags.NORMAL:
-                defines.append('HAS_NORMALS')
+                defines['NORMAL_LOC'] = buf_idx
+                buf_idx += 1
             if bf & BufFlags.TANGENT:
-                defines.append('HAS_TANGENTS')
+                defines['TANGENT_LOC'] = buf_idx
+                buf_idx += 1
             if bf & BufFlags.TEXCOORD_0:
-                defines.append('HAS_TEXCOORD_0')
+                defines['TEXCOORD_0_LOC'] = buf_idx
+                buf_idx += 1
             if bf & BufFlags.TEXCOORD_1:
-                defines.append('HAS_TEXCOORD_1')
+                defines['TEXCOORD_1_LOC'] = buf_idx
+                buf_idx += 1
             if bf & BufFlags.COLOR_0:
-                defines.append('HAS_COLOR_0')
+                defines['COLOR_0_LOC'] = buf_idx
+                buf_idx += 1
             if bf & BufFlags.JOINTS_0:
-                defines.append('HAS_JOINTS_0')
+                defines['JOINTS_0_LOC'] = buf_idx
+                buf_idx += 1
             if bf & BufFlags.WEIGHTS_0:
-                defines.append('HAS_WEIGHTS_0')
+                defines['WEIGHTS_0_LOC'] = buf_idx
+                buf_idx += 1
+            defines['INST_M_LOC'] = buf_idx
         program = self._program_cache.get_program(
             vertex_shader=vertex_shader,
             fragment_shader=fragment_shader,
