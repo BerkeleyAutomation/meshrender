@@ -245,7 +245,7 @@ void main()
     float roughness = material.roughness_factor;
     float metallic = material.metallic_factor;
 #ifdef HAS_METALLIC_ROUGHNESS_TEX
-    vec2 mr = texture2D(material.metallic_roughness_texture, uv_0);
+    vec2 mr = texture2D(material.metallic_roughness_texture, uv_0).rg;
     roughness = roughness * mr.r;
     metallic = metallic * mr.g;
 #endif

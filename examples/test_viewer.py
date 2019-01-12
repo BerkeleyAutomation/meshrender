@@ -19,6 +19,12 @@ scene = Scene()#np.array([1.0, 0.0, 0.0]))
 
 # Begin by loading meshes
 pawn_mesh = trimesh.load_mesh('./models/fuze.obj', process=False)
+s = trimesh.load('~/Downloads/WaterBottle.glb')
+s = trimesh.load('~/Downloads/BoomBox.glb')
+s = trimesh.load('~/Downloads/ReciprocatingSaw.glb')
+s = trimesh.load('~/Downloads/Lantern.glb')
+mesh_key = list(s.geometry.keys())[0]
+pawn_mesh = s.geometry[mesh_key]
 #pawn_mesh = trimesh.creation.icosahedron()
 #colors = (255*np.random.uniform(size=pawn_mesh.vertices.shape)).astype(np.uint8)
 #pawn_mesh.visual.vertex_colors = colors

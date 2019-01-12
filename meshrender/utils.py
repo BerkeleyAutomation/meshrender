@@ -5,9 +5,10 @@ def format_color_vector(value, length):
     retval = value
     if isinstance(value, int):
         value = value / 255.0
-
     if isinstance(value, float):
-        retval = np.repeat(value, length)
+        value = np.repeat(value, length)
+    if isinstance(value, list):
+        value = np.array(value)
     elif isinstance(value, np.ndarray):
         value = value.squeeze()
         if np.issubdtype(value.dtype, np.integer):
@@ -76,7 +77,7 @@ def format_texture_source(texture, target_channels='RGB'):
             elif texture.shape[2] == 2:
                 raise ValueError('Cannot reformat texture with 2 channels into RGB')
             else:
-                texture = texture[:,:,(1,2,3)]
+                texture = texture[:,:,(0,1,2)]
         elif target_channels == 'RGBA':
             if texture.shape[2] == 1:
                 texture = np.repeat(texture, 4, axis=2)

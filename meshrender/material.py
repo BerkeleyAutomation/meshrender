@@ -89,7 +89,9 @@ class Material(object):
 
     @normalTexture.setter
     def normalTexture(self, value):
-        self._normalTexture = self._format_texture(value, 'RGB')
+        # TODO TMP
+        self._normalTexture = None
+        #self._normalTexture = self._format_texture(value, 'RGB')
         self._tex_flags = None
 
     @property
@@ -116,6 +118,8 @@ class Material(object):
 
     @emissiveFactor.setter
     def emissiveFactor(self, value):
+        if value is None:
+            value = np.zeros(3)
         self._emissiveFactor = format_color_vector(value, 3)
 
     @property
@@ -304,6 +308,8 @@ class MetallicRoughnessMaterial(Material):
 
     @baseColorFactor.setter
     def baseColorFactor(self, value):
+        if value is None:
+            value = np.ones(4)
         self._baseColorFactor = format_color_vector(value, 4)
         self._is_transparent = None
 
@@ -323,6 +329,8 @@ class MetallicRoughnessMaterial(Material):
 
     @metallicFactor.setter
     def metallicFactor(self, value):
+        if value is None:
+            value = 1.0
         if value < 0 or value > 1:
             raise ValueError('Metallic factor must be in range [0,1]')
         self._metallicFactor = float(value)
@@ -333,6 +341,8 @@ class MetallicRoughnessMaterial(Material):
 
     @roughnessFactor.setter
     def roughnessFactor(self, value):
+        if value is None:
+            value = 1.0
         if value < 0 or value > 1:
             raise ValueError('Roughness factor must be in range [0,1]')
         self.RoughnessFactor = float(value)

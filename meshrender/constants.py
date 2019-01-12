@@ -42,7 +42,7 @@ class TexFlags(object):
     BASE_COLOR = 8
     METALLIC_ROUGHNESS = 16
     DIFFUSE = 32
-    SPECULAR_GLOSSINESS = 4
+    SPECULAR_GLOSSINESS = 64
 
 # Flags for render type
 class RenderFlags(object):
