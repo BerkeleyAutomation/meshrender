@@ -2,6 +2,7 @@
 """
 import numpy as np
 import os
+import re
 
 from OpenGL.GL import *
 from OpenGL.GL import shaders as gl_shader_utils
@@ -17,7 +18,7 @@ class ShaderProgramCache(object):
             base_dir, _ = os.path.split(os.path.realpath(__file__))
             self.shader_dir = os.path.join(base_dir, 'shaders')
 
-    def get_program(self, shader_filenames, defines):
+    def get_program(self, vertex_shader, fragment_shader, geometry_shader=None, defines=None):
         """Get a program via a list of shader files to include in the program.
 
         Parameters
@@ -27,14 +28,23 @@ class ShaderProgramCache(object):
             Acceptable file extensions are .vert, .geom, and .frag.
         """
         shader_names = []
+        if defines is None:
+            defines = []
+        shader_filenames = [x for x in [vertex_shader, fragment_shader, geometry_shader] if x is not None]
         for fn in shader_filenames:
+            if fn is None:
+                continue
             _, name = os.path.split(fn)
             shader_names.append(name)
         key = tuple(sorted(shader_names + defines))
 
         if key not in self._program_cache:
             shader_filenames = [os.path.join(self.shader_dir, fn) for fn in shader_filenames]
-            self._program_cache[key] = ShaderProgram(shader_filenames, defines)
+            if len(shader_filenames) == 2:
+                shader_filenames.append(None)
+            vs, fs, gs = shader_filenames
+            self._program_cache[key] = ShaderProgram(vertex_shader=vs, fragment_shader=fs,
+                                                     geometry_shader=gs, defines=defines)
         return self._program_cache[key]
 
     def clear(self):
@@ -53,9 +63,12 @@ class ShaderProgram(object):
         Acceptable file extensions are .vert, .geom, and .frag.
     """
 
-    def __init__(self, shader_filenames, defines=None):
+    def __init__(self, vertex_shader, fragment_shader, geometry_shader=None, defines=None):
 
-        self.shader_filenames = shader_filenames
+        self.vertex_shader = vertex_shader
+        self.fragment_shader = fragment_shader
+        self.geometry_shader = geometry_shader
+
         if defines is None:
             self.defines = set()
         else:
@@ -67,26 +80,19 @@ class ShaderProgram(object):
             raise ValueError('Shader program already in context')
         shader_ids = []
 
-        # Load and compile shaders
-        for shader_filename in self.shader_filenames:
-            # Add proper directory to shader filename
-            # Get shader type
-            path, base = os.path.split(shader_filename)
-            _, ext = os.path.splitext(base)
-            if ext == '.vert':
-                shader_type = GL_VERTEX_SHADER
-            elif ext == '.frag':
-                shader_type = GL_FRAGMENT_SHADER
-            elif ext == '.geom':
-                shader_type = GL_GEOMETRY_SHADER
-            else:
-                raise ValueError('Unsupported shader file extension: {}'.format(ext))
-
-            # Load shader file
-            shader_str = self._load(shader_filename)
-
-            shader_id = gl_shader_utils.compileShader(shader_str, shader_type)
-            shader_ids.append(shader_id)
+        # Load vert shader
+        shader_ids.append(gl_shader_utils.compileShader(
+            self._load(self.vertex_shader), GL_VERTEX_SHADER)
+        )
+        # Load frag shader
+        shader_ids.append(gl_shader_utils.compileShader(
+            self._load(self.fragment_shader), GL_FRAGMENT_SHADER)
+        )
+        # Load geometry shader
+        if self.geometry_shader is not None:
+            shader_ids.append(gl_shader_utils.compileShader(
+                self._load(self.geometry_shader), GL_GEOMETRY_SHADER)
+            )
 
         # Compile program
         self._program_id = gl_shader_utils.compileProgram(*shader_ids)
@@ -135,8 +141,8 @@ class ShaderProgram(object):
                 return '#if 1'
 
 
-        def_regex = re.compile('#ifdef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*$')
-        ndef_regex = re.compile('#ifndef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*$')
+        def_regex = re.compile('#ifdef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*$', re.MULTILINE)
+        ndef_regex = re.compile('#ifndef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*$', re.MULTILINE)
         text = re.sub(def_regex, defined, text)
         text = re.sub(ndef_regex, ndefined, text)
 

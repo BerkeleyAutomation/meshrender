@@ -88,8 +88,10 @@ class Primitive(object):
     def texcoord_0(self, value):
         if value is not None:
             value = np.ascontiguousarray(value.astype(np.float32))
-            if value.ndim != 2 or value.shape[0] != self.positions.shape[0] or value.shape[1] != 2:
+            if value.ndim != 2 or value.shape[0] != self.positions.shape[0] or value.shape[1] < 2:
                 raise ValueError('Incorrect texture coordinate shape')
+            if value.shape[1] > 2:
+                value = value[:,:2]
         self._texcoord_0 = value
 
     @property
@@ -166,6 +168,7 @@ class Primitive(object):
         value = int(value)
         if value < GLTF.POINTS or value > GLTF.TRIANGLE_FAN:
             raise ValueError('Invalid mode')
+        self._mode = value
 
     @property
     def targets(self):
@@ -174,7 +177,6 @@ class Primitive(object):
     @targets.setter
     def targets(self, value):
         self._targets = value
-
 
     @property
     def poses(self):

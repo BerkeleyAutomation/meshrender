@@ -3,9 +3,9 @@ from .constants import GLTF
 class Sampler(object):
 
     def __init__(self,
-                 name,
-                 magFilter,
-                 minFilter,
+                 name=None,
+                 magFilter=None,
+                 minFilter=None,
                  wrapS=GLTF.REPEAT,
                  wrapT=GLTF.REPEAT):
         self.name = name

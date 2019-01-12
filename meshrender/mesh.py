@@ -82,7 +82,7 @@ class Mesh(object):
             material = None
 
             # Simple material
-            if isinstance(tm_material. trimesh.visual.texture.SimpleMaterial):
+            if isinstance(tm_material, trimesh.visual.texture.SimpleMaterial):
                 material = MetallicRoughnessMaterial(
                     alphaMode='BLEND',
                     baseColorTexture=tm_material.image

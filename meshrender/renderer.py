@@ -214,28 +214,28 @@ class Renderer(object):
 
             # Bind other uniforms
             b = 'material.{}'
-            program.bind_uniform(b.format('emissive_factor'),
+            program.set_uniform(b.format('emissive_factor'),
                                  material.emissiveFactor)
             if isinstance(material, MetallicRoughnessMaterial):
-                program.bind_uniform(b.format('base_color_factor'),
+                program.set_uniform(b.format('base_color_factor'),
                                      material.baseColorFactor)
-                program.bind_uniform(b.format('metallic_factor'),
+                program.set_uniform(b.format('metallic_factor'),
                                      material.metallicFactor)
-                program.bind_uniform(b.format('roughness_factor'),
+                program.set_uniform(b.format('roughness_factor'),
                                      material.roughnessFactor)
             elif isinstance(material, SpecularGlossinessMaterial):
-                program.bind_uniform(b.format('diffuse_factor'),
+                program.set_uniform(b.format('diffuse_factor'),
                                      material.diffuseFactor)
-                program.bind_uniform(b.format('specular_factor'),
+                program.set_uniform(b.format('specular_factor'),
                                      material.specularFactor)
-                program.bind_uniform(b.format('glossiness_factor'),
+                program.set_uniform(b.format('glossiness_factor'),
                                      material.glossinessFactor)
 
             # Set blending options
             if material.alphaMode == 'BLEND':
-                glBlendFunction(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
             else:
-                glBlendFunction(GL_ONE, GL_ZERO)
+                glBlendFunc(GL_ONE, GL_ZERO)
 
             # Set wireframe mode
             if material.wireframe:
@@ -243,7 +243,7 @@ class Renderer(object):
             else:
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
         else:
-            glBlendFunction(GL_ONE, GL_ZERO)
+            glBlendFunc(GL_ONE, GL_ZERO)
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         # Render mesh
@@ -252,10 +252,10 @@ class Renderer(object):
             n_instances = len(primitive.poses)
 
         if primitive.indices is not None:
-            glDrawElementsInstanced(primitive.mode, obj.indices.size, GL_UNSIGNED_INT,
+            glDrawElementsInstanced(primitive.mode, primitive.indices.size, GL_UNSIGNED_INT,
                                     ctypes.c_void_p(0), n_instances)
         else:
-            glDrawArraysInstanced(primitive.mode, 0, len(obj.positions), n_instances)
+            glDrawArraysInstanced(primitive.mode, 0, len(primitive.positions), n_instances)
 
         # Unbind mesh buffers
         primitive._unbind()
@@ -364,7 +364,10 @@ class Renderer(object):
             position = scene.get_pose(n)[:3,3]
             program.set_uniform(b + 'color', l.color)
             program.set_uniform(b + 'intensity', l.intensity)
-            program.set_uniform(b + 'range', l.range)
+            if l.range is not None:
+                program.set_uniform(b + 'range', l.range)
+            else:
+                program.set_uniform(b + 'range', 0)
             program.set_uniform(b + 'position', position)
 
         program.set_uniform('n_spot_lights', len(scene.spot_light_nodes))
@@ -375,7 +378,10 @@ class Renderer(object):
             direction = scene.get_pose(n)[:3,2]
             program.set_uniform(b + 'color', l.color)
             program.set_uniform(b + 'intensity', l.intensity)
-            program.set_uniform(b + 'range', l.range)
+            if l.range is not None:
+                program.set_uniform(b + 'range', l.range)
+            else:
+                program.set_uniform(b + 'range', 0)
             program.set_uniform(b + 'position', position)
             program.set_uniform(b + 'direction', direction)
             program.set_uniform(b + 'inner_cone_angle', l.innerConeAngle)
@@ -388,17 +394,18 @@ class Renderer(object):
             direction = scene.get_pose(n)[:3,2]
             program.set_uniform(b + 'color', l.color)
             program.set_uniform(b + 'intensity', l.intensity)
-            program.set_uniform(b + 'range', l.range)
             program.set_uniform(b + 'direction', direction)
 
     def _get_primitive_program(self, primitive, flags):
-        shader_filenames = []
+        vertex_shader = None
+        fragment_shader = None
+        geometry_shader = None
         defines = []
         if flags & RenderFlags.DEPTH_ONLY:
             pass
         else:
-            shader_filenames.extend(['mesh_vert.glsl', 'mesh_frag.glsl'])
-
+            vertex_shader = 'mesh_vert.glsl'
+            fragment_shader = 'mesh_frag.glsl'
             tf = primitive.material.tex_flags
             bf = primitive.buf_flags
             if tf & TexFlags.NORMAL:
@@ -433,8 +440,12 @@ class Renderer(object):
                 defines.append('HAS_JOINTS_0')
             if bf & BufFlags.WEIGHTS_0:
                 defines.append('HAS_WEIGHTS_0')
-        import pdb; pdb.set_trace()
-        program = self._program_cache.get_program(shader_filenames, defines)
-        if not program._in_context:
+        program = self._program_cache.get_program(
+            vertex_shader=vertex_shader,
+            fragment_shader=fragment_shader,
+            geometry_shader=geometry_shader,
+            defines=defines
+        )
+        if not program._in_context():
             program._add_to_context()
         return program

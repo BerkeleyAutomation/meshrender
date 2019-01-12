@@ -2,6 +2,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Structs
 ///////////////////////////////////////////////////////////////////////////////
+#define MAX_SPOT_LIGHTS 4
+#define MAX_DIRECTIONAL_LIGHTS 4
+#define MAX_POINT_LIGHTS 4
 
 struct SpotLight {
     vec3 color;
@@ -20,7 +23,6 @@ struct SpotLight {
 struct DirectionalLight {
     vec3 color;
     float intensity;
-    float range;
     vec3 direction;
 
     #ifdef DIRECTIONAL_LIGHT_SHADOWS
@@ -85,7 +87,7 @@ struct PBRInfo {
     float vh;
     float roughness;
     float metallic;
-    vec3 reflectance_0
+    vec3 reflectance_0;
     vec3 reflectance_90;
     vec3 diffuse_color;
     vec3 specular_color;
@@ -103,10 +105,11 @@ struct BRDFResult {
 uniform Material material;
 uniform PointLight point_lights[MAX_POINT_LIGHTS];
 uniform int n_point_lights;
-uniform DirectionalLight directional_lights[MAX_POINT_LIGHTS];
+uniform DirectionalLight directional_lights[MAX_DIRECTIONAL_LIGHTS];
 uniform int n_directional_lights;
 uniform SpotLight spot_lights[MAX_SPOT_LIGHTS];
 uniform int n_spot_lights;
+uniform mat4 V;
 
 #ifdef USE_IBL
 uniform samplerCube diffuse_env;
@@ -197,13 +200,13 @@ float geometric_occlusion(PBRInfo info)
 float microfacet_distribution(PBRInfo info)
 {
     float r2 = info.roughness * info.roughness;
-    float f = (info.nh * r2 - nh) * nh + 1.0;
+    float f = (info.nh * r2 - info.nh) * info.nh + 1.0;
     return r2 / (PI * f * f);
 }
 
 vec3 compute_brdf(vec3 n, vec3 v, vec3 l,
                   float roughness, float metalness,
-                  float reflectance_0, float reflectance_90,
+                  vec3 reflectance_0, vec3 reflectance_90,
                   vec3 diffuse_color, vec3 specular_color,
                   vec3 radiance)
 {
@@ -229,8 +232,8 @@ vec3 compute_brdf(vec3 n, vec3 v, vec3 l,
         vec3 diffuse_contrib = (1.0 - F) * diffuse_color / PI;
         vec3 spec_contrib = F * G * D / (4.0 * nl * nv);
 
-        vec3 color = nl * radiance * (diffuse_contrib + specular_contrib);
-        return color
+        vec3 color = nl * radiance * (diffuse_contrib + spec_contrib);
+        return color;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

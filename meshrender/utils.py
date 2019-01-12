@@ -28,7 +28,7 @@ def format_color_array(value, n_channels):
         value = (value / 255.0).astype(np.float32)
     if value.shape[1] < n_channels:
         value = np.concatenate((value,
-                                np.ones(value.shape[0], n_channels - value.shape[1])), axis=1)
+                                np.ones((value.shape[0], n_channels - value.shape[1]))), axis=1)
     value = value[:,n_channels].astype(np.float32)
     return value
 
@@ -85,9 +85,9 @@ def format_texture_source(texture, target_channels='RGB'):
                 raise ValueError('Cannot reformat texture with 2 channels into RGBA')
             elif texture.shape[2] == 3:
                 texture = np.concatenate((texture,
-                                            np.ones(texture.shape[0],
+                                            np.ones((texture.shape[0],
                                                     texture.shape[1],
-                                                    1)), axis=2)
+                                                    1))), axis=2)
         else:
             raise ValueError('Invalid texture channel specification: {}'.format(target_channels))
     else:

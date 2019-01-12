@@ -33,7 +33,7 @@ out mat3 tbn;
 #endif
 
 #ifdef HAS_TEXCOORD_0
-out vec3 uv;
+out vec2 uv;
 #endif
 
 #ifdef HAS_COLOR_0
@@ -42,7 +42,7 @@ out vec4 color_multiplier;
 
 void main()
 {
-    frag_position = vec3(M * inst_m * vec4(position_a, 1.0));
+    frag_position = vec3(M * inst_m * vec4(position, 1.0));
 
 #ifdef HAS_NORMALS
     frag_normal = mat3(transpose(inverse(M))) * normal;

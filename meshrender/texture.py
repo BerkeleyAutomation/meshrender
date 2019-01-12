@@ -14,10 +14,10 @@ class Texture(object):
                  source_channels=None,
                  width=None,
                  height=None):
+        self.source_channels = source_channels
         self.name = name
         self.sampler = sampler
         self.source = source
-        self.source_channels = source_channels
         self.width = width
         self.height = height
 
@@ -42,7 +42,7 @@ class Texture(object):
         if value is None:
             self._source = None
         else:
-            self._source = format_texture_source(value, source_channels)
+            self._source = format_texture_source(value, self.source_channels)
 
     ##################
     # OpenGL code
@@ -78,6 +78,13 @@ class Texture(object):
         glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height, 0, fmt, GL_FLOAT, data)
         glGenerateMipmap(GL_TEXTURE_2D)
 
+        if self.sampler.magFilter is not None:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, self.sampler.magFilter)
+        if self.sampler.minFilter is not None:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, self.sampler.minFilter)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, self.sampler.wrapS)
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, self.sampler.wrapT)
+
         # Unbind texture
         glBindTexture(GL_TEXTURE_2D, 0)
 
@@ -92,7 +99,6 @@ class Texture(object):
         return self._vaid is not None
 
     def _bind(self):
-        # TODO SET UP SAMPLER MODES!
         # TODO HANDLE INDEXING INTO OTHER UV's
         glBindTexture(GL_TEXTURE_2D, self._texid)
 
