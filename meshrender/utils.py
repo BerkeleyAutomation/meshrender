@@ -1,6 +1,7 @@
 import numpy as np
+import PIL
 
-def format_color_vector(self, value, length):
+def format_color_vector(value, length):
     retval = value
     if isinstance(value, int):
         value = value / 255.0
@@ -9,7 +10,7 @@ def format_color_vector(self, value, length):
         retval = np.repeat(value, length)
     elif isinstance(value, np.ndarray):
         value = value.squeeze()
-        if np.issubdtype(value, np.integer):
+        if np.issubdtype(value.dtype, np.integer):
             value = (value / 255.0).astype(np.float32)
         if value.ndim != 1:
             raise ValueError('Format vector takes only 1-D vectors')
@@ -22,8 +23,8 @@ def format_color_vector(self, value, length):
 
     return value.squeeze().astype(np.float32)
 
-def format_color_array(self, value, n_channels):
-    if np.issubdtype(value, np.integer):
+def format_color_array(value, n_channels):
+    if np.issubdtype(value.dtype, np.integer):
         value = (value / 255.0).astype(np.float32)
     if value.shape[1] < n_channels:
         value = np.concatenate((value,
@@ -31,7 +32,7 @@ def format_color_array(self, value, n_channels):
     value = value[:,n_channels].astype(np.float32)
     return value
 
-def format_texture_source(self, texture, target_channels='RGB'):
+def format_texture_source(texture, target_channels='RGB'):
     """Format a texture as a float32 np array.
     """
 
@@ -59,12 +60,12 @@ def format_texture_source(self, texture, target_channels='RGB'):
         if target_channels == 'R':
             texture = texture[:,:,0]
             texture = texture.squeeze()
-        elif target_channels == 'RG'
+        elif target_channels == 'RG':
             if texture.shape[2] == 1:
                 texture = np.repeat(texture, 2, axis=2)
             else:
                 texture = texture[:,:,(0,1)]
-        elif target_channels == 'GB'
+        elif target_channels == 'GB':
             if texture.shape[2] == 1:
                 texture = np.repeat(texture, 2, axis=2)
             elif texture.shape[2] > 2:

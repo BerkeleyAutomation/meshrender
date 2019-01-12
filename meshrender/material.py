@@ -3,11 +3,11 @@ https://git.io/fhkPZ
 """
 import abc
 import numpy as np
-import PIL
 import six
 
 from .constants import TexFlags
-from .utils import format_color_vector, formatTexture_source
+from .utils import format_color_vector, format_texture_source
+from .texture import Texture
 
 @six.add_metaclass(abc.ABCMeta)
 class Material(object):
@@ -126,7 +126,7 @@ class Material(object):
     def alphaMode(self, value):
         if value not in set(['OPAQUE', 'MASK', 'BLEND']):
             raise ValueError('Invalid alpha mode {}'.format(value))
-        self._alphaMode = alphaMode
+        self._alphaMode = value
         self._is_transparent = None
 
     @property
@@ -148,7 +148,7 @@ class Material(object):
     def doubleSided(self, value):
         if not isinstance(value, bool):
             raise TypeError('Double sided must be a boolean value')
-        self._doubleSided = doubleSided
+        self._doubleSided = value
 
     @property
     def smooth(self):
@@ -158,7 +158,7 @@ class Material(object):
     def smooth(self, value):
         if not isinstance(value, bool):
             raise TypeError('Double sided must be a boolean value')
-        self._smooth = smooth
+        self._smooth = value
 
     @property
     def wireframe(self):
@@ -168,7 +168,7 @@ class Material(object):
     def wireframe(self, value):
         if not isinstance(value, bool):
             raise TypeError('Wireframe must be a boolean value')
-        self._wireframe = wireframe
+        self._wireframe = value
 
     @property
     def is_transparent(self):
@@ -211,10 +211,10 @@ class Material(object):
     def _format_texture(self, texture, target_channels='RGB'):
         """Format a texture as a float32 np array.
         """
-        if isinstance(texture, Texture):
+        if isinstance(texture, Texture) or texture is None:
             return texture
         else:
-            source = formatTexture_source(texture, target_channels)
+            source = format_texture_source(texture, target_channels)
             return Texture(source=source, source_channels=target_channels)
 
 class MetallicRoughnessMaterial(Material):
@@ -350,7 +350,7 @@ class MetallicRoughnessMaterial(Material):
         tex_flags = super(MetallicRoughnessMaterial, self)._compute_tex_flags()
         if self.baseColorTexture is not None:
             tex_flags |= TexFlags.BASE_COLOR
-        if self.metallicRoughnessTexture is not None
+        if self.metallicRoughnessTexture is not None:
             tex_flags |= TexFlags.METALLIC_ROUGHNESS
         return tex_flags
 
@@ -369,7 +369,7 @@ class MetallicRoughnessMaterial(Material):
     def _compute_textures(self):
         textures = super(MetallicRoughnessMaterial, self)._compute_textures()
         all_textures = [self.baseColorTexture, self.metallicRoughnessTexture]
-        all_textures = [t for t in all_textures if t is not None]
+        all_textures = {t for t in all_textures if t is not None}
         textures |= all_textures
         return textures
 
@@ -506,7 +506,7 @@ class SpecularGlossinessMaterial(Material):
         tex_flags = super(SpecularGlossinessMaterial, self)._compute_tex_flags()
         if self.diffuseTexture is not None:
             tex_flags |= TexFlags.DIFFUSE
-        if self.specularGlossinessTexture is not None
+        if self.specularGlossinessTexture is not None:
             tex_flags |= TexFlags.SPECULAR_GLOSSINESS
         return tex_flags
 
@@ -525,6 +525,6 @@ class SpecularGlossinessMaterial(Material):
     def _compute_textures(self):
         textures = super(SpecularGlossinessMaterial, self)._compute_textures()
         all_textures = [self.diffuseTexture, self.specularGlossinessTexture]
-        all_textures = [t for t in all_textures if t is not None]
+        all_textures = {t for t in all_textures if t is not None}
         textures |= all_textures
         return textures

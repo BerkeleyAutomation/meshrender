@@ -8,7 +8,7 @@ from perception import CameraIntrinsics, RenderMode, ColorImage, DepthImage
 
 import os
 #os.environ['MESHRENDER_EGL_OFFSCREEN'] = 't'
-from meshrender import Scene, Material, MeshSceneObject, VirtualCamera, SceneViewer
+from meshrender import Scene, Material, Mesh, SceneViewer
 
 # Start with an empty scene
 scene = Scene()#np.array([1.0, 0.0, 0.0]))
@@ -39,29 +39,29 @@ bar_pose = RigidTransform(
     to_frame='world'
 )
 
-# Set up each object's material properties
-pawn_material = Material(
-    diffuse = np.array([0.5, 0.5, 0.0]),#0.5*np.ones(3),
-    specular = 0.3*np.ones(3),
-    shininess = 10.0,
-    smooth=True,
-    wireframe=False
-)
-
-#bar_material = MaterialProperties(
-#    color = 7.0*np.array([0.1, 0.1, 0.1]),
-#    k_a = 0.5,
-#    k_d = 0.3,
-#    k_s = 0.1,
-#    alpha = 10.0,
-#    smooth=False
+## Set up each object's material properties
+#pawn_material = Material(
+#    diffuse = np.array([0.5, 0.5, 0.0]),#0.5*np.ones(3),
+#    specular = 0.3*np.ones(3),
+#    shininess = 10.0,
+#    smooth=True,
+#    wireframe=False
 #)
-bar_material = pawn_material.copy()
-bar_material.diffuse = np.array([1.0, 0.0, 0.0])
+#
+##bar_material = MaterialProperties(
+##    color = 7.0*np.array([0.1, 0.1, 0.1]),
+##    k_a = 0.5,
+##    k_d = 0.3,
+##    k_s = 0.1,
+##    alpha = 10.0,
+##    smooth=False
+##)
+#bar_material = pawn_material.copy()
+#bar_material.diffuse = np.array([1.0, 0.0, 0.0])
 
 # Create SceneObjects for each object
-pawn_obj = MeshSceneObject.from_trimesh(pawn_mesh, pawn_material)
-bar_obj = MeshSceneObject.from_trimesh(bar_mesh, bar_material)
+pawn_obj = Mesh.from_trimesh(pawn_mesh)
+#Jbar_obj = MeshSceneObject.from_trimesh(bar_mesh, bar_material)
 
 # Add the SceneObjects to the scene
 scene.add(pawn_obj, pose=pawn_pose.matrix)

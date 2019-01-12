@@ -1,11 +1,10 @@
 import abc
 import numpy as np
 import six
-import trimesh
 
 from OpenGL.GL import *
 
-from .material import Material
+from .material import Material, MetallicRoughnessMaterial
 from .constants import FLOAT_SZ, UINT_SZ, BufFlags, GLTF
 
 class Primitive(object):
@@ -45,6 +44,8 @@ class Primitive(object):
         self._bounds = None
         self._vaid = None
         self._buffers = []
+        self._is_transparent = None
+        self._buf_flags = None
 
     @property
     def positions(self):
@@ -77,7 +78,7 @@ class Primitive(object):
             value = np.ascontiguousarray(value.astype(np.float32))
             if value.shape != (self.positions.shape[0], 4):
                 raise ValueError('Incorrect tangent shape')
-        self._tangents = tangents
+        self._tangents = value
 
     @property
     def texcoord_0(self):
@@ -113,6 +114,7 @@ class Primitive(object):
             value = np.ascontiguousarray(format_color_array(value, 4))
             if value.shape[0] != self.positions.shape[0]:
                 raise ValueError('Incorrect vertex color shape')
+        self._is_transparent = None
         self._color_0 = value
 
     @property
@@ -149,8 +151,7 @@ class Primitive(object):
     def material(self, value):
         # Create default material
         if value is None:
-            smooth = (self.face_normals is not None)
-            value = MetallicRoughnessMaterial(smooth=smooth, base_color_factor=np.ones(4))
+            value = MetallicRoughnessMaterial()
         else:
             if not isinstance(value, Material):
                 raise ValueError('Object material must be of type Material')
@@ -181,11 +182,12 @@ class Primitive(object):
 
     @poses.setter
     def poses(self, value):
-        value = np.ascontiguousarray(value.astype(np.float32))
-        if value.ndim == 2:
-            value = value[np.newaxis,:,:]
-        if value.shape[1] != 4 or value.shape[2] != 4:
-            raise ValueError('Incorrect shape of pose matrices, must be (n,4,4)!')
+        if value is not None:
+            value = np.ascontiguousarray(value.astype(np.float32))
+            if value.ndim == 2:
+                value = value[np.newaxis,:,:]
+            if value.shape[1] != 4 or value.shape[2] != 4:
+                raise ValueError('Incorrect shape of pose matrices, must be (n,4,4)!')
         self._poses = value
         self._bounds = None
 
@@ -206,6 +208,12 @@ class Primitive(object):
         if self._tex_flags is None:
             self._tex_flags = self._compute_tex_flags()
         return self._tex_flags
+
+    @property
+    def is_transparent(self):
+        if self._is_transparent is None:
+            self._is_transparent = self._compute_transparency()
+        return self._is_transparent
 
     def _add_to_context(self):
         if self._vaid is not None:
@@ -338,7 +346,7 @@ class Primitive(object):
     def _compute_buf_flags(self):
         buf_flags = BufFlags.POSITION
 
-        if self.normals is not None or self.face_normals is not None or self.indices is not None:
+        if self.normals is not None:
             buf_flags |= BufFlags.NORMAL
         if self.material.requires_tangents:
             buf_flags |= BufFlags.TANGENT

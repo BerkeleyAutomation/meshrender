@@ -95,6 +95,9 @@ class ShaderProgram(object):
         for sid in shader_ids:
             glDeleteShader(sid)
 
+    def _in_context(self):
+        return self._program_id is not None
+
     def _remove_from_context(self):
         if self._program_id is not None:
             glDeleteProgram(self._program_id)

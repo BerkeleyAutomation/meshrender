@@ -2,6 +2,7 @@ import numpy as np
 
 from .constants import *
 from .shader_program import ShaderProgramCache
+from .material import MetallicRoughnessMaterial
 
 from OpenGL.GL import *
 
@@ -28,24 +29,20 @@ class Renderer(object):
         self._program_cache = ShaderProgramCache()
         self._meshes = set()
         self._textures = set()
+        self._texture_alloc_idx = 0
 
         # Set up framebuffer if needed / TODO
 
-    def render(self, scene, render_flags):
-        self._texture_count = 0
-        self._pre_obj_texture_count = 0
-
-        # Delete old textures
-        self._delete_old_textures(scene)
-
+    def render(self, scene, flags):
         # If using shadow maps, render scene into each light's shadow map
         # first.
-        if render_flags & RenderFlags.SHADOWS:
+        if flags & RenderFlags.SHADOWS:
             raise NotImplementedError('Shadows not yet implemented')
 
         # Else, set up normal render
         else:
-            self._standard_forward_pass(scene, render_flags)
+            self._forward_pass(scene, flags)
+            self._reset_active_textures()
 
 
     def _update_context(self, scene, flags):
@@ -55,21 +52,24 @@ class Renderer(object):
 
         # Add new meshes to context
         for mesh in scene_meshes - self._meshes:
-            mesh._add_to_context()
+            for p in mesh.primitives:
+                p._add_to_context()
 
         # Remove old meshes from context
         for mesh in self._meshes - scene_meshes:
-            mesh._unbind()
-            mesh._remove_from_context()
+            for p in mesh.primitives:
+                p._unbind()
+                p._remove_from_context()
 
         self._meshes = scene_meshes.copy()
 
         # Update textures
         scene_textures = set()
         for m in scene_meshes:
-            scene_textures |= mesh.textures
+            for p in m.primitives:
+                scene_textures |= p.material.textures
         for l in scene.lights:
-            if l.casts_shadows:
+            if l.castsShadows:
                 scene_textures.add(l.depth_texture)
 
         # Add new textures to context
@@ -154,7 +154,8 @@ class Renderer(object):
         main_camera_node = scene.main_camera_node
         if main_camera_node is None:
             raise ValueError('Cannot render scene without a camera')
-        P = node.camera.get_projection_matrix(width=self.viewport_width, height=self.viewport_height)
+        P = main_camera_node.camera.\
+                get_projection_matrix(width=self.viewport_width, height=self.viewport_height)
         pose = scene.get_pose(main_camera_node)
         V = np.linalg.inv(pose) # V maps from world to camera
         return V, P
@@ -167,6 +168,14 @@ class Renderer(object):
         glActiveTexture(GL_TEXTURE0 + tex_id)
         texture._bind()
         program.set_uniform('material.{}'.format(uniform_name), tex_id)
+
+    def _get_next_active_texture(self):
+        val = self._texture_alloc_idx
+        self._texture_alloc_idx += 1
+        return val
+
+    def _reset_active_textures(self):
+        self._texture_alloc_idx = 0
 
     def _bind_and_draw_primitive(self, primitive, pose, program, flags):
         # Set model pose matrix
@@ -256,7 +265,7 @@ class Renderer(object):
         self._update_context(scene, flags)
 
         # Set up viewport for render
-        self._configure_forward_pass_viewport()
+        self._configure_forward_pass_viewport(scene, flags)
 
         # Set up camera matrices
         V, P = self._get_camera_matrices(scene)
@@ -327,7 +336,7 @@ class Renderer(object):
         solid_nodes = []
         trans_nodes = []
         for node in scene.mesh_nodes:
-            mesh = scene.mesh
+            mesh = node.mesh
             if mesh.is_transparent:
                 trans_nodes.append(node)
             else:
@@ -337,7 +346,7 @@ class Renderer(object):
         trans_nodes.sort(
             key=lambda n : -np.linalg.norm(scene.get_pose(n)[:3,3] - cam_loc)
         )
-        solid_names.sort(
+        solid_nodes.sort(
             key=lambda n : -np.linalg.norm(scene.get_pose(n)[:3,3] - cam_loc)
         )
 
@@ -382,19 +391,7 @@ class Renderer(object):
             program.set_uniform(b + 'range', l.range)
             program.set_uniform(b + 'direction', direction)
 
-    def _init_standard_render(self, scene, render_flags):
-        glClearColor(*scene.bg_color)
-        glViewport(0, 0, scene.camera.intrinsics.width, scene.camera.intrinsics.height)
-        glEnable(GL_DEPTH_TEST)
-        glDepthMask(GL_TRUE)
-        glDepthFunc(GL_LESS)
-        glDepthRange(0.0, 1.0)
-
     def _get_primitive_program(self, primitive, flags):
-        vbf = obj.vertex_buffer_flags
-        vaf = obj.vertex_array_flags
-        tf = obj.texture_flags
-
         shader_filenames = []
         defines = []
         if flags & RenderFlags.DEPTH_ONLY:
@@ -436,4 +433,8 @@ class Renderer(object):
                 defines.append('HAS_JOINTS_0')
             if bf & BufFlags.WEIGHTS_0:
                 defines.append('HAS_WEIGHTS_0')
-        return self._program_cache.get_program(shader_filenames, defines)
+        import pdb; pdb.set_trace()
+        program = self._program_cache.get_program(shader_filenames, defines)
+        if not program._in_context:
+            program._add_to_context()
+        return program

@@ -4,6 +4,8 @@ import six
 import trimesh
 
 from .primitive import Primitive
+from .constants import GLTF
+from .material import MetallicRoughnessMaterial
 
 class Mesh(object):
 
@@ -23,8 +25,15 @@ class Mesh(object):
             for p in self.primitives:
                 bounds[0] = np.minimum(bounds[0], p.bounds[0])
                 bounds[1] = np.maximum(bounds[1], p.bounds[1])
-           self._bounds = bounds
-        return bounds
+            self._bounds = bounds
+        return self._bounds
+
+    @property
+    def is_transparent(self):
+        for p in self.primitives:
+            if p.is_transparent:
+                return True
+        return False
 
     @staticmethod
     def from_points(points, colors=None, is_visible=True, poses=None):
@@ -36,6 +45,7 @@ class Mesh(object):
         )
         mesh = Mesh(primitives=[primitive], is_visible=is_visible)
         return mesh
+
 
     @staticmethod
     def from_trimesh(mesh, material=None, texcoords=None, is_visible=True, poses=None, smooth=True):
