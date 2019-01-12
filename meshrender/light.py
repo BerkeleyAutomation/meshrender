@@ -49,7 +49,7 @@ class Light(object):
 
     @color.setter
     def color(self, value):
-        self._color = format_color_vector(value)
+        self._color = format_color_vector(value, 3)
 
     @property
     def intensity(self):

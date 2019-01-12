@@ -171,7 +171,7 @@ class SceneViewer(pyglet.window.Window):
 
         self.set_caption(title)
 
-        self._renderer = Renderer()
+        self._renderer = Renderer(self._size[0], self._size[1])
 
         # Update the application flags
         self._update_flags()
@@ -325,7 +325,7 @@ class SceneViewer(pyglet.window.Window):
 
         # Create a trackball
         self._trackball = Trackball(
-            cp,
+            cp.matrix,
             self._size, scale,
             target=centroid,
         )
@@ -423,16 +423,16 @@ class SceneViewer(pyglet.window.Window):
         """Render the scene into the framebuffer and flip.
         """
         scene = self.scene
-        scene.set_pose(self.scene.camera_name, self._trackball.pose)
+        self.scene.main_camera_node.matrix = self._trackball.pose.copy()
 
         if self._raymond_lighting:
-            d_lights = []
-            for i, dlight in enumerate(SceneViewer._raymond_lights):
-                name = '__raymond_light_{}'.format(i)
-                if name in scene.directional_lights:
-                    scene.set_pose(name, self._trackball.pose)
-                else:
-                    scene.add(dlight, name=name, pose=self._trackball.pose)
+            for n in SceneViewer._raymond_lights:
+                if not self.scene.has_node(n):
+                    scene.add_node(n, parent_node=self.scene.main_camera_node)
+        else:
+            for n in SceneViewer._raymond_lights:
+                if self.scene.has_node(n):
+                    self.scene.remove_node(n)
 
         self._renderer.render(self.scene, 0)
 
@@ -468,14 +468,14 @@ class SceneViewer(pyglet.window.Window):
             if np.linalg.norm(x) == 0.0:
                 x = np.array([1.0, 0.0, 0.0])
             x = x / np.linalg.norm(x)
-            y = np.cross(z, x)
+            y = np.cross(d, x)
 
             l = DirectionalLight(
                 color=np.ones(3),
                 intensity=0.3,
             )
             matrix = np.eye(4)
-            matrix[:3,:3]= np.c_[x,y,z]
+            matrix[:3,:3]= np.c_[x,y,d]
 
             raymond_lights.append(Node(light=l, matrix=matrix))
 

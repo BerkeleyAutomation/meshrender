@@ -1,6 +1,10 @@
-from .camera import VirtualCamera
+from .camera import Camera
+from .node import Node
 from .light import PointLight, DirectionalLight, SpotLight
-from .material import Material
+from .material import Material, MetallicRoughnessMaterial, SpecularGlossinessMaterial
+from .texture import Texture
 from .pyglet_viewer import SceneViewer
 from .scene import Scene
-from .scene_object import PointCloudSceneObject, MeshSceneObject
+from .mesh import Mesh
+from .primitive import Primitive
+from .renderer import Renderer

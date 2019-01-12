@@ -25,20 +25,21 @@ class Camera(object):
     def znear(self, value):
         if value < 0:
             raise ValueError('z-near must be >= 0.0')
-        self._znear = value
+        self._znear = float(value)
 
     @property
     def zfar(self):
         return self._zfar
 
     @zfar.setter
-    def zfar(self):
-        if zfar is None:
-            self._zfar = None
-            return
-        if value <= 0 or value <= self.znear:
-            raise ValueError('zfar must be >0 and >znear')
-        self._zfar = zfar
+    def zfar(self, value):
+        if value is not None:
+            if value <= 0 or value <= self.znear:
+                raise ValueError('zfar must be >0 and >znear')
+            else:
+                value = float(value)
+
+        self._zfar = value
 
     @abc.abstractmethod
     def get_projection_matrix(self, width=None, height=None):
@@ -65,7 +66,7 @@ class PerspectiveCamera(Camera):
     def yfov(self):
         return self._yfov
 
-    @yfov.setter(self)
+    @yfov.setter
     def yfov(self, value):
         if value <= 0.0:
             raise ValueError('Field of view must be positive')
@@ -75,7 +76,7 @@ class PerspectiveCamera(Camera):
     def aspectRatio(self):
         return self._aspectRatio
 
-    @aspectRatio.setter(self)
+    @aspectRatio.setter
     def aspectRatio(self, value):
         if value is None:
             self._aspectRatio = None
@@ -131,7 +132,7 @@ class OrthographicCamera(Camera):
     def xmag(self):
         return self._xmag
 
-    @xmag.setter(self)
+    @xmag.setter
     def xmag(self, value):
         if value <= 0.0:
             raise ValueError('X magnification must be positive')
@@ -141,7 +142,7 @@ class OrthographicCamera(Camera):
     def ymag(self):
         return self._ymag
 
-    @ymag.setter(self)
+    @ymag.setter
     def ymag(self, value):
         if value <= 0.0:
             raise ValueError('Y magnification must be positive')

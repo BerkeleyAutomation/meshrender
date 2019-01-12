@@ -6,8 +6,8 @@ from .mesh import Mesh
 from .camera import Camera
 from .light import Light, PointLight, DirectionalLight, SpotLight
 from .node import Node
-
 from .utils import format_color_vector
+from .constants import GLTF
 
 class Scene(object):
     """Implementation of a scene graph, which contains objects, lights, and a camera
@@ -42,7 +42,7 @@ class Scene(object):
         self._main_camera_node = None
 
         # Transform tree
-        self._digraph = nx.Digraph()
+        self._digraph = nx.DiGraph()
         self._digraph.add_node('world')
         self._path_cache = {}
 
@@ -67,7 +67,15 @@ class Scene(object):
 
     @property
     def mesh_nodes(self):
-        return self.mesh_nodes
+        return self._mesh_nodes
+
+    @property
+    def lights(self):
+        return self.point_lights | self.spot_lights | self.directional_lights
+
+    @property
+    def light_nodes(self):
+        return self.point_light_nodes | self.spot_light_nodes | self.directional_light_nodes
 
     @property
     def point_lights(self):
@@ -154,6 +162,7 @@ class Scene(object):
             return nodes[0]
 
     def add_node(self, node, parent_node=None):
+        self.nodes.add(node)
         # Create node in graph
         self._digraph.add_node(node)
 
@@ -194,7 +203,11 @@ class Scene(object):
 
         self._path_cache = {}
 
+    def has_node(self, node):
+        return node in self.nodes
+
     def remove_node(self, node):
+        self.nodes.remove(node)
         # Remove children
         for child in node.children:
             self.remove_node(child)
@@ -242,7 +255,7 @@ class Scene(object):
 
         # Traverse from from_node to to_node
         pose = np.eye(4)
-        for n in path[-1]:
+        for n in path[:-1]:
             pose = np.dot(pose, n.matrix)
 
         return pose

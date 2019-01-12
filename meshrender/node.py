@@ -1,5 +1,6 @@
 import numpy as np
-import transformations
+
+from . import transformations
 
 class Node(object):
 
@@ -75,6 +76,10 @@ class Node(object):
 
     @matrix.setter
     def matrix(self, value):
+        if not isinstance(value, np.ndarray):
+            raise ValueError('Matrix must be a 4x4 numpy ndarray')
+        if value.shape != (4,4):
+            raise ValueError('Matrix must be a 4x4 numpy ndarray')
         self._matrix = value
         self._rotation = self._r_from_matrix()
         self._scale = self._s_from_matrix()
