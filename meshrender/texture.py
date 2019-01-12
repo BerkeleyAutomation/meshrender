@@ -92,6 +92,8 @@ class Texture(object):
         return self._vaid is not None
 
     def _bind(self):
+        # TODO SET UP SAMPLER MODES!
+        # TODO HANDLE INDEXING INTO OTHER UV's
         glBindTexture(GL_TEXTURE_2D, self._texid)
 
     def _unbind(self):

@@ -24,7 +24,8 @@ import OpenGL
 
 from .constants import OPEN_GL_MAJOR, OPEN_GL_MINOR
 from .light import DirectionalLight
-from .camera import VirtualCamera
+from .node import Node
+from .camera import PerspectiveCamera
 from .trackball import Trackball
 from .renderer import Renderer
 
@@ -208,8 +209,6 @@ class SceneViewer(pyglet.window.Window):
         """Resize the camera and trackball when the window is resized.
         """
         self._size = (width, height)
-        camera = self.scene.camera
-        camera.resize(width, height)
         self._trackball.resize(self._size)
         self.on_draw()
 
@@ -303,49 +302,26 @@ class SceneViewer(pyglet.window.Window):
         centroid = self.scene.centroid
         extents = self.scene.extents
         scale = self.scene.scale
-        width, height = self._size
 
-        # Set up reasonable camera intrinsics
-        fov = np.pi / 6.0
-        fl = height / (2.0 * np.tan(fov / 2))
-        ci = CameraIntrinsics(
-            frame = 'camera',
-            fx = fl,
-            fy = fl,
-            cx = width/2.0,
-            cy = height/2.0,
-            skew=0.0,
-            height=height,
-            width=width
-        )
-
-        # Move centroid if needed
-        #if self._target_object and self._target_object in self.scene.objects:
-        #    obj = self.scene.objects[self._target_object]
-        #    if isinstance(obj, InstancedSceneObject):
-        #        centroid = np.mean(obj.raw_pose_data[3::4,:3], axis=0)
-        #    else:
-        #        centroid = np.mean(obj.mesh.bounds, axis=0)
-        #    centroid = obj.T_obj_world.matrix.dot(np.hstack((centroid, 1.0)))[:3]
-        #    scale = (obj.mesh.extents ** 2).sum() ** .5
-
-        # Set up the camera pose (z axis faces towards scene, x to right, y down)
         s2 = 1.0/np.sqrt(2.0)
         cp = RigidTransform(
             rotation = np.array([
-                [0.0, s2,  -s2],
+                [0.0, -s2,  s2],
                 [1.0, 0.0, 0.0],
-                [0.0, -s2, -s2]
+                [0.0, s2, s2]
             ]),
             translation = np.sqrt(2.0)*np.array([scale, 0.0, scale]) + centroid,
             from_frame='camera',
             to_frame='world'
-        ).matrix
+        )
 
-        # Create a VirtualCamera
-        if self.scene.camera is not None:
-            self.scene.remove(self.scene.camera_name)
-        self.scene.add(VirtualCamera(ci), pose=cp)
+        # Set up reasonable camera intrinsics
+        if self.scene.main_camera_node is None:
+            camera = PerspectiveCamera(yfov=np.pi / 6.0)
+            node = Node(camera=camera, matrix=cp.matrix)
+            self.scene.add_node(node)
+        else:
+            self.scene.main_camera_node.matrix = cp.matrix
 
         # Create a trackball
         self._trackball = Trackball(
@@ -354,16 +330,6 @@ class SceneViewer(pyglet.window.Window):
             target=centroid,
         )
 
-
-    def _compute_scene_bounds(self):
-        """The axis aligned bounds of the scene.
-
-        Returns
-        -------
-        (2,3) float
-            The bounding box with [min, max] coordinates.
-        """
-        bounds = self.scene.bounds
 
     def _save_image(self):
         # Get save file location
@@ -495,15 +461,23 @@ class SceneViewer(pyglet.window.Window):
             y = -np.cos(el) * np.sin(el)
             z = -np.sin(el)
 
-            direction = -np.array([x, y, z])
-            direction = direction / np.linalg.norm(direction)
-            direc = DirectionalLight(
-                ambient=0.1*np.ones(3),
-                diffuse=0.5*np.ones(3),
-                specular=0.5*np.ones(3),
-                direction=direction,
+            d = -np.array([x, y, z])
+            d = d / np.linalg.norm(d)
+
+            x = np.array([-d[1], d[0], 0.0])
+            if np.linalg.norm(x) == 0.0:
+                x = np.array([1.0, 0.0, 0.0])
+            x = x / np.linalg.norm(x)
+            y = np.cross(z, x)
+
+            l = DirectionalLight(
+                color=np.ones(3),
+                intensity=0.3,
             )
-            raymond_lights.append(direc)
+            matrix = np.eye(4)
+            matrix[:3,:3]= np.c_[x,y,z]
+
+            raymond_lights.append(Node(light=l, matrix=matrix))
 
         SceneViewer._raymond_lights = raymond_lights
         return raymond_lights

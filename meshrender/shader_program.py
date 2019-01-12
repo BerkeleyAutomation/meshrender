@@ -17,7 +17,7 @@ class ShaderProgramCache(object):
             base_dir, _ = os.path.split(os.path.realpath(__file__))
             self.shader_dir = os.path.join(base_dir, 'shaders')
 
-    def get_program(self, shader_filenames):
+    def get_program(self, shader_filenames, defines):
         """Get a program via a list of shader files to include in the program.
 
         Parameters
@@ -30,12 +30,12 @@ class ShaderProgramCache(object):
         for fn in shader_filenames:
             _, name = os.path.split(fn)
             shader_names.append(name)
-        shader_names = tuple(sorted(shader_names))
+        key = tuple(sorted(shader_names + defines))
 
-        if shader_names not in self._program_cache:
+        if key not in self._program_cache:
             shader_filenames = [os.path.join(self.shader_dir, fn) for fn in shader_filenames]
-            self._program_cache[shader_names] = ShaderProgram(shader_filenames)
-        return self._program_cache[shader_names]
+            self._program_cache[key] = ShaderProgram(shader_filenames, defines)
+        return self._program_cache[key]
 
     def clear(self):
         for key in self._program_cache:
@@ -53,9 +53,13 @@ class ShaderProgram(object):
         Acceptable file extensions are .vert, .geom, and .frag.
     """
 
-    def __init__(self, shader_filenames):
+    def __init__(self, shader_filenames, defines=None):
 
         self.shader_filenames = shader_filenames
+        if defines is None:
+            self.defines = set()
+        else:
+            self.defines = set(defines)
         self._program_id = None
 
     def _add_to_context(self):
@@ -98,22 +102,41 @@ class ShaderProgram(object):
 
     def _load(self, shader_filename):
         path, _ = os.path.split(shader_filename)
-        import_re = re.compile('^(.*)#import\s+(.*)\s+$', re.MULTILINE)
+        #import_re = re.compile('^(.*)#import\s+(.*)\s+$', re.MULTILINE)
 
-        def recursive_load(matchobj, path):
-            indent = matchobj.group(1)
-            fname = os.path.join(path, matchobj.group(2))
-            new_path, _ = os.path.split(fname)
-            new_path = os.path.realpath(new_path)
-            with open(fname) as f:
-                text = f.read()
-            text = indent + text
-            text = text.replace('\n', '\n{}'.format(indent), text.count('\n') - 1)
-            return re.sub(import_re, lambda m : recursive_load(m, new_path), text)
+        #def recursive_load(matchobj, path):
+        #    indent = matchobj.group(1)
+        #    fname = os.path.join(path, matchobj.group(2))
+        #    new_path, _ = os.path.split(fname)
+        #    new_path = os.path.realpath(new_path)
+        #    with open(fname) as f:
+        #        text = f.read()
+        #    text = indent + text
+        #    text = text.replace('\n', '\n{}'.format(indent), text.count('\n') - 1)
+        #    return re.sub(import_re, lambda m : recursive_load(m, new_path), text)
 
+        #text = re.sub(import_re, lambda m : recursive_load(m, path), text)
         with open(shader_filename) as f:
             text = f.read()
-        text = re.sub(import_re, lambda m : recursive_load(m, path), text)
+
+        def defined(matchobj):
+            if matchobj.group(1) in self.defines:
+                return '#if 1'
+            else:
+                return '#if 0'
+
+        def ndefined(matchobj):
+            if matchobj.group(1) in self.defines:
+                return '#if 0'
+            else:
+                return '#if 1'
+
+
+        def_regex = re.compile('#ifdef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*$')
+        ndef_regex = re.compile('#ifndef\s+([a-zA-Z_][a-zA-Z_0-9]*)\s*$')
+        text = re.sub(def_regex, defined, text)
+        text = re.sub(ndef_regex, ndefined, text)
+
         return text
 
     def _bind(self):

@@ -168,7 +168,7 @@ class Renderer(object):
         texture._bind()
         program.set_uniform('material.{}'.format(uniform_name), tex_id)
 
-    def _draw_primitive(self, primitive, pose, program, flags):
+    def _bind_and_draw_primitive(self, primitive, pose, program, flags):
         # Set model pose matrix
         program.set_uniform('M', pose)
 
@@ -222,12 +222,34 @@ class Renderer(object):
                 program.bind_uniform(b.format('glossiness_factor'),
                                      material.glossinessFactor)
 
+            # Set blending options
+            if material.alphaMode == 'BLEND':
+                glBlendFunction(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+            else:
+                glBlendFunction(GL_ONE, GL_ZERO)
 
-
-
+            # Set wireframe mode
+            if material.wireframe:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+            else:
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+        else:
+            glBlendFunction(GL_ONE, GL_ZERO)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
         # Render mesh
+        n_instances = 1
+        if primitive.poses is not None:
+            n_instances = len(primitive.poses)
 
+        if primitive.indices is not None:
+            glDrawElementsInstanced(primitive.mode, obj.indices.size, GL_UNSIGNED_INT,
+                                    ctypes.c_void_p(0), n_instances)
+        else:
+            glDrawArraysInstanced(primitive.mode, 0, len(obj.positions), n_instances)
+
+        # Unbind mesh buffers
+        primitive._unbind()
 
     def _forward_pass(self, scene, flags):
         # Update context with meshes and textures
@@ -243,84 +265,62 @@ class Renderer(object):
         prior_program = None
         for node in self._sorted_mesh_nodes(scene):
             mesh = node.mesh
+
             # Skip the mesh if it's not visible
             if not mesh.is_visible:
                 continue
 
+            for primitive in mesh.primitives:
 
-            # First, get the appropriate program
-            program = self._get_program(obj) # TODO
-            program.bind()
+                # First, get and bind the appropriate program
+                program = self._get_primitive_program(primitive, flags) # TODO
+                program._bind()
 
-            # Next, bind the object and its materials
-            obj._bind()
-            # Bind material properties unless using a depth-only render.
-            if not (render_flags & RenderFlags.DEPTH_ONLY):
-                self._bind_object_material(name, obj, program)
+                # Set the camera uniforms
+                program.set_uniform('V', V)
+                program.set_uniform('P', P)
 
-            # Set MVP matrices
-            M = scene.get_pose(node)
-            program.set_uniform('M', M)
-            program.set_uniform('V', V)
-            program.set_uniform('P', P)
+                # Next, bind the lighting
+                if program != prior_program:
+                    if not flags & RenderFlags.DEPTH_ONLY:
+                        self._bind_lighting(scene, program, flags)
 
-            # Next, set lighting if not doing a depth-only render and not using
-            # prior program, which already had its uniforms bound for lighting.
-            if program != prior_program:
-                if not render_flags & RenderFlags.DEPTH_ONLY:
-                    self._bind_lighting_uniforms(scene, program, render_flags)
+                # Finally, bind and draw the primitive
+                self._bind_and_draw_primitive(
+                    primitive=primitive,
+                    pose=scene.get_pose(node),
+                    program=program,
+                    flags=flags
+                )
 
-            # Next, set the polygon mode if necessary
-            if obj.material.wireframe:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-            else:
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
-
-            vaf = obj.vertex_array_flags
-
-            n_instances = 1
-            if vaf & VertexArrayFlags.INSTANCED:
-                n_instances = len(obj.poses)
-            if vaf & VertexArrayFlags.TRIANGLES:
-                if vaf & VertexArrayFlags.ELEMENTS:
-                    glDrawElementsInstanced(GL_TRIANGLES, 3*len(obj.faces), GL_UNSIGNED_INT,
-                            ctypes.c_void_p(0), n_instances)
-                else:
-                    glDrawArraysInstanced(GL_TRIANGLES, 0, 3*len(obj.faces), n_instances)
-            else:
-                glDrawArraysInstanced(GL_POINTS, 0, len(obj.vertices), n_instances)
-
-            prior_program = program
-            #program._print_uniforms()
-
-            # Unbind the object
-            obj._unbind()
+                prior_program = program
 
         # Unbind the shader and flush the output
-        glUseProgram(0)
+        if prior_program is not None:
+            prior_program._unbind()
         glFlush()
 
-        if not render_flags & RenderFlags.OFFSCREEN:
-            return
-        else:
-            width, height = self._main_fb_dims[0], self._main_fb_dims[1]
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, self._main_fb)
-            color_buf = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
-            depth_buf = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
+        # If doing offscreen render, copy result from framebuffer and return
 
-            color_im = np.frombuffer(color_buf, dtype=np.uint8).reshape((height, width, 3))
-            color_im = np.flip(color_im, axis=0)
+    def _read_main_framebuffer(self, scene):
+        width, height = self._main_fb_dims[0], self._main_fb_dims[1]
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, self._main_fb)
+        color_buf = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+        depth_buf = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
 
-            depth_im = np.frombuffer(depth_buf, dtype=np.float32).reshape((height, width))
-            depth_im = np.flip(depth_im, axis=0)
+        color_im = np.frombuffer(color_buf, dtype=np.uint8).reshape((height, width, 3))
+        color_im = np.flip(color_im, axis=0)
 
-            inf_inds = (depth_im == 1.0)
-            depth_im = 2.0 * depth_im - 1.0
-            z_near, z_far = scene.camera.z_near, scene.camera.z_far
-            depth_im = 2.0 * z_near * z_far / (z_far + z_near - depth_im * (z_far - z_near))
-            depth_im[inf_inds] = 0.0
+        depth_im = np.frombuffer(depth_buf, dtype=np.float32).reshape((height, width))
+        depth_im = np.flip(depth_im, axis=0)
 
-            return color_im, depth_im
+        inf_inds = (depth_im == 1.0)
+        depth_im = 2.0 * depth_im - 1.0
+        z_near, z_far = scene.main_camera_node.camera.znear, scene.main_camera_node.camera.zfar
+        depth_im = 2.0 * z_near * z_far / (z_far + z_near - depth_im * (z_far - z_near))
+        depth_im[inf_inds] = 0.0
+
+        return color_im, depth_im
 
     def _sorted_mesh_nodes(self, scene):
         cam_loc = scene.get_pose(scene.main_camera_node)[:3,3]
@@ -343,134 +343,44 @@ class Renderer(object):
 
         return solid_nodes + trans_nodes
 
-    def _bind_object_material(self, name, obj, program):
-        """Bind object's material to shader program uniforms.
-
-        Parameters
-        ----------
-        name : str
-            Name of object in scene.
-        obj : :obj:`SceneObject`
-            Scene object to bind materials for.
-        program : :obj:`ShaderProgram`
-            Shader program to bind materials for.
-        """
-        tm = obj.texture_flags
-
-        if tm & TextureFlags.DIFFUSE:
-            tex = self._texture_cache.get_texture(name='{}.diffuse'.format(name),
-                                                  data=obj.material.diffuse)
-            tex_idx = self._bind_texture(tex)
-            program.set_uniform('material.diffuse', tex_idx)
-        else:
-            diffuse = obj.material.diffuse
-            if len(diffuse) == 3:
-                diffuse = np.hstack((diffuse, 1.0))
-            program.set_uniform('material.diffuse', diffuse)
-
-        if tm & TextureFlags.SPECULAR:
-            tex = self._texture_cache.get_texture(name='{}.specular'.format(name),
-                                                  data=obj.material.specular)
-            tex_idx = self._bind_texture(tex)
-            program.set_uniform('material.specular', tex_idx)
-        else:
-            program.set_uniform('material.specular', obj.material.specular)
-
-        program.set_uniform('material.shininess', obj.material.shininess)
-
-        if tm & TextureFlags.EMISSION:
-            tex = self._texture_cache.get_texture(name='{}.emission'.format(name),
-                                                  data=obj.material.emission)
-            tex_idx = self._bind_texture(tex)
-            program.set_uniform('material.emission', tex_idx)
-        else:
-            emission = obj.material.emission
-            if emission is None:
-                emission = np.zeros(3)
-            program.set_uniform('material.emission', emission)
-
-        if tm & TextureFlags.NORMAL:
-            tex = self._texture_cache.get_texture(name='{}.normal'.format(name),
-                                                  data=obj.material.normal)
-            tex_idx = self._bind_texture(tex)
-            program.set_uniform('material.normal', tex_idx)
-
-        if tm & TextureFlags.HEIGHT:
-            tex = self._texture_cache.get_texture(name='{}.height'.format(name),
-                                                  data=obj.material.height)
-            tex_idx = self._bind_texture(tex)
-            program.set_uniform('material.height', tex_idx)
-
-
-    def _delete_old_textures(self, scene):
-        """Remove textures that aren't in use in the current scene.
-        """
-        names = set(scene.objects.keys()) | set(scene.lights.keys())
-        for tn in self._texture_cache.texture_names:
-            base = tn.split('.', 1)[0]
-            if base not in names:
-                self._texture_cache.delete_texture(tn)
-
-    def _bind_texture(self, texture):
-        """Bind a texture to an active texture unit and return
-        the texture unit index that was used.
-        """
-        glActiveTexture(GL_TEXTURE0 + self._texture_count)
-        texture.bind()
-        old_tex_count = self._texture_count
-        self._texture_count += 1
-        return old_tex_count
-
-    def _bind_lighting_uniforms(self, scene, program, render_flags):
+    def _bind_lighting(self, scene, program, flags):
         """Bind all lighting uniform values for a scene.
         """
         # TODO handle shadow map textures
-        point_lights = scene.point_lights
-        direc_lights = scene.directional_lights
-        spot_lights = scene.spot_lights
 
-        program.set_uniform('n_point_lights', len(scene.point_lights))
-        for i, ln in enumerate(scene.point_lights.keys()):
-            base = 'point_lights[{}].'.format(i)
-            l = scene.point_lights[ln]
-            pose = scene.get_pose(ln)
-            position = pose[:3,:3].dot(l.position) + pose[:3,3]
-            program.set_uniform(base + 'ambient', l.ambient)
-            program.set_uniform(base + 'diffuse', l.diffuse)
-            program.set_uniform(base + 'specular', l.specular)
-            program.set_uniform(base + 'position', position)
-            program.set_uniform(base + 'constant', l.constant)
-            program.set_uniform(base + 'linear', l.linear)
-            program.set_uniform(base + 'quadratic', l.quadratic)
+        program.set_uniform('n_point_lights', len(scene.point_light_nodes))
+        for i, n in enumerate(scene.point_light_nodes):
+            b = 'point_lights[{}].'.format(i)
+            l = n.light
+            position = scene.get_pose(n)[:3,3]
+            program.set_uniform(b + 'color', l.color)
+            program.set_uniform(b + 'intensity', l.intensity)
+            program.set_uniform(b + 'range', l.range)
+            program.set_uniform(b + 'position', position)
 
-        program.set_uniform('n_spot_lights', len(scene.spot_lights))
-        for i, ln in enumerate(scene.spot_lights.keys()):
-            base = 'spot_lights[{}].'.format(i)
-            l = scene.spot_lights[ln]
-            pose = scene.get_pose(ln)
-            position = pose[:3,:3].dot(l.position) + pose[:3,3]
-            direction = pose[:3,:3].dot(l.direction)
-            program.set_uniform(base + 'ambient', l.ambient)
-            program.set_uniform(base + 'diffuse', l.diffuse)
-            program.set_uniform(base + 'specular', l.specular)
-            program.set_uniform(base + 'position', position)
-            program.set_uniform(base + 'direction', direction)
-            program.set_uniform(base + 'constant', l.constant)
-            program.set_uniform(base + 'linear', l.linear)
-            program.set_uniform(base + 'quadratic', l.quadratic)
-            program.set_uniform(base + 'inner_angle', np.deg2rad(l.inner_angle))
-            program.set_uniform(base + 'outer_angle', np.deg2rad(l.outer_angle))
+        program.set_uniform('n_spot_lights', len(scene.spot_light_nodes))
+        for i, n in enumerate(scene.spot_light_nodes):
+            b = 'spot_lights[{}].'.format(i)
+            l = n.light
+            position = scene.get_pose(n)[:3,3]
+            direction = scene.get_pose(n)[:3,2]
+            program.set_uniform(b + 'color', l.color)
+            program.set_uniform(b + 'intensity', l.intensity)
+            program.set_uniform(b + 'range', l.range)
+            program.set_uniform(b + 'position', position)
+            program.set_uniform(b + 'direction', direction)
+            program.set_uniform(b + 'inner_cone_angle', l.innerConeAngle)
+            program.set_uniform(b + 'outer_cone_angle', l.outerConeAngle)
 
-        program.set_uniform('n_direc_lights', len(scene.directional_lights))
-        for i, ln in enumerate(scene.directional_lights.keys()):
-            base = 'directional_lights[{}].'.format(i)
-            l = scene.directional_lights[ln]
-            pose = scene.get_pose(ln)
-            direction = pose[:3,:3].dot(l.direction)
-            program.set_uniform(base + 'ambient', l.ambient)
-            program.set_uniform(base + 'diffuse', l.diffuse)
-            program.set_uniform(base + 'specular', l.specular)
-            program.set_uniform(base + 'direction', direction)
+        program.set_uniform('n_directional_lights', len(scene.directional_light_nodes))
+        for i, n in enumerate(scene.directional_light_nodes):
+            b = 'directional_lights[{}].'.format(i)
+            l = n.light
+            direction = scene.get_pose(n)[:3,2]
+            program.set_uniform(b + 'color', l.color)
+            program.set_uniform(b + 'intensity', l.intensity)
+            program.set_uniform(b + 'range', l.range)
+            program.set_uniform(b + 'direction', direction)
 
     def _init_standard_render(self, scene, render_flags):
         glClearColor(*scene.bg_color)
@@ -480,29 +390,50 @@ class Renderer(object):
         glDepthFunc(GL_LESS)
         glDepthRange(0.0, 1.0)
 
-    def _get_program(self, obj):
+    def _get_primitive_program(self, primitive, flags):
         vbf = obj.vertex_buffer_flags
         vaf = obj.vertex_array_flags
         tf = obj.texture_flags
 
-        # Trimesh
-        if vaf & VertexArrayFlags.TRIANGLES:
-            # Per-Vertex Color only
-            if vbf & VertexBufferFlags.COLOR:
-                if not vbf & VertexBufferFlags.TEXTURE:
-                    return self._program_cache.get_program(['vc_mesh.vert', 'bp_mesh.frag'])
-                else:
-                    raise NotImplementedError('STILL NEED TO IMP TEXTURE SHADERS')
-            else:
-                if vbf & VertexBufferFlags.TEXTURE:
-                    # Singleton textures
-                    if tf == TextureFlags.DIFFUSE:
-                        return self._program_cache.get_program(['tex_mesh.vert', 'bp_d_tex_mesh.frag'])
-                    else:
-                        raise NotImplementedError('STILL NEED TO IMP TEXTURE SHADERS')
-                else:
-                    return self._program_cache.get_program(['simple_mesh.vert', 'bp_mesh.frag'])
-        # Point Cloud
+        shader_filenames = []
+        defines = []
+        if flags & RenderFlags.DEPTH_ONLY:
+            pass
         else:
-            return self._program_cache.get_program(['point_cloud.vert', 'point_cloud.frag'])
+            shader_filenames.extend(['mesh_vert.glsl', 'mesh_frag.glsl'])
 
+            tf = primitive.material.tex_flags
+            bf = primitive.buf_flags
+            if tf & TexFlags.NORMAL:
+                defines.append('NORMAL')
+            if tf & TexFlags.OCCLUSION:
+                defines.append('OCCLUSION')
+            if tf & TexFlags.EMISSIVE:
+                defines.append('EMISSIVE')
+            if tf & TexFlags.BASE_COLOR:
+                defines.append('BASE_COLOR')
+            if tf & TexFlags.METALLIC_ROUGHNESS:
+                defines.append('METALLIC_ROUGHNESS')
+            if tf & TexFlags.DIFFUSE:
+                defines.append('DIFFUSE')
+            if tf & TexFlags.SPECULAR_GLOSSINESS:
+                defines.append('SPECULAR_GLOSSINESS')
+            if isinstance(primitive.material, MetallicRoughnessMaterial):
+                defines.append('METALLIC_MATERIAL')
+            elif isinstance(material, SpecularGlossinessMaterial):
+                defines.append('GLOSSINESS_MATERIAL')
+            if bf & BufFlags.NORMAL:
+                defines.append('HAS_NORMALS')
+            if bf & BufFlags.TANGENT:
+                defines.append('HAS_TANGENTS')
+            if bf & BufFlags.TEXCOORD_0:
+                defines.append('HAS_TEXCOORD_0')
+            if bf & BufFlags.TEXCOORD_1:
+                defines.append('HAS_TEXCOORD_1')
+            if bf & BufFlags.COLOR_0:
+                defines.append('HAS_COLOR_0')
+            if bf & BufFlags.JOINTS_0:
+                defines.append('HAS_JOINTS_0')
+            if bf & BufFlags.WEIGHTS_0:
+                defines.append('HAS_WEIGHTS_0')
+        return self._program_cache.get_program(shader_filenames, defines)
