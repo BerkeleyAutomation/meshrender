@@ -244,9 +244,7 @@ class Primitive(object):
             attr_sizes.append(3)
 
         # Tangents
-        if self.material.requires_tangents:
-            if self.tangents is None:
-                self.tangents = self._compute_tangents()
+        if self.tangents is not None:
             vertex_data = np.hstack((vertex_data, self.tangents))
             attr_sizes.append(4)
 
@@ -265,7 +263,6 @@ class Primitive(object):
 
         # TODO JOINTS AND WEIGHTS
         # PASS
-        print attr_sizes
 
         # Copy data to buffer
         vertex_data = np.ascontiguousarray(vertex_data.flatten().astype(np.float32))
@@ -361,7 +358,7 @@ class Primitive(object):
 
         if self.normals is not None:
             buf_flags |= BufFlags.NORMAL
-        if self.material.requires_tangents:
+        if self.tangents is not None:
             buf_flags |= BufFlags.TANGENT
         if self.texcoord_0 is not None:
             buf_flags |= BufFlags.TEXCOORD_0

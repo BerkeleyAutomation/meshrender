@@ -50,3 +50,6 @@ class RenderFlags(object):
     DEPTH_ONLY = 1
     SHADOWS = 2
     OFFSCREEN = 4
+    FLIP_WIREFRAME = 8
+    ALL_WIREFRAME = 16
+    ALL_SOLID = 32

@@ -3,8 +3,6 @@ pyglet.options['shadow_window'] = False
 
 import numpy as np
 import trimesh
-from autolab_core import RigidTransform
-from perception import CameraIntrinsics, RenderMode, ColorImage, DepthImage
 
 import os
 #os.environ['MESHRENDER_EGL_OFFSCREEN'] = 't'
@@ -18,32 +16,20 @@ scene = Scene()#np.array([1.0, 0.0, 0.0]))
 #====================================
 
 # Begin by loading meshes
-pawn_mesh = trimesh.load_mesh('./models/fuze.obj', process=False)
-s = trimesh.load('~/Downloads/WaterBottle.glb')
-s = trimesh.load('~/Downloads/BoomBox.glb')
-s = trimesh.load('~/Downloads/ReciprocatingSaw.glb')
-s = trimesh.load('~/Downloads/Lantern.glb')
+#pawn_mesh = trimesh.load_mesh('./models/fuze.obj', process=False)
+s = trimesh.load('~/Downloads/WaterBottle.glb', process=False)
+#s = trimesh.load('~/Downloads/BoomBox.glb')
+#s = trimesh.load('~/Downloads/ReciprocatingSaw.glb')
+#s = trimesh.load('~/Downloads/Lantern.glb')
 mesh_key = list(s.geometry.keys())[0]
 pawn_mesh = s.geometry[mesh_key]
+pawn_pose = np.eye(4)
 #pawn_mesh = trimesh.creation.icosahedron()
 #colors = (255*np.random.uniform(size=pawn_mesh.vertices.shape)).astype(np.uint8)
 #pawn_mesh.visual.vertex_colors = colors
 #pawn_mesh = trimesh.load_mesh('./models/pawn_large.obj')
-bar_mesh = trimesh.load_mesh('./models/bar_clamp.obj')
 
 # Set up each object's pose in the world
-pawn_pose = RigidTransform(
-    rotation=np.eye(3),
-    translation=np.array([0.0, 0.0, 0.0]),
-    from_frame='obj',
-    to_frame='world'
-)
-bar_pose = RigidTransform(
-    rotation=np.eye(3),
-    translation=np.array([0.1, 0.07, 0.00]),
-    from_frame='obj',
-    to_frame='world'
-)
 
 ## Set up each object's material properties
 #pawn_material = Material(
@@ -70,7 +56,7 @@ pawn_obj = Mesh.from_trimesh(pawn_mesh)
 #Jbar_obj = MeshSceneObject.from_trimesh(bar_mesh, bar_material)
 
 # Add the SceneObjects to the scene
-scene.add(pawn_obj, pose=pawn_pose.matrix)
+scene.add(pawn_obj, pose=pawn_pose)
 #scene.add(bar_obj, pose=pawn_pose.matrix)
 
 #====================================

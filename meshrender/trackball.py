@@ -2,7 +2,7 @@
 """
 import numpy as np
 
-from autolab_core import transformations, RigidTransform
+from . import transformations
 
 class Trackball(object):
     """A trackball class for creating camera transformations from mouse movements.

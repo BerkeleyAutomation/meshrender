@@ -90,8 +90,7 @@ class Material(object):
     @normalTexture.setter
     def normalTexture(self, value):
         # TODO TMP
-        self._normalTexture = None
-        #self._normalTexture = self._format_texture(value, 'RGB')
+        self._normalTexture = self._format_texture(value, 'RGB')
         self._tex_flags = None
 
     @property

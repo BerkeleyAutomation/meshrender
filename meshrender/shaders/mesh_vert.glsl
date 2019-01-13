@@ -36,7 +36,11 @@ out vec3 frag_position;
 out vec3 frag_normal;
 #endif
 #ifdef HAS_NORMAL_TEX
+#ifdef TANGENT_LOC
+#ifdef NORMAL_LOC
 out mat3 tbn;
+#endif
+#endif
 #endif
 #ifdef TEXCOORD_0_LOC
 out vec2 uv_0;
@@ -54,12 +58,21 @@ void main()
     gl_Position = P * V * M * inst_m * vec4(position, 1);
     frag_position = vec3(M * inst_m * vec4(position, 1.0));
 
+    mat4 N = transpose(inverse(M * inst_m));
+
 #ifdef NORMAL_LOC
-    frag_normal = normalize(vec3(transpose(inverse(M)) * vec4(normal, 0.0)));
+    frag_normal = normalize(vec3(N * vec4(normal, 0.0)));
 #endif
 
 #ifdef HAS_NORMAL_TEX
-    // TODO
+#ifdef TANGENT_LOC
+#ifdef NORMAL_LOC
+    vec3 normal_w = normalize(vec3(N * vec4(normal, 0.0)));
+    vec3 tangent_w = normalize(vec3(N * vec4(tangent.xyz, 0.0)));
+    vec3 bitangent_w = cross(normal_w, tangent_w) * tangent.w;
+    tbn = mat3(tangent_w, bitangent_w, normal_w);
+#endif
+#endif
 #endif
 #ifdef TEXCOORD_0_LOC
     uv_0 = texcoord_0;

@@ -240,10 +240,20 @@ class Renderer(object):
                 glBlendFunc(GL_ONE, GL_ZERO)
 
             # Set wireframe mode
-            if material.wireframe:
+            wf = material.wireframe
+            if flags & RenderFlags.FLIP_WIREFRAME:
+                wf = not wf
+            if (flags & RenderFlags.ALL_WIREFRAME) or wf:
                 glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
             else:
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+
+            # Set culling mode
+            if material.doubleSided:
+                glDisable(GL_CULL_FACE)
+            else:
+                glEnable(GL_CULL_FACE)
+                glCullFace(GL_BACK)
         else:
             glBlendFunc(GL_ONE, GL_ZERO)
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)

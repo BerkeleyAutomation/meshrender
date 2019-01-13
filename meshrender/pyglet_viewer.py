@@ -22,15 +22,12 @@ if 'MESHRENDER_EGL_OFFSCREEN' in os.environ:
 
 import OpenGL
 
-from .constants import OPEN_GL_MAJOR, OPEN_GL_MINOR
+from .constants import OPEN_GL_MAJOR, OPEN_GL_MINOR, RenderFlags
 from .light import DirectionalLight, PointLight
 from .node import Node
 from .camera import PerspectiveCamera
 from .trackball import Trackball
 from .renderer import Renderer
-
-from autolab_core import transformations, RigidTransform
-from perception import CameraIntrinsics, ColorImage
 
 class SceneViewer(pyglet.window.Window):
     """An interactive viewer for a 3D scene.
@@ -184,7 +181,8 @@ class SceneViewer(pyglet.window.Window):
         """list of perception.ColorImage : Any color images that have been saved
         due to recording or the max_frames argument.
         """
-        return [ColorImage(f) for f in self._saved_frames]
+        pass
+        # return [ColorImage(f) for f in self._saved_frames]
 
     @property
     def save_directory(self):
@@ -306,28 +304,25 @@ class SceneViewer(pyglet.window.Window):
         scale = self.scene.scale
 
         s2 = 1.0/np.sqrt(2.0)
-        cp = RigidTransform(
-            rotation = np.array([
-                [0.0, -s2,  s2],
-                [1.0, 0.0, 0.0],
-                [0.0, s2, s2]
-            ]),
-            translation = np.sqrt(2.0)*np.array([scale, 0.0, scale]) + centroid,
-            from_frame='camera',
-            to_frame='world'
-        )
+        cp = np.eye(4)
+        cp[:3,:3] = np.array([
+            [0.0, -s2,  s2],
+            [1.0, 0.0, 0.0],
+            [0.0, s2, s2]
+        ])
+        cp[:3,3] = np.sqrt(2.0)*np.array([scale, 0.0, scale]) + centroid
 
         # Set up reasonable camera intrinsics
         if self.scene.main_camera_node is None:
             camera = PerspectiveCamera(yfov=np.pi / 6.0)
-            node = Node(camera=camera, matrix=cp.matrix)
+            node = Node(camera=camera, matrix=cp)
             self.scene.add_node(node)
         else:
-            self.scene.main_camera_node.matrix = cp.matrix
+            self.scene.main_camera_node.matrix = cp
 
         # Create a trackball
         self._trackball = Trackball(
-            cp.matrix,
+            cp,
             self._size, scale,
             target=centroid,
         )
@@ -444,7 +439,12 @@ class SceneViewer(pyglet.window.Window):
             #print scene.get_pose(n)[:3,2]
             pass
 
-        self._renderer.render(self.scene, 0)
+        flags = RenderFlags.NONE
+
+        if self._flags['flip_wireframe']:
+            flags |= RenderFlags.FLIP_WIREFRAME
+
+        self._renderer.render(self.scene, flags)
 
     @staticmethod
     def time_event(dt, self):
