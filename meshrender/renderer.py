@@ -3,6 +3,7 @@ import numpy as np
 from .constants import *
 from .shader_program import ShaderProgramCache
 from .material import MetallicRoughnessMaterial
+from .light import PointLight, SpotLight, DirectionalLight
 
 from OpenGL.GL import *
 
@@ -24,11 +25,13 @@ class Renderer(object):
         self._main_cb = None
         self._main_db = None
         self._main_fb_dims = (None, None)
+        self._shadow_fb = None
 
         # Shader Program Cache
         self._program_cache = ShaderProgramCache()
         self._meshes = set()
-        self._textures = set()
+        self._mesh_textures = set()
+        self._shadow_textures = set()
         self._texture_alloc_idx = 0
 
         # Set up framebuffer if needed / TODO
@@ -36,14 +39,23 @@ class Renderer(object):
     def render(self, scene, flags):
         # If using shadow maps, render scene into each light's shadow map
         # first.
-        if flags & RenderFlags.SHADOWS:
-            raise NotImplementedError('Shadows not yet implemented')
 
-        # Else, set up normal render
-        else:
-            self._forward_pass(scene, flags)
-            self._reset_active_textures()
+        # Update context with meshes and textures
+        self._update_context(scene, flags)
 
+        # Render necessary shadow maps
+        if flags & RenderFlags.SHADOWS_DIRECTIONAL:
+            for light_node in scene.directional_light_nodes:
+                self._shadow_mapping_pass(scene, light_node, flags)
+        if flags & RenderFlags.SHADOWS_SPOT:
+            for light_node in scene.spot_light_nodes:
+                self._shadow_mapping_pass(scene, light_node, flags)
+        if flags & RenderFlags.SHADOWS_POINT:
+            for light_node in scene.point_light_nodes:
+                self._shadow_mapping_pass(scene, light_node, flags)
+
+        # Make forward pass
+        return self._forward_pass(scene, flags)
 
     def _update_context(self, scene, flags):
 
@@ -58,32 +70,51 @@ class Renderer(object):
         # Remove old meshes from context
         for mesh in self._meshes - scene_meshes:
             for p in mesh.primitives:
-                p._unbind()
-                p._remove_from_context()
+                p.delete()
 
         self._meshes = scene_meshes.copy()
 
-        # Update textures
-        scene_textures = set()
+        # Update mesh textures
+        mesh_textures = set()
         for m in scene_meshes:
             for p in m.primitives:
-                scene_textures |= p.material.textures
-        for l in scene.lights:
-            if l.castsShadows:
-                scene_textures.add(l.depth_texture)
+                mesh_textures |= p.material.textures
 
         # Add new textures to context
-        for texture in scene_textures - self._textures:
+        for texture in mesh_textures - self._mesh_textures:
             texture._add_to_context()
 
-        for texture in self._textures - scene_textures:
-            texture._unbind()
-            texture._remove_from_context()
+        # Remove old textures from context
+        for texture in self._mesh_textures - mesh_textures:
+            texture.delete()
 
-        self._textures = scene_textures.copy()
+        self._mesh_textures = mesh_textures.copy()
 
-        # Update shaders
-        # TODO
+        shadow_textures = set()
+        for l in scene.lights:
+            # Create if needed
+            active = False
+            if isinstance(l, DirectionalLight) and flags & RenderFlags.SHADOWS_DIRECTIONAL:
+                active = True
+            elif isinstance(l, PointLight) and flags & RenderFlags.SHADOWS_POINT:
+                active = True
+            if isinstance(l, SpotLight) and flags & RenderFlags.SHADOWS_SPOT:
+                active = True
+
+            if active and l.shadow_texture is None:
+                    l.generate_shadow_texture()
+            if l.shadow_texture is not None:
+                shadow_textures.add(l.shadow_texture)
+
+        # Add new textures to context
+        for texture in shadow_textures - self._shadow_textures:
+            texture._add_to_context()
+
+        # Remove old textures from context
+        for texture in self._shadow_textures - shadow_textures:
+            texture.delete()
+
+        self._shadow_textures = shadow_textures.copy()
 
     def _configure_forward_pass_viewport(self, scene, flags):
 
@@ -102,22 +133,52 @@ class Renderer(object):
         glDepthFunc(GL_LESS)
         glDepthRange(0.0, 1.0)
 
+    def _configure_shadow_mapping_viewport(self, light, flags):
+        self._configure_shadow_framebuffer()
+        glBindFramebuffer(GL_FRAMEBUFFER, self._shadow_fb)
+        light.shadow_texture._bind_as_depth_attachment()
+        glDrawBuffer(GL_NONE)
+        glReadBuffer(GL_NONE)
+
+        glClear(GL_DEPTH_BUFFER_BIT)
+        glViewport(0, 0, SHADOW_TEX_SZ, SHADOW_TEX_SZ)
+        glEnable(GL_DEPTH_TEST)
+        glDepthMask(GL_TRUE)
+        glDepthFunc(GL_LESS)
+        glDepthRange(0.0, 1.0)
+        glDisable(GL_CULL_FACE)
+
     def delete(self):
         # Free shaders
         self._program_cache.clear()
 
         # Free meshes
         for mesh in self._meshes:
-            mesh.delete()
+            for p in mesh.primitives:
+                p.delete()
 
         # Free textures
-        for texture in self._textures:
-            texture.delete()
+        for mesh_texture in self._mesh_textures:
+            mesh_texture.delete()
+
+        for shadow_texture in self._shadow_textures:
+            shadow_texture.delete()
 
         self._meshes = set()
-        self._textures = set()
+        self._mesh_textures = set()
+        self._shadow_textures = set()
+        self._texture_alloc_idx = 0
 
         self._delete_main_framebuffer()
+        self._delete_shadow_framebuffer()
+
+    def _configure_shadow_framebuffer(self):
+        if self._shadow_fb is None:
+            self._shadow_fb = glGenFramebuffers(1)
+
+    def _delete_shadow_framebuffer(self):
+        if self._shadow_fb is not None:
+            glDeleteFramebuffers(1, [self._shadow_fb])
 
     def _configure_main_framebuffer(self):
         # If mismatch with prior framebuffer, delete it
@@ -263,7 +324,7 @@ class Renderer(object):
         if primitive.poses is not None:
             n_instances = len(primitive.poses)
 
-        #program._print_uniforms()
+        program._print_uniforms()
         if primitive.indices is not None:
             #glDrawArraysInstanced(primitive.mode, 0, 3*len(primitive.positions), n_instances)
             glDrawElementsInstanced(primitive.mode, primitive.indices.size, GL_UNSIGNED_INT,
@@ -274,9 +335,35 @@ class Renderer(object):
         # Unbind mesh buffers
         primitive._unbind()
 
+    def _shadow_mapping_pass(self, scene, light_node, flags):
+        light = light_node.light
+
+        self._configure_shadow_mapping_viewport(light, flags)
+
+        # Get program
+        program = self._get_shadow_program(light, flags)
+        program._bind()
+        program.set_uniform('light_matrix', self._get_light_matrix(scene, light_node, flags))
+
+        # Draw objects
+        for node in self._sorted_mesh_nodes(scene):
+            mesh = node.mesh
+
+            # Skip the mesh if it's not visible
+            if not mesh.is_visible:
+                continue
+            for primitive in mesh.primitives:
+                self._bind_and_draw_primitive(
+                    primitive=primitive,
+                    pose=scene.get_pose(node),
+                    program=program,
+                    flags=RenderFlags.DEPTH_ONLY
+                )
+
+        program._unbind()
+        glFlush()
+
     def _forward_pass(self, scene, flags):
-        # Update context with meshes and textures
-        self._update_context(scene, flags)
 
         # Set up viewport for render
         self._configure_forward_pass_viewport(scene, flags)
@@ -285,7 +372,6 @@ class Renderer(object):
         V, P = self._get_camera_matrices(scene)
 
         # Now, render each object in sorted order
-        prior_program = None
         for node in self._sorted_mesh_nodes(scene):
             mesh = node.mesh
 
@@ -305,9 +391,8 @@ class Renderer(object):
                 program.set_uniform('cam_pos', scene.get_pose(scene.main_camera_node)[:3,3])
 
                 # Next, bind the lighting
-                if program != prior_program:
-                    if not flags & RenderFlags.DEPTH_ONLY:
-                        self._bind_lighting(scene, program, flags)
+                if not flags & RenderFlags.DEPTH_ONLY:
+                    self._bind_lighting(scene, program, flags)
 
                 # Finally, bind and draw the primitive
                 self._bind_and_draw_primitive(
@@ -316,15 +401,19 @@ class Renderer(object):
                     program=program,
                     flags=flags
                 )
-
-                prior_program = program
+                self._reset_active_textures()
 
         # Unbind the shader and flush the output
-        if prior_program is not None:
-            prior_program._unbind()
+        if program is not None:
+            program._unbind()
         glFlush()
 
         # If doing offscreen render, copy result from framebuffer and return
+        if flags & RenderFlags.OFFSCREEN:
+            return self._read_main_framebuffer(scene)
+        else:
+            return None, None
+
 
     def _read_main_framebuffer(self, scene):
         width, height = self._main_fb_dims[0], self._main_fb_dims[1]
@@ -384,6 +473,8 @@ class Renderer(object):
             else:
                 program.set_uniform(b + 'range', 0)
             program.set_uniform(b + 'position', position)
+            if flags & RenderFlags.SHADOWS_POINT:
+                raise NotImplementedError('Point light shadows not yet implemented')
 
         program.set_uniform('n_spot_lights', len(scene.spot_light_nodes))
         for i, n in enumerate(scene.spot_light_nodes):
@@ -401,6 +492,9 @@ class Renderer(object):
             program.set_uniform(b + 'direction', direction)
             program.set_uniform(b + 'inner_cone_angle', l.innerConeAngle)
             program.set_uniform(b + 'outer_cone_angle', l.outerConeAngle)
+            if flags & RenderFlags.SHADOWS_SPOT:
+                self._bind_texture(l.shadow_texture, b + 'shadow_map', program)
+                program.set_uniform(b + 'light_matrix', self._get_light_matrix(scene, n, flags))
 
         program.set_uniform('n_directional_lights', len(scene.directional_light_nodes))
         for i, n in enumerate(scene.directional_light_nodes):
@@ -410,6 +504,39 @@ class Renderer(object):
             program.set_uniform(b + 'color', l.color)
             program.set_uniform(b + 'intensity', l.intensity)
             program.set_uniform(b + 'direction', direction)
+            if flags & RenderFlags.SHADOWS_DIRECTIONAL:
+                self._bind_texture(l.shadow_texture, b + 'shadow_map', program)
+                program.set_uniform(b + 'light_matrix', self._get_light_matrix(scene, n, flags))
+
+    def _get_light_matrix(self, scene, light_node, flags):
+        light = light_node.light
+        camera = light.get_shadow_camera(scene.scale)
+        P = camera.get_projection_matrix()
+        pose = scene.get_pose(light_node)
+
+        # If a directional light, back the pose up from the scene centroid along
+        # the origin
+        if isinstance(light, DirectionalLight):
+            z_axis = pose[:3,2]
+            loc = scene.centroid - z_axis * scene.scale
+            print loc
+            pose = pose.copy()
+            pose[:3,3] = loc
+
+        V = np.linalg.inv(pose) # V maps from world to camera
+        return P.dot(V)
+
+    def _get_shadow_program(self, light, flags):
+        if isinstance(light, DirectionalLight) or isinstance(light, SpotLight):
+            program = self._program_cache.get_program(
+                vertex_shader='shadow_depth_vert.glsl',
+                fragment_shader='shadow_depth_frag.glsl',
+            )
+            if not program._in_context():
+                program._add_to_context()
+            return program
+        else:
+            raise NotImplementedError('Point light shadows not yet implemented')
 
     def _get_primitive_program(self, primitive, flags):
         vertex_shader = None
@@ -464,6 +591,12 @@ class Renderer(object):
                 defines['WEIGHTS_0_LOC'] = buf_idx
                 buf_idx += 1
             defines['INST_M_LOC'] = buf_idx
+            if flags & RenderFlags.SHADOWS_SPOT:
+                defines['SPOT_LIGHT_SHADOWS'] = 1
+            if flags & RenderFlags.SHADOWS_DIRECTIONAL:
+                defines['DIRECTIONAL_LIGHT_SHADOWS'] = 1
+            if flags & RenderFlags.SHADOWS_POINT:
+                defines['POINT_LIGHT_SHADOWS'] = 1
         program = self._program_cache.get_program(
             vertex_shader=vertex_shader,
             fragment_shader=fragment_shader,

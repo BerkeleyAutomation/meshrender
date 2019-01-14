@@ -136,7 +136,7 @@ class SceneViewer(pyglet.window.Window):
         self._max_frames = max_frames
         self._save_directory = save_directory
         self._save_filename = save_filename
-        self._raymond_lighting = raymond_lighting
+        self._raymond_lighting = False #raymond_lighting
         self._raymond_lights = SceneViewer._get_raymond_lights()
         self._title = title
         self._target_object = target_object
@@ -430,19 +430,13 @@ class SceneViewer(pyglet.window.Window):
             for n in SceneViewer._raymond_lights:
                 if self.scene.has_node(n):
                     self.scene.remove_node(n)
-        #print '-------'
-        vec = scene.get_pose(self.scene.main_camera_node)[:3,2]
-        #print scene.get_pose(self.scene.main_camera_node)[:3,3]
-        #print np.linalg.inv(scene.get_pose(self.scene.main_camera_node)).T
-        for n in SceneViewer._raymond_lights:
-            #print np.dot(vec, scene.get_pose(n)[:3,2])
-            #print scene.get_pose(n)[:3,2]
-            pass
 
         flags = RenderFlags.NONE
 
         if self._flags['flip_wireframe']:
             flags |= RenderFlags.FLIP_WIREFRAME
+
+        flags |= RenderFlags.SHADOWS_DIRECTIONAL
 
         self._renderer.render(self.scene, flags)
 

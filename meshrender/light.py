@@ -7,6 +7,8 @@ import six
 
 from .utils import format_color_vector
 from .texture import Texture
+from .constants import DEFAULT_Z_NEAR, DEFAULT_Z_FAR, SHADOW_TEX_SZ
+from .camera import OrthographicCamera, PerspectiveCamera
 
 @six.add_metaclass(abc.ABCMeta)
 class Light(object):
@@ -30,18 +32,13 @@ class Light(object):
                  name=None,
                  color=None,
                  intensity=None,
-                 range=None,
-                 castsShadows=False):
+                 range=None):
         self.name = name
         self.color = color
         self.intensity = intensity
         self.range = range
-        self.castsShadows = castsShadows
-        self.depth_texture = None
-        self.depth_camera = None
-
-        if self.castsShadows:
-            self.depth_texture = self._generate_depth_texture()
+        self._shadow_camera = None
+        self._shadow_texture = None
 
     @property
     def color(self):
@@ -70,8 +67,23 @@ class Light(object):
         else:
             self._range = float(value)
 
+    @property
+    def shadow_texture(self):
+        return self._shadow_texture
+
+    @shadow_texture.setter
+    def shadow_texture(self, value):
+        if self._shadow_texture is not None:
+            if self._shadow_texture._in_context():
+                self._shadow_texture.delete()
+        self._shadow_texture = value
+
     @abc.abstractmethod
-    def _generate_depth_texture(self):
+    def generate_shadow_texture(self):
+        self._shadow_texture = Texture(width=1024, height=1024, source_channels='D')
+
+    @abc.abstractmethod
+    def get_shadow_camera(self, scene_scale):
         pass
 
 class DirectionalLight(Light):
@@ -104,8 +116,17 @@ class DirectionalLight(Light):
             range=range
         )
 
-    def _generate_depth_texture(self):
-        return Texture(width=1024, height=1024, source_channels='D')
+    def generate_shadow_texture(self):
+        self._shadow_texture = Texture(width=SHADOW_TEX_SZ, height=SHADOW_TEX_SZ, source_channels='D')
+
+    def get_shadow_camera(self, scene_scale):
+        return OrthographicCamera(
+            znear=DEFAULT_Z_NEAR,
+            zfar=10*scene_scale,
+            xmag=scene_scale,
+            ymag=scene_scale
+        )
+
 
 class PointLight(Light):
     """A point light source, which casts light in all directions and attenuates with
@@ -145,7 +166,10 @@ class PointLight(Light):
             range=range
         )
 
-    def _generate_depth_texture(self):
+    def generate_shadow_texture(self):
+        raise NotImplementedError('Shadows not yet implemented for point lights')
+
+    def get_shadow_camera(self, scene_scale):
         raise NotImplementedError('Shadows not yet implemented for point lights')
 
 class SpotLight(Light):
@@ -206,6 +230,13 @@ class SpotLight(Light):
             raise ValueError('Invalid value for outer cone angle')
         self._outerConeAngle = float(value)
 
-    def _generate_depth_texture(self):
-        return Texture(width=1024, height=1024, source_channels='D')
+    def generate_shadow_texture(self):
+        self._shadow_texture = Texture(width=SHADOW_TEX_SZ, height=SHADOW_TEX_SZ, source_channels='D')
 
+    def get_shadow_camera(self, scene_scale):
+        return PerspectiveCamera(
+            znear=DEFAULT_Z_NEAR,
+            zfar=10*scene_scale,
+            yfov=np.clip(self.outerConeAngle + np.pi / 12, 0.0, 2*np.pi),
+            aspectRatio=1.0
+        )

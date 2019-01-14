@@ -29,9 +29,9 @@ class Node(object):
                 translation = np.zeros(3)
             if scale is None:
                 scale = np.ones(3)
-            self.rotation = rotation
-            self.translation = translation
-            self.scale = scale
+            self._rotation = rotation
+            self._translation = translation
+            self._scale = scale
         else:
             self.matrix = matrix
 

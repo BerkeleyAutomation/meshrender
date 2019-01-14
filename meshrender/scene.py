@@ -122,6 +122,8 @@ class Scene(object):
             node = Node(name=name, matrix=pose, camera=obj)
             if self._main_camera_node is None:
                 self._main_camera_node = node
+        else:
+            raise TypeError('Unrecognized object type')
 
         if parent_node is None and parent_name is not None:
             parent_node = self.get_node(name=parent_name)

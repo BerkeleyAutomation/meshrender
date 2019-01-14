@@ -6,6 +6,7 @@ from OpenGL.GL import *
 
 from .material import Material, MetallicRoughnessMaterial
 from .constants import FLOAT_SZ, UINT_SZ, BufFlags, GLTF
+from .utils import format_color_array
 
 class Primitive(object):
 
@@ -326,6 +327,7 @@ class Primitive(object):
         glBindVertexArray(0)
 
     def delete(self):
+        self._unbind()
         self._remove_from_context()
 
     def _compute_bounds(self):

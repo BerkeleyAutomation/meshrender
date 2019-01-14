@@ -6,7 +6,7 @@ import trimesh
 
 import os
 #os.environ['MESHRENDER_EGL_OFFSCREEN'] = 't'
-from meshrender import Scene, Material, Mesh, SceneViewer
+from meshrender import Scene, Material, Mesh, SceneViewer, DirectionalLight, MetallicRoughnessMaterial
 
 # Start with an empty scene
 scene = Scene()#np.array([1.0, 0.0, 0.0]))
@@ -16,13 +16,13 @@ scene = Scene()#np.array([1.0, 0.0, 0.0]))
 #====================================
 
 # Begin by loading meshes
-#pawn_mesh = trimesh.load_mesh('./models/fuze.obj', process=False)
-s = trimesh.load('~/Downloads/WaterBottle.glb', process=False)
+pawn_mesh = trimesh.load_mesh('./models/fuze.obj', process=False)
+#s = trimesh.load('~/Downloads/WaterBottle.glb', process=False)
 #s = trimesh.load('~/Downloads/BoomBox.glb')
 #s = trimesh.load('~/Downloads/ReciprocatingSaw.glb')
-#s = trimesh.load('~/Downloads/Lantern.glb')
-mesh_key = list(s.geometry.keys())[0]
-pawn_mesh = s.geometry[mesh_key]
+#s = trimesh.load('~/Downloads/Lantern.glb', process=False)
+#mesh_key = list(s.geometry.keys())[0]
+#pawn_mesh = s.geometry[mesh_key]
 pawn_pose = np.eye(4)
 #pawn_mesh = trimesh.creation.icosahedron()
 #colors = (255*np.random.uniform(size=pawn_mesh.vertices.shape)).astype(np.uint8)
@@ -57,6 +57,35 @@ pawn_obj = Mesh.from_trimesh(pawn_mesh)
 
 # Add the SceneObjects to the scene
 scene.add(pawn_obj, pose=pawn_pose)
+
+# PLANE
+vertices = np.array([
+    [-0.2, -0.2, 0.0],
+    [-0.2, 0.2, 0.0],
+    [0.2, 0.2, 0.0],
+    [0.2, -0.2, 0.0],
+])
+faces = np.array([
+    [0,2,1],
+    [0,3,2]
+])
+vertex_colors = np.array([
+    [255,0,0,255],
+    [255,0,0,255],
+    [255,0,0,255],
+    [255,0,0,255],
+])
+x = trimesh.Trimesh(vertices, faces)#, vertex_colors=vertex_colors)
+pobj = Mesh.from_trimesh(x, material=MetallicRoughnessMaterial(baseColorFactor=np.array([1.0, 0.0, 0.0, 1.0])))
+scene.add(pobj)
+
+lm = np.eye(4)
+z = -np.array([1.0, 0.0, 1.0])
+z = z / np.linalg.norm(z)
+x = np.array([-z[0], 0.0, z[0]])
+y = np.cross(z, x)
+lm[:3,:3] = np.c_[x,y,z]
+scene.add(DirectionalLight(color=np.ones(3), intensity=10.0), pose=lm)
 #scene.add(bar_obj, pose=pawn_pose.matrix)
 
 #====================================

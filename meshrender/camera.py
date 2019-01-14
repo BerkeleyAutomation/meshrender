@@ -119,7 +119,7 @@ class OrthographicCamera(Camera):
                  zfar=DEFAULT_Z_FAR,
                  xmag=None,
                  ymag=None):
-        super(PerspectiveCamera, self).__init__(
+        super(OrthographicCamera, self).__init__(
             name=name,
             znear=znear,
             zfar=zfar
@@ -149,6 +149,8 @@ class OrthographicCamera(Camera):
         self._ymag = float(value)
 
     def get_projection_matrix(self, width=None, height=None):
+        n = self.znear
+        f = self.zfar
         P = np.zeros((4,4))
         P[0][0] = 1.0 / self.xmag
         P[1][1] = 1.0 / self.ymag

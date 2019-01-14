@@ -17,6 +17,7 @@ struct SpotLight {
 
     #ifdef SPOT_LIGHT_SHADOWS
     sampler2D shadow_map;
+    mat4 light_matrix;
     #endif
 };
 
@@ -27,6 +28,7 @@ struct DirectionalLight {
 
     #ifdef DIRECTIONAL_LIGHT_SHADOWS
     sampler2D shadow_map;
+    mat4 light_matrix;
     #endif
 };
 
@@ -254,6 +256,37 @@ vec3 compute_brdf(vec3 n, vec3 v, vec3 l,
         return color;
 }
 
+float orth_shadow_calc(mat4 light_matrix, sampler2D shadow_map, vec3 n, vec3 l)
+{
+    // Compute light texture UV coords
+    vec3 light_coords = vec3(light_matrix * vec4(frag_position.xyz, 1.0));
+    light_coords = light_coords * 0.5 + 0.5;
+    // Get closest depth value from light's perspective
+    float closest_depth = texture(shadow_map, light_coords.xy).r;
+    // Get current depth from light's perspective
+    float current_depth = light_coords.z;
+    // Calculate bias based on noraml
+    float nl = dot(n, l);
+    float bias = max(0.001 * (1.0 - nl), 0.0001);
+    float shadow = 0.0;
+    vec2 texel_size = 1.0 / textureSize(shadow_map, 0);
+    for (int i = -1; i <= 1; i++)
+    {
+        for (int j = -1; j <= 1; j++)
+        {
+            float pcf_depth = texture(shadow_map, light_coords.xy + vec2(i, j) * texel_size).r;
+            shadow += current_depth - bias > pcf_depth ? 1.0 : 0.0;
+        }
+    }
+    shadow /= 9.0;
+
+    if (light_coords.z > 1.0) {
+        shadow = 0.0;
+    }
+    return closest_depth;
+    return shadow;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // MAIN
 ///////////////////////////////////////////////////////////////////////////////
@@ -310,12 +343,18 @@ void main()
         // Compute outbound color
         vec3 res = compute_brdf(n, v, l, roughness, metallic,
                                 f0, c_diff, base_color.rgb, radiance);
+
+        // Compute shadow
+#ifdef DIRECTIONAL_LIGHT_SHADOWS
+        float shadow = orth_shadow_calc(
+            directional_lights[i].light_matrix,
+            directional_lights[i].shadow_map,
+            n, l
+        );
+        res = res * (1.0 - shadow);
+#endif
         color += res;
-        //if (dot(n, l) < 0.8) {
-        //    color += vec3(0.0);
-        //} else {
-        //    color += vec3(base_color);
-        //}
+        color = vec3(shadow);
     }
 
     for (int i = 0; i < n_point_lights; i++) {

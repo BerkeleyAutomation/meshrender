@@ -13,13 +13,15 @@ class Texture(object):
                  source=None,
                  source_channels=None,
                  width=None,
-                 height=None):
+                 height=None,
+                 config=GL_TEXTURE_2D):
         self.source_channels = source_channels
         self.name = name
         self.sampler = sampler
         self.source = source
         self.width = width
         self.height = height
+        self.config = config
 
         self._texid = None
 

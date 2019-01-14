@@ -30,7 +30,7 @@ def format_color_array(value, n_channels):
     if value.shape[1] < n_channels:
         value = np.concatenate((value,
                                 np.ones((value.shape[0], n_channels - value.shape[1]))), axis=1)
-    value = value[:,n_channels].astype(np.float32)
+    value = value[:,:n_channels].astype(np.float32)
     return value
 
 def format_texture_source(texture, target_channels='RGB'):

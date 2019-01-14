@@ -5,6 +5,7 @@ OPEN_GL_MAJOR = 4 # Target OpenGL Major Version
 OPEN_GL_MINOR = 1 # Target OpenGL Minor Version
 FLOAT_SZ = 4      # Byte size of GL float32
 UINT_SZ = 4       # Byte size of GL uint32
+SHADOW_TEX_SZ = 1024 # Width and Height of Shadow Textures
 
 class GLTF(object):
     NEAREST = 9728
@@ -48,8 +49,11 @@ class TexFlags(object):
 class RenderFlags(object):
     NONE = 0
     DEPTH_ONLY = 1
-    SHADOWS = 2
-    OFFSCREEN = 4
-    FLIP_WIREFRAME = 8
-    ALL_WIREFRAME = 16
-    ALL_SOLID = 32
+    OFFSCREEN = 2
+    FLIP_WIREFRAME = 4
+    ALL_WIREFRAME = 8
+    ALL_SOLID = 16
+    SHADOWS_DIRECTIONAL = 32
+    SHADOWS_POINT = 64
+    SHADOWS_SPOT = 128
+    SHADOWS_ALL = 256
