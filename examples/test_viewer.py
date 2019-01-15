@@ -9,7 +9,7 @@ import os
 from meshrender import Scene, Material, Mesh, SceneViewer, DirectionalLight, MetallicRoughnessMaterial, SpotLight, PointLight
 
 # Start with an empty scene
-scene = Scene()#np.array([1.0, 0.0, 0.0]))
+scene = Scene(ambient_light=np.ones(3)*0.1)#np.array([1.0, 0.0, 0.0]))
 
 #====================================
 # Add objects to the scene
