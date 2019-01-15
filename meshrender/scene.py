@@ -17,12 +17,14 @@ class Scene(object):
     def __init__(self,
                  name=None,
                  nodes=None,
-                 bg_color=None):
+                 bg_color=None,
+                 ambient_light=None):
 
         if bg_color is None:
             bg_color = np.ones(4)
-        else:
-            bg_color = format_color_vector(bg_color, 4)
+
+        if ambient_light is None:
+            ambient_light = np.zeros(3)
 
         if nodes is None:
             nodes = []
@@ -30,6 +32,7 @@ class Scene(object):
         self.name = name
         self.nodes = set(nodes)
         self.bg_color = bg_color
+        self.ambient_light = ambient_light
 
         self._name_to_nodes = {}
         self._obj_to_nodes = {}
@@ -60,6 +63,30 @@ class Scene(object):
 
             for node in root_nodes:
                 self.add_node(node)
+
+    @property
+    def bg_color(self):
+        return self._bg_color
+
+    @bg_color.setter
+    def bg_color(self, value):
+        if value is None:
+            value = np.ones(4)
+        else:
+            value = format_color_vector(value, 4)
+        self._bg_color = value
+
+    @property
+    def ambient_light(self):
+        return self._ambient_light
+
+    @ambient_light.setter
+    def ambient_light(self, value):
+        if value is None:
+            value = np.ones(4)
+        else:
+            value = format_color_vector(value, 4)
+        self._ambient_light = value
 
     @property
     def meshes(self):

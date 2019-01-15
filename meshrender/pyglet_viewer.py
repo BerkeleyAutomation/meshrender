@@ -437,6 +437,7 @@ class SceneViewer(pyglet.window.Window):
             flags |= RenderFlags.FLIP_WIREFRAME
 
         flags |= RenderFlags.SHADOWS_DIRECTIONAL | RenderFlags.SHADOWS_SPOT
+        #flags |= RenderFlags.DEPTH_ONLY
 
         self._renderer.render(self.scene, flags)
 

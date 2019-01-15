@@ -1,11 +1,11 @@
 DEFAULT_Z_NEAR = 0.05     # Near clipping plane, in meters
 DEFAULT_Z_FAR = 100.0     # Far clipping plane, in meters
-MAX_N_LIGHTS = 4  # Maximum number of lights allowed
-OPEN_GL_MAJOR = 4 # Target OpenGL Major Version
-OPEN_GL_MINOR = 1 # Target OpenGL Minor Version
-FLOAT_SZ = 4      # Byte size of GL float32
-UINT_SZ = 4       # Byte size of GL uint32
-SHADOW_TEX_SZ = 1024 # Width and Height of Shadow Textures
+MAX_N_LIGHTS = 4          # Maximum number of lights of each type allowed
+OPEN_GL_MAJOR = 4         # Target OpenGL Major Version
+OPEN_GL_MINOR = 1         # Target OpenGL Minor Version
+FLOAT_SZ = 4              # Byte size of GL float32
+UINT_SZ = 4               # Byte size of GL uint32
+SHADOW_TEX_SZ = 1024      # Width and Height of Shadow Textures
 
 class GLTF(object):
     NEAREST = 9728
@@ -47,13 +47,13 @@ class TexFlags(object):
 
 # Flags for render type
 class RenderFlags(object):
-    NONE = 0
-    DEPTH_ONLY = 1
-    OFFSCREEN = 2
-    FLIP_WIREFRAME = 4
-    ALL_WIREFRAME = 8
-    ALL_SOLID = 16
-    SHADOWS_DIRECTIONAL = 32
-    SHADOWS_POINT = 64
-    SHADOWS_SPOT = 128
-    SHADOWS_ALL = 256
+    NONE = 0                    # Normal PBR render
+    DEPTH_ONLY = 1              # Only render the depth buffer
+    OFFSCREEN = 2               # Render offscreen and return the images rendered
+    FLIP_WIREFRAME = 4          # Invert the status of wireframe rendering for each mesh
+    ALL_WIREFRAME = 8           # Render all meshes as wireframes
+    ALL_SOLID = 16              # Render all meshes as solids
+    SHADOWS_DIRECTIONAL = 32    # Perform shadow mapping for directional lights
+    SHADOWS_POINT = 64          # Perform shadow mapping for point lights
+    SHADOWS_SPOT = 128          # Perform shadow mapping for spot lights
+    SHADOWS_ALL = 256           # Perform shadow mapping for all lights
