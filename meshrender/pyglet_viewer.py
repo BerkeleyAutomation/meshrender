@@ -436,7 +436,7 @@ class SceneViewer(pyglet.window.Window):
         if self._flags['flip_wireframe']:
             flags |= RenderFlags.FLIP_WIREFRAME
 
-        flags |= RenderFlags.SHADOWS_DIRECTIONAL
+        flags |= RenderFlags.SHADOWS_DIRECTIONAL | RenderFlags.SHADOWS_SPOT
 
         self._renderer.render(self.scene, flags)
 

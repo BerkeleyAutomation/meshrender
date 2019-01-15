@@ -104,6 +104,7 @@ uniform int n_directional_lights;
 uniform SpotLight spot_lights[MAX_SPOT_LIGHTS];
 uniform int n_spot_lights;
 uniform vec3 cam_pos;
+uniform vec3 ambient_light;
 
 #ifdef USE_IBL
 uniform samplerCube diffuse_env;
@@ -187,7 +188,7 @@ vec3 get_normal()
 #else
     mat3 tbn_n = tbn;
 #endif
-    vec3 n = texture2D(material.normal_texture, uv_0).rgb;
+    vec3 n = texture(material.normal_texture, uv_0).rgb;
     n = normalize(tbn_n * ((2.0 * n - 1.0) * vec3(1.0, 1.0, 1.0)));
     return n; // TODO NORMAL MAPPING
 #else
@@ -256,35 +257,49 @@ vec3 compute_brdf(vec3 n, vec3 v, vec3 l,
         return color;
 }
 
-float orth_shadow_calc(mat4 light_matrix, sampler2D shadow_map, vec3 n, vec3 l)
+float texture2DCompare(sampler2D depths, vec2 uv, float compare) {
+    return compare > texture(depths, uv.xy).r ? 1.0 : 0.0;
+}
+
+float texture2DShadowLerp(sampler2D depths, vec2 size, vec2 uv, float compare) {
+    vec2 texelSize = vec2(1.0)/size;
+    vec2 f = fract(uv*size+0.5);
+    vec2 centroidUV = floor(uv*size+0.5)/size;
+
+    float lb = texture2DCompare(depths, centroidUV+texelSize*vec2(0.0, 0.0), compare);
+    float lt = texture2DCompare(depths, centroidUV+texelSize*vec2(0.0, 1.0), compare);
+    float rb = texture2DCompare(depths, centroidUV+texelSize*vec2(1.0, 0.0), compare);
+    float rt = texture2DCompare(depths, centroidUV+texelSize*vec2(1.0, 1.0), compare);
+    float a = mix(lb, lt, f.y);
+    float b = mix(rb, rt, f.y);
+    float c = mix(a, b, f.x);
+    return c;
+}
+
+float PCF(sampler2D depths, vec2 size, vec2 uv, float compare){
+    float result = 0.0;
+    for(int x=-1; x<=1; x++){
+        for(int y=-1; y<=1; y++){
+            vec2 off = vec2(x,y)/size;
+            result += texture2DShadowLerp(depths, size, uv+off, compare);
+        }
+    }
+    return result/9.0;
+}
+
+float shadow_calc(mat4 light_matrix, sampler2D shadow_map, float nl)
 {
     // Compute light texture UV coords
-    vec3 light_coords = vec3(light_matrix * vec4(frag_position.xyz, 1.0));
+    vec4 proj_coords = vec4(light_matrix * vec4(frag_position.xyz, 1.0));
+    vec3 light_coords = proj_coords.xyz / proj_coords.w;
     light_coords = light_coords * 0.5 + 0.5;
-    // Get closest depth value from light's perspective
-    float closest_depth = texture(shadow_map, light_coords.xy).r;
-    // Get current depth from light's perspective
     float current_depth = light_coords.z;
-    // Calculate bias based on noraml
-    float nl = dot(n, l);
-    float bias = max(0.001 * (1.0 - nl), 0.0001);
-    float shadow = 0.0;
-    //vec2 texel_size = 1.0 / textureSize(shadow_map, 0);
-    //for (int i = -1; i <= 1; i++)
-    //{
-    //    for (int j = -1; j <= 1; j++)
-    //    {
-    //        float pcf_depth = texture(shadow_map, light_coords.xy + vec2(i, j) * texel_size).r;
-    //        shadow += current_depth - bias > pcf_depth ? 1.0 : 0.0;
-    //    }
-    //}
-    //shadow /= 9.0;
-    shadow = current_depth - bias > texture(shadow_map, light_coords.xy).r ? 1.0 : 0.0;
-
+    float bias = max(0.002 * (1.0 - nl), 0.001) / proj_coords.w;
+    float compare = (current_depth - bias);
+    float shadow = PCF(shadow_map, textureSize(shadow_map, 0), light_coords.xy, compare);
     if (light_coords.z > 1.0) {
         shadow = 0.0;
     }
-    //return closest_depth;
     return shadow;
 }
 
@@ -304,7 +319,7 @@ void main()
     float roughness = material.roughness_factor;
     float metallic = material.metallic_factor;
 #ifdef HAS_METALLIC_ROUGHNESS_TEX
-    vec2 mr = texture2D(material.metallic_roughness_texture, uv_0).rg;
+    vec2 mr = texture(material.metallic_roughness_texture, uv_0).rg;
     roughness = roughness * mr.r;
     metallic = metallic * mr.g;
 #endif
@@ -316,7 +331,7 @@ void main()
     // Compute albedo
     vec4 base_color = material.base_color_factor;
 #ifdef HAS_BASE_COLOR_TEX
-    base_color = base_color * srgb_to_linear(texture2D(material.base_color_texture, uv_0));
+    base_color = base_color * srgb_to_linear(texture(material.base_color_texture, uv_0));
 #endif
 
     // Compute specular and diffuse colors
@@ -347,10 +362,11 @@ void main()
 
         // Compute shadow
 #ifdef DIRECTIONAL_LIGHT_SHADOWS
-        float shadow = orth_shadow_calc(
+        float nl = clamp(dot(n,l), 0.0, 1.0);
+        float shadow = shadow_calc(
             directional_lights[i].light_matrix,
             directional_lights[i].shadow_map,
-            n, l
+            nl
         );
         res = res * (1.0 - shadow);
 #endif
@@ -366,7 +382,7 @@ void main()
         // Compute attenuation and radiance
         float dist = length(position - frag_position);
         float attenuation = point_lights[i].intensity / (dist * dist);
-        vec3 radiance = attenuation * directional_lights[i].color;
+        vec3 radiance = attenuation * point_lights[i].color;
 
         // Compute outbound color
         vec3 res = compute_brdf(n, v, l, roughness, metallic,
@@ -387,13 +403,26 @@ void main()
         float attenuation = clamp(cd * las + lao, 0.0, 1.0);
         attenuation = attenuation * attenuation * spot_lights[i].intensity;
         attenuation = attenuation / (dist * dist);
-        vec3 radiance = attenuation * point_lights[i].color;
+        vec3 radiance = attenuation * spot_lights[i].color;
 
         // Compute outbound color
         vec3 res = compute_brdf(n, v, l, roughness, metallic,
                                 f0, c_diff, base_color.rgb, radiance);
+#ifdef SPOT_LIGHT_SHADOWS
+        float nl = clamp(dot(n,l), 0.0, 1.0);
+        float shadow = shadow_calc(
+            spot_lights[i].light_matrix,
+            spot_lights[i].shadow_map,
+            nl
+        );
+        res = res * (1.0 - shadow);
+#endif
         color += res;
+//
+//        float tmp = clamp(cd * las + lao, 0.0, 1.0);
+//        color = vec3(0.0);
     }
+    color += base_color.xyz * ambient_light;
 
     // Calculate lighting from environment
 #ifdef USE_IBL
@@ -402,14 +431,14 @@ void main()
 
     // Apply occlusion
 #ifdef HAS_OCCLUSION_TEX
-    float ao = texture2D(material.occlusion_texture, uv_0).r;
+    float ao = texture(material.occlusion_texture, uv_0).r;
     color = color * ao;
 #endif
 
     // Apply emissive map
     vec3 emissive = material.emissive_factor;
 #ifdef HAS_EMISSIVE_TEX
-    emissive *= srgb_to_linear(texture2D(material.emissive_texture, uv_0)).rgb;
+    emissive *= srgb_to_linear(texture(material.emissive_texture, uv_0)).rgb;
 #endif
     color += emissive * material.emissive_factor;
 

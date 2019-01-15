@@ -6,7 +6,7 @@ import trimesh
 
 import os
 #os.environ['MESHRENDER_EGL_OFFSCREEN'] = 't'
-from meshrender import Scene, Material, Mesh, SceneViewer, DirectionalLight, MetallicRoughnessMaterial
+from meshrender import Scene, Material, Mesh, SceneViewer, DirectionalLight, MetallicRoughnessMaterial, SpotLight, PointLight
 
 # Start with an empty scene
 scene = Scene()#np.array([1.0, 0.0, 0.0]))
@@ -91,7 +91,10 @@ z = z / np.linalg.norm(z)
 x = np.array([-z[0], 0.0, z[0]])
 y = np.cross(z, x)
 lm[:3,:3] = np.c_[x,y,z]
-scene.add(DirectionalLight(color=np.ones(3), intensity=10.0), pose=lm)
+#scene.add(DirectionalLight(color=np.ones(3), intensity=10.0), pose=lm)
+lm[:3,3] = np.array([0.0, 0.0, 0.1]) - z * 0.5
+#scene.add(SpotLight(color=np.ones(3), intensity=10.0, innerConeAngle=np.pi/16, outerConeAngle=np.pi/8), pose=lm)
+scene.add(PointLight(color=np.ones(3), intensity=1.0), pose=lm)
 #scene.add(bar_obj, pose=pawn_pose.matrix)
 
 #====================================

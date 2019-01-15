@@ -279,54 +279,14 @@ class Renderer(object):
     #    return V, P
 
     def _get_camera_matrices(self, scene):
-        if True:
-            main_camera_node = scene.main_camera_node
-            if main_camera_node is None:
-                raise ValueError('Cannot render scene without a camera')
-            P = main_camera_node.camera.\
-                    get_projection_matrix(width=self.viewport_width, height=self.viewport_height)
-            pose = scene.get_pose(main_camera_node)
-            V = np.linalg.inv(pose) # V maps from world to camera
-            print '---'
-            print P
-            print V
-            return V, P
-        else:
-            #pose = scene.get_pose(light_node).copy()
-            ## If a directional light, back the pose up from the scene centroid along
-            ## the origin
-            light_node = list(scene.directional_light_nodes)[0]
-            light = light_node.light
-            pose = scene.get_pose(light_node).copy()
-            camera = light.get_shadow_camera(scene.scale)
-            P = camera.get_projection_matrix()
-            if isinstance(light, DirectionalLight):
-                z_axis = pose[:3,2]
-                loc = scene.centroid - z_axis * scene.scale
-                pose[:3,3] = loc
-
-            # Flip the z-axis so that the camera points at the scene
-            pose[:3,0] = -pose[:3,0]
-            pose[:3,2] = -pose[:3,2]
-            V = np.linalg.inv(pose) # V maps from world to camera
-
-            print '==='
-            print P.dtype, V.dtype
-            print P
-            print V
-
-            main_camera_node = scene.main_camera_node
-            if main_camera_node is None:
-                raise ValueError('Cannot render scene without a camera')
-            #P = main_camera_node.camera.\
-            #        get_projection_matrix(width=self.viewport_width, height=self.viewport_height)
-            pose = scene.get_pose(main_camera_node)
-            V = np.linalg.inv(pose) # V maps from world to camera
-            print '---'
-            print P.dtype, V.dtype
-            print P
-            print V
-            return V, P
+        main_camera_node = scene.main_camera_node
+        if main_camera_node is None:
+            raise ValueError('Cannot render scene without a camera')
+        P = main_camera_node.camera.\
+                get_projection_matrix(width=self.viewport_width, height=self.viewport_height)
+        pose = scene.get_pose(main_camera_node)
+        V = np.linalg.inv(pose) # V maps from world to camera
+        return V, P
 
     def _bind_texture(self, texture, uniform_name, program):
         """Bind a texture to an active texture unit and return
@@ -429,7 +389,7 @@ class Renderer(object):
         if primitive.poses is not None:
             n_instances = len(primitive.poses)
 
-        #program._print_uniforms()
+        program._print_uniforms()
         if primitive.indices is not None:
             #glDrawArraysInstanced(primitive.mode, 0, 3*len(primitive.positions), n_instances)
             glDrawElementsInstanced(primitive.mode, primitive.indices.size, GL_UNSIGNED_INT,
@@ -532,6 +492,7 @@ class Renderer(object):
             return self._read_main_framebuffer(scene)
         else:
             return None, None
+
     def _forward_pass(self, scene, flags):
 
         # Set up viewport for render
@@ -630,6 +591,9 @@ class Renderer(object):
         """
         # TODO handle shadow map textures
 
+        # AMBIENT
+        program.set_uniform('ambient_light', np.array([0.1, 0.1, 0.1]))
+
         program.set_uniform('n_point_lights', len(scene.point_light_nodes))
         for i, n in enumerate(scene.point_light_nodes):
             b = 'point_lights[{}].'.format(i)
@@ -659,8 +623,10 @@ class Renderer(object):
                 program.set_uniform(b + 'range', 0)
             program.set_uniform(b + 'position', position)
             program.set_uniform(b + 'direction', direction)
-            program.set_uniform(b + 'inner_cone_angle', l.innerConeAngle)
-            program.set_uniform(b + 'outer_cone_angle', l.outerConeAngle)
+            las = 1.0 / max(0.001, np.cos(l.innerConeAngle) - np.cos(l.outerConeAngle))
+            lao = -np.cos(l.outerConeAngle) * las
+            program.set_uniform(b + 'light_angle_scale', las)
+            program.set_uniform(b + 'light_angle_offset', lao)
             if flags & RenderFlags.SHADOWS_SPOT:
                 self._bind_texture(l.shadow_texture, b + 'shadow_map', program)
                 V, P = self._get_light_matrix(scene, n, flags)
@@ -682,7 +648,6 @@ class Renderer(object):
                 program.set_uniform(b + 'light_matrix', lm)
 
     def _get_light_matrix(self, scene, light_node, flags):
-        light_node = list(scene.directional_light_nodes)[0]
         light = light_node.light
         pose = scene.get_pose(light_node).copy()
         camera = light.get_shadow_camera(scene.scale)

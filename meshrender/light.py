@@ -201,7 +201,7 @@ class SpotLight(Light):
                  range=None,
                  innerConeAngle=0.0,
                  outerConeAngle=np.pi/4.0):
-        super(PointLight, self).__init__(
+        super(SpotLight, self).__init__(
             name=name,
             color=color,
             intensity=intensity,
@@ -237,6 +237,6 @@ class SpotLight(Light):
         return PerspectiveCamera(
             znear=DEFAULT_Z_NEAR,
             zfar=10*scene_scale,
-            yfov=np.clip(self.outerConeAngle + np.pi / 12, 0.0, 2*np.pi),
+            yfov=np.clip(self.outerConeAngle + np.pi / 16.0, 0.0, np.pi),
             aspectRatio=1.0
         )
