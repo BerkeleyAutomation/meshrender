@@ -1,3 +1,8 @@
+"""Meshes, conforming to the glTF 2.0 standards as specified in
+https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#reference-mesh
+
+Author: Matthew Matl
+"""
 import abc
 import numpy as np
 import six
@@ -8,6 +13,19 @@ from .constants import GLTF
 from .material import MetallicRoughnessMaterial
 
 class Mesh(object):
+    """A set of primitives to be rendered.
+
+    Attributes
+    ----------
+    name : str
+        The user-defined name of this object.	
+    primitives : list of :obj:`Primitive`
+        The primitives associated with this mesh.
+    weights : (k,) float
+        Array of weights to be applied to the Morph Targets.
+    is_visible : bool
+        If False, the mesh will not be rendered.
+    """
 
     def __init__(self, primitives, name=None, weights=None, is_visible=True):
         self.primitives = primitives
@@ -19,6 +37,8 @@ class Mesh(object):
 
     @property
     def bounds(self):
+        """(2,3) float : The axis-aligned bounds of the mesh.
+        """
         if self._bounds is None:
             bounds = np.array([[np.infty, np.infty, np.infty],
                                [-np.infty, -np.infty, -np.infty]])
@@ -30,6 +50,8 @@ class Mesh(object):
 
     @property
     def is_transparent(self):
+        """bool : If True, the mesh is partially-transparent.
+        """
         for p in self.primitives:
             if p.is_transparent:
                 return True
@@ -37,6 +59,24 @@ class Mesh(object):
 
     @staticmethod
     def from_points(points, colors=None, is_visible=True, poses=None):
+        """Create a Mesh from a set of points.
+
+        Parameters
+        ----------
+        points : (n,3) float
+            The point positions.
+        colors : (n,3) or (n,4) float, optional
+            RGB or RGBA colors for each point.
+        is_visible : bool
+            If False, the points will not be rendered.
+        poses : (x,4,4)
+            Array of 4x4 transformation matrices for instancing this object.
+
+        Returns
+        -------
+        mesh : :obj:`Mesh`
+            The created mesh.
+        """
         primitive = Primitive(
             positions=points,
             color_0=colors,
@@ -58,18 +98,17 @@ class Mesh(object):
         material : :obj:`Material`
             The material of the object. If not specified, a default grey material
             will be used.
-        texcoord_0 : (n, 2) float, optional
+        texcoords : (n, 2) float, optional
             Texture coordinates for positions, if needed.
         is_visible : bool
-            If False, the object will not be rendered.
+            If False, the mesh will not be rendered.
         poses : (n,4,4) float
-            If specified, makes this object an instanced object.
-            List of poses for each instance relative to object base frame.
+            Array of 4x4 transformation matrices for instancing this object.
 
         Returns
         -------
-        scene_object : :obj:`Mesh`
-            The scene object created from the triangular mesh.
+        mesh : :obj:`Mesh`
+            The created mesh.
         """
         positions = None
         normals = None

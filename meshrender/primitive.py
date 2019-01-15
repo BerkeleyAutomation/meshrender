@@ -1,3 +1,8 @@
+"""Primitives, conforming to the glTF 2.0 standards as specified in
+https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#reference-primitive
+
+Author: Matthew Matl
+"""
 import abc
 import numpy as np
 import six
@@ -9,6 +14,45 @@ from .constants import FLOAT_SZ, UINT_SZ, BufFlags, GLTF
 from .utils import format_color_array
 
 class Primitive(object):
+    """A primitive object which can be rendered.
+
+    Attributes
+    ----------
+    positions : (n, 3) float
+        XYZ vertex positions.
+    normals : (n, 3) float
+        Normalized XYZ vertex normals.
+    tangents : (n, 4) float
+        XYZW vertex tangents where the w component is a sign value
+        (either +1 or -1) indicating the handedness of the tangent basis.
+    texcoord_0 : (n, 2) float
+        The first set of UV texture coordinates.
+    texcoord_1 : (n, 2) float
+        The second set of UV texture coordinates.
+    color_0 : (n, 4) float
+        RGBA vertex colors.
+    joints_0 : (n, 4) float
+        Joint information.
+    weights_0 : (n, 4) float
+        Weight information for morphing.
+    indices : (m, 3) float
+        Face indices for triangle meshes or fans.
+    material : :obj:`Material`
+        The material to apply to this primitive when rendering.
+    mode : int
+        The type of primitives to render, one of the following:
+            - `0` POINTS
+            - `1` LINES
+            - `2` LINE_LOOP
+            - `3` LINE_STRIP
+            - `4` TRIANGLES
+            - `5` TRIANGLES_STRIP
+            - `6` TRIANGLES_FAN
+    targets : (k,) int
+        Morph target indices.
+    poses : (x,4,4), float
+        Array of 4x4 transformation matrices for instancing this object.
+    """
 
     def __init__(self,
                  positions,
@@ -212,6 +256,10 @@ class Primitive(object):
             self._tex_flags = self._compute_tex_flags()
         return self._tex_flags
 
+    def delete(self):
+        self._unbind()
+        self._remove_from_context()
+
     @property
     def is_transparent(self):
         if self._is_transparent is None:
@@ -325,10 +373,6 @@ class Primitive(object):
 
     def _unbind(self):
         glBindVertexArray(0)
-
-    def delete(self):
-        self._unbind()
-        self._remove_from_context()
 
     def _compute_bounds(self):
         """Compute the bounds of this object.

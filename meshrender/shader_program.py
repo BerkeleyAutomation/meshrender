@@ -74,6 +74,7 @@ class ShaderProgram(object):
             self.defines = {}
 
         self._program_id = None
+        self._vao_id = None # PYOPENGL BUG
         # DEBUG
         self._unif_map = {}
 
@@ -96,12 +97,22 @@ class ShaderProgram(object):
                 self._load(self.geometry_shader), GL_GEOMETRY_SHADER)
             )
 
+        # Create empty vertex array and bind it
+        self._vao_id = glGenVertexArrays(1)
+        glBindVertexArray(self._vao_id)
+
         # Compile program
         self._program_id = gl_shader_utils.compileProgram(*shader_ids)
 
         # Free shaders
         for sid in shader_ids:
-            glDeleteShader(sid)
+            try:
+                glDeleteShader(sid)
+            except:
+                pass
+
+        # Unbind empty VAO (PYOPENGL BUG)
+        glBindVertexArray(0)
 
     def _in_context(self):
         return self._program_id is not None
@@ -109,7 +120,9 @@ class ShaderProgram(object):
     def _remove_from_context(self):
         if self._program_id is not None:
             glDeleteProgram(self._program_id)
+            glDeleteVertexArrays(1, [self._vao_id])
             self._program_id = None
+            self._vao_id = None
 
     def _load(self, shader_filename):
         path, _ = os.path.split(shader_filename)
@@ -158,6 +171,7 @@ class ShaderProgram(object):
         """
         if self._program_id is None:
             raise ValueError('Cannot bind program that is not in context')
+        glBindVertexArray(self._vao_id)
         glUseProgram(self._program_id)
 
     def _unbind(self):
@@ -166,8 +180,8 @@ class ShaderProgram(object):
         glUseProgram(0)
 
     def _print_uniforms(self):
-        print '============================='
-        print self.defines
+        print('=============================')
+        print(self.defines)
         #x = glGetProgramiv(self._program_id, GL_ACTIVE_UNIFORMS)
         data = (GLfloat * 16)()
         tups = []
@@ -181,9 +195,9 @@ class ShaderProgram(object):
             tups.append((name, d))
         tups = sorted(tups, key = lambda x : x[0])
         for tup in tups:
-            print tup[0] + ': '
-            print tup[1]
-        print '-----------------------------'
+            print(tup[0] + ': ')
+            print(tup[1])
+        print('-----------------------------')
 
     def delete(self):
         """Delete this shader program from the current OpenGL context.

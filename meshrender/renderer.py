@@ -306,7 +306,7 @@ class Renderer(object):
         for n in scene.light_nodes:
             l = n.light
             position = scene.get_pose(n)[:3,3]
-            direction = scene.get_pose(n)[:3,2]
+            direction = -scene.get_pose(n)[:3,2]
             shadow = bool(flags & RenderFlags.SHADOWS_ALL)
 
             if isinstance(l, PointLight):
@@ -472,13 +472,9 @@ class Renderer(object):
         camera = light.get_shadow_camera(scene.scale)
         P = camera.get_projection_matrix()
         if isinstance(light, DirectionalLight):
-            z_axis = pose[:3,2]
-            loc = scene.centroid - z_axis * scene.scale
+            direction = -pose[:3,2]
+            loc = scene.centroid - direction * scene.scale
             pose[:3,3] = loc
-
-        # Flip the z-axis so that the camera points at the scene
-        pose[:3,0] = -pose[:3,0]
-        pose[:3,2] = -pose[:3,2]
         V = np.linalg.inv(pose) # V maps from world to camera
         return V, P
 

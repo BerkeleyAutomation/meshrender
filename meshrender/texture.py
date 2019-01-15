@@ -1,3 +1,8 @@
+"""Textures, conforming to the glTF 2.0 standards as specified in
+https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#reference-texture
+
+Author: Matthew Matl
+"""
 import numpy as np
 
 from OpenGL.GL import *
@@ -6,6 +11,26 @@ from .utils import format_texture_source
 from .sampler import Sampler
 
 class Texture(object):
+    """A texture and its sampler.
+
+    Attributes
+    ----------
+    sampler : :obj:`Sampler`
+        The sampler used by this texture.
+    source : (w,h,c) uint8 or (w,h,c) float or :obj:`PIL.Image.Image`
+        The image used by this texture. If None, the texture is created
+        empty and width and height must be specified.
+    source_channels : str
+        Either `D`, `R`, `RG`, `GB`, `RGB`, or `RGBA`. Indicates the
+        channels to extract from `source`. Any missing channels will be filled
+        with `1.0`.
+    width : int, optional
+        For empty textures, the width of the texture buffer.
+    height : int, optional
+        For empty textures, the height of the texture buffer.
+    config : int
+        Either GL_TEXTURE_2D or GL_TEXTURE_CUBE.
+    """
 
     def __init__(self,
                  name=None,
@@ -45,6 +70,10 @@ class Texture(object):
             self._source = None
         else:
             self._source = format_texture_source(value, self.source_channels)
+
+    def delete(self):
+        self._unbind()
+        self._remove_from_context()
 
     ##################
     # OpenGL code
@@ -119,6 +148,3 @@ class Texture(object):
     def _bind_as_color_attachment(self):
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, self._texid, 0)
 
-    def delete(self):
-        self._unbind()
-        self._remove_from_context()

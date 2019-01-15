@@ -1,3 +1,8 @@
+"""Scenes, conforming to the glTF 2.0 standards as specified in
+https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#reference-scene
+
+Author: Matthew Matl
+"""
 import numpy as np
 import networkx as nx
 import trimesh
@@ -7,11 +12,20 @@ from .camera import Camera
 from .light import Light, PointLight, DirectionalLight, SpotLight
 from .node import Node
 from .utils import format_color_vector
-from .constants import GLTF
 
 class Scene(object):
-    """Implementation of a scene graph, which contains objects, lights, and a camera
-    for 3D OpenGL rendering.
+    """A hierarchical scene graph.
+
+    Attributes
+    ----------
+    name : str, optional
+        The user-defined name of this object.
+    nodes : list of :obj:`Node`
+        The set of all nodes in the scene.
+    bg_color : (4,) float, optional
+        Background color of scene.
+    ambient_light : (3,) float, optional
+        Color of ambient light.
     """
 
     def __init__(self,
@@ -90,10 +104,14 @@ class Scene(object):
 
     @property
     def meshes(self):
+        """set of :obj:`Mesh` : The meshes in the scene.
+        """
         return set([n.mesh for n in self.mesh_nodes])
 
     @property
     def mesh_nodes(self):
+        """set of :obj:`Node` : The nodes containing meshes in the scene.
+        """
         return self._mesh_nodes
 
     @property
@@ -102,6 +120,8 @@ class Scene(object):
 
     @property
     def light_nodes(self):
+        """set of :obj:`Node` : The nodes containing lights in the scene.
+        """
         return self.point_light_nodes | self.spot_light_nodes | self.directional_light_nodes
 
     @property
@@ -110,6 +130,8 @@ class Scene(object):
 
     @property
     def point_light_nodes(self):
+        """set of :obj:`Node` : The nodes containing point lights in the scene.
+        """
         return self._point_light_nodes
 
     @property
@@ -118,6 +140,8 @@ class Scene(object):
 
     @property
     def spot_light_nodes(self):
+        """set of :obj:`Node` : The nodes containing spot lights in the scene.
+        """
         return self._spot_light_nodes
 
     @property
@@ -126,6 +150,8 @@ class Scene(object):
 
     @property
     def directional_light_nodes(self):
+        """set of :obj:`Node` : The nodes containing directional lights in the scene.
+        """
         return self._directional_light_nodes
 
     @property
@@ -134,13 +160,45 @@ class Scene(object):
 
     @property
     def camera_nodes(self):
+        """set of :obj:`Node` : The nodes containing cameras in the scene.
+        """
         return self._camera_nodes
 
     @property
     def main_camera_node(self):
+        """set of :obj:`Node` : The node containing the main camera in the
+        scene.
+        """
         return self._main_camera_node
 
+    @main_camera_node.setter
+    def main_camera_node(self, value):
+        if value not in self.nodes:
+            raise ValueError('New main camera node must already be in scene')
+        self._main_camera_node = value
+
     def add(self, obj, name=None, pose=None, parent_node=None, parent_name=None):
+        """Add an object (mesh, light, or camera) to the scene.
+
+        Parameters
+        ----------
+        obj : :obj:`Mesh`, :obj:`Light`, or :obj:`Camera`
+            The object to add to the scene.
+        name : str
+            A name for the new node to be created.
+        pose : (4,4) float
+            The local pose of this node relative to its parent node.
+        parent_node : :obj:`Node`
+            The parent of this Node. If None, the new node is a root node.
+        parent_name : str
+            The name of the parent node, can be specified instead of
+            `parent_node`.
+
+        Returns
+        -------
+        node : :obj:`Node`
+            The newly-created and inserted node.
+        """
         if isinstance(obj, Mesh):
             node = Node(name=name, matrix=pose, mesh=obj)
         elif isinstance(obj, Light):
@@ -182,6 +240,20 @@ class Scene(object):
         return nodes
 
     def get_node(self, node=None, name=None, obj=None, obj_name=None):
+        """Search for an existing node. Only a node matching all specified
+        parameters is returned, or None if no such node exists.
+
+        Parameters
+        ----------
+        node : :obj:`Node`, optional
+            If present, this object is simply returned.
+        name : str
+            A name for the Node.
+        obj : :obj:`Mesh`, :obj:`Light`, or :obj:`Camera`
+            An object that is attached to the node.
+        obj_name : str
+            The name of an object that is attached to the node.
+        """
         nodes = list(self._get_nodes(node=node, name=name, obj=obj, obj_name=obj_name))
         if len(nodes) == 0:
             return None
@@ -191,6 +263,15 @@ class Scene(object):
             return nodes[0]
 
     def add_node(self, node, parent_node=None):
+        """Add a Node to the scene.
+
+        Parameters
+        ----------
+        node : :obj:`Node`
+            The node to be added.
+        parent_node : :obj:`Node`
+            The parent of this Node. If None, the new node is a root node.
+        """
         self.nodes.add(node)
         # Create node in graph
         self._digraph.add_node(node)
@@ -233,9 +314,28 @@ class Scene(object):
         self._path_cache = {}
 
     def has_node(self, node):
+        """Check if a node is already in the scene.
+
+        Parameters
+        ----------
+        node : :obj:`Node`
+            The node to be checked.
+
+        Returns
+        -------
+        has_node : bool
+            True if the node is already in the scene and false otherwise.
+        """
         return node in self.nodes
 
     def remove_node(self, node):
+        """Remove a node and all its children from the scene.
+
+        Parameters
+        ----------
+        node : :obj:`Node`
+            The node to be removed.
+        """
         self.nodes.remove(node)
         # Remove children
         for child in node.children:
@@ -278,6 +378,18 @@ class Scene(object):
         self._path_cache = {}
 
     def get_pose(self, node):
+        """Get the world-frame pose of a node in the scene.
+
+        Parameters
+        ----------
+        node : :obj:`Node`
+            The node to find the pose of.
+
+        Returns
+        -------
+        pose : (4,4) float
+            The transform matrix for this node.
+        """
         # Get path from from_frame to to_frame
         path = nx.shortest_path(self._digraph, node, 'world')
         self._path_cache[node] = path
@@ -291,6 +403,8 @@ class Scene(object):
 
     @property
     def bounds(self):
+        """(2,3) float : The axis-aligned bounds of the scene.
+        """
         # Compute corners
         corners = []
         for mesh_node in self.mesh_nodes:
@@ -305,12 +419,19 @@ class Scene(object):
 
     @property
     def centroid(self):
+        """(3,) float : The centroid of the scene's axis-aligned bounding box
+        (AABB).
+        """
         return np.mean(self.bounds, axis=0)
 
     @property
     def extents(self):
+        """(3,) float : The lengths of the axes of the scene's AABB.
+        """
         return np.diff(self.bounds, axis=0).reshape(-1)
 
     @property
     def scale(self):
+        """(3,) float : The length of the diagonal of the scene's AABB.
+        """
         return np.linalg.norm(self.extents)

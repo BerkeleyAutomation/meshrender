@@ -168,7 +168,14 @@ class SceneViewer(pyglet.window.Window):
 
         self.set_caption(title)
 
-        self._renderer = Renderer(self._size[0], self._size[1])
+        self._is_high_dpi = False
+        if hasattr(self.context, '_nscontext'):
+            self._is_high_dpi = True
+
+        if self._is_high_dpi:
+            self._renderer = Renderer(2 * self._size[0], 2*self._size[1])
+        else:
+            self._renderer = Renderer(self._size[0], self._size[1])
 
         # Update the application flags
         self._update_flags()
@@ -208,8 +215,12 @@ class SceneViewer(pyglet.window.Window):
         """
         self._size = (width, height)
         self._trackball.resize(self._size)
-        self._renderer.viewport_width = self._size[0]
-        self._renderer.viewport_height = self._size[1]
+        if self._is_high_dpi:
+            self._renderer.viewport_width = 2 * self._size[0]
+            self._renderer.viewport_height = 2 * self._size[1]
+        else:
+            self._renderer.viewport_width = self._size[0]
+            self._renderer.viewport_height = self._size[1]
         self.on_draw()
 
     def on_mouse_press(self, x, y, buttons, modifiers):
@@ -436,7 +447,7 @@ class SceneViewer(pyglet.window.Window):
         if self._flags['flip_wireframe']:
             flags |= RenderFlags.FLIP_WIREFRAME
 
-        flags |= RenderFlags.SHADOWS_DIRECTIONAL | RenderFlags.SHADOWS_SPOT
+        #flags |= RenderFlags.SHADOWS_DIRECTIONAL | RenderFlags.SHADOWS_SPOT
         #flags |= RenderFlags.DEPTH_ONLY
 
         self._renderer.render(self.scene, flags)

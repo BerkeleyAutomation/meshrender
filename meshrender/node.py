@@ -1,8 +1,41 @@
+"""Nodes, conforming to the glTF 2.0 standards as specified in
+https://github.com/KhronosGroup/glTF/tree/master/specification/2.0#reference-node
+
+Author: Matthew Matl
+"""
 import numpy as np
 
 from . import transformations
 
 class Node(object):
+    """A node in the node hierarchy.
+
+    Attributes
+    ----------
+    name : str, optional
+        The user-defined name of this object.
+    camera : :obj:`Camera`, optional
+        The camera in this node.
+    children : list of :obj:`Node`
+        The children of this node.
+    skin : int, optional
+        The index of the skin referenced by this node.
+    matrix : (4,4) float, optional
+        A floating-point 4x4 transformation matrix.
+    mesh : :obj:`Mesh`, optional
+        The mesh in this node.
+    rotation : (4,) float, optional
+        The node's unit quaternion in the order (x, y, z, w), where
+        w is the scalar.
+    scale : (3,) float, optional
+        The node's non-uniform scale, given as the scaling factors along the x,
+        y, and z axes.
+    translation : (3,) float, optional
+        The node's translation along the x, y, and z axes.
+    weights : (n,) float
+        The weights of the instantiated Morph Target. Number of elements must
+        match number of Morph Targets of used mesh.
+    """
 
     def __init__(self,
                  name=None,
