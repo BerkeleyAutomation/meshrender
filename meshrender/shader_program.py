@@ -36,7 +36,7 @@ class ShaderProgramCache(object):
                 continue
             _, name = os.path.split(fn)
             shader_names.append(name)
-        key = tuple(sorted(shader_names + list(defines.keys())))
+        key = tuple(sorted([(s,1) for s in shader_names] + [(d, defines[d]) for d in defines]))
 
         if key not in self._program_cache:
             shader_filenames = [os.path.join(self.shader_dir, fn) for fn in shader_filenames]

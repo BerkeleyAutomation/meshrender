@@ -78,14 +78,20 @@ class Texture(object):
 
         # Bind texture and generate mipmaps
         glTexImage2D(GL_TEXTURE_2D, 0, fmt, width, height, 0, fmt, GL_FLOAT, data)
-        glGenerateMipmap(GL_TEXTURE_2D)
-
-        if self.sampler.magFilter is not None:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, self.sampler.magFilter)
-        if self.sampler.minFilter is not None:
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, self.sampler.minFilter)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, self.sampler.wrapS)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, self.sampler.wrapT)
+        if self.source is not None:
+            glGenerateMipmap(GL_TEXTURE_2D)
+            if self.sampler.magFilter is not None:
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, self.sampler.magFilter)
+            if self.sampler.minFilter is not None:
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, self.sampler.minFilter)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, self.sampler.wrapS)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, self.sampler.wrapT)
+        else:
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER)
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER)
+            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, np.ones(4).astype(np.float32))
 
         # Unbind texture
         glBindTexture(GL_TEXTURE_2D, 0)
@@ -98,7 +104,7 @@ class Texture(object):
             self._texid = None
 
     def _in_context(self):
-        return self._vaid is not None
+        return self._texid is not None
 
     def _bind(self):
         # TODO HANDLE INDEXING INTO OTHER UV's

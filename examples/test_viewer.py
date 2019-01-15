@@ -69,13 +69,19 @@ faces = np.array([
     [0,2,1],
     [0,3,2]
 ])
+texture_coords = np.array([
+    [0.0, 0.0],
+    [0.0, 1.0],
+    [1.0, 1.0],
+    [1.0, 0.0]
+])
 vertex_colors = np.array([
     [255,0,0,255],
     [255,0,0,255],
     [255,0,0,255],
     [255,0,0,255],
 ])
-x = trimesh.Trimesh(vertices, faces)#, vertex_colors=vertex_colors)
+x = trimesh.Trimesh(vertices, faces, texture_coords)#, vertex_colors=vertex_colors)
 pobj = Mesh.from_trimesh(x, material=MetallicRoughnessMaterial(baseColorFactor=np.array([1.0, 0.0, 0.0, 1.0])))
 scene.add(pobj)
 

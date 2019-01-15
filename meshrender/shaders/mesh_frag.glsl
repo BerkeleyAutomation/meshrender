@@ -269,21 +269,22 @@ float orth_shadow_calc(mat4 light_matrix, sampler2D shadow_map, vec3 n, vec3 l)
     float nl = dot(n, l);
     float bias = max(0.001 * (1.0 - nl), 0.0001);
     float shadow = 0.0;
-    vec2 texel_size = 1.0 / textureSize(shadow_map, 0);
-    for (int i = -1; i <= 1; i++)
-    {
-        for (int j = -1; j <= 1; j++)
-        {
-            float pcf_depth = texture(shadow_map, light_coords.xy + vec2(i, j) * texel_size).r;
-            shadow += current_depth - bias > pcf_depth ? 1.0 : 0.0;
-        }
-    }
-    shadow /= 9.0;
+    //vec2 texel_size = 1.0 / textureSize(shadow_map, 0);
+    //for (int i = -1; i <= 1; i++)
+    //{
+    //    for (int j = -1; j <= 1; j++)
+    //    {
+    //        float pcf_depth = texture(shadow_map, light_coords.xy + vec2(i, j) * texel_size).r;
+    //        shadow += current_depth - bias > pcf_depth ? 1.0 : 0.0;
+    //    }
+    //}
+    //shadow /= 9.0;
+    shadow = current_depth - bias > texture(shadow_map, light_coords.xy).r ? 1.0 : 0.0;
 
     if (light_coords.z > 1.0) {
         shadow = 0.0;
     }
-    return closest_depth;
+    //return closest_depth;
     return shadow;
 }
 
@@ -354,7 +355,7 @@ void main()
         res = res * (1.0 - shadow);
 #endif
         color += res;
-        color = vec3(shadow);
+        //color = vec3(shadow);
     }
 
     for (int i = 0; i < n_point_lights; i++) {
