@@ -6,6 +6,9 @@ from .constants import *
 from .shader_program import ShaderProgramCache
 from .material import MetallicRoughnessMaterial, SpecularGlossinessMaterial
 from .light import PointLight, SpotLight, DirectionalLight
+from .font import FontCache
+from .camera import OrthographicCamera
+from .utils import format_color_vector
 
 from OpenGL.GL import *
 
@@ -38,6 +41,7 @@ class Renderer(object):
 
         # Shader Program Cache
         self._program_cache = ShaderProgramCache()
+        self._font_cache = FontCache()
         self._meshes = set()
         self._mesh_textures = set()
         self._shadow_textures = set()
@@ -71,8 +75,8 @@ class Renderer(object):
         depth_im : (h, w) float32
             If `RenderFlags.OFFSCREEN` is set, the depth buffer in linear units.
         """
-        # If using shadow maps, render scene into each light's shadow map
-        # first.
+        glClearColor(*scene.bg_color)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
         # Update context with meshes and textures
         self._update_context(scene, flags)
@@ -101,6 +105,37 @@ class Renderer(object):
         # If necessary, make normals pass
         if flags & (RenderFlags.VERTEX_NORMALS | RenderFlags.FACE_NORMALS):
             self._normals_pass(scene, flags)
+
+    def render_text(self, scene, text, x, y, font_name='OpenSans-Regular',
+                    font_pt=40, color=None, scale=1.0, align=TextAlign.BOTTOM_LEFT):
+        if color is None:
+            color = np.array([0.0, 0.0, 0.0, 1.0])
+        else:
+            color = format_color_vector(color, 4)
+
+        # Set up viewport for render
+        self._configure_forward_pass_viewport(scene, 0)
+
+        # Load font
+        font = self._font_cache.get_font(font_name, font_pt)
+        if not font._in_context():
+            font._add_to_context()
+
+        # Load program
+        program = self._get_text_program()
+        program._bind()
+
+        # Set uniforms
+        p = np.eye(4)
+        p[0,0] = 2.0 / self.viewport_width
+        p[0,3] = -1.0
+        p[1,1] = 2.0 / self.viewport_height
+        p[1,3] = -1.0
+        program.set_uniform('projection', p)
+        program.set_uniform('text_color', color)
+
+        # Draw text
+        font.render_string(text, x, y, scale, align)
 
     def read_color_buf(self):
         # Extract color image from frame buffer
@@ -133,6 +168,9 @@ class Renderer(object):
     def delete(self):
         # Free shaders
         self._program_cache.clear()
+
+        # Free fonts
+        self._font_cache.clear()
 
         # Free meshes
         for mesh in self._meshes:
@@ -595,6 +633,17 @@ class Renderer(object):
     # Shader Program Management
     ############################################################################
 
+    def _get_text_program(self):
+        program = self._program_cache.get_program(
+            vertex_shader='text.vert',
+            fragment_shader='text.frag'
+        )
+
+        if not program._in_context():
+            program._add_to_context()
+
+        return program
+
     def _get_primitive_program(self, primitive, flags, program_flags):
         vertex_shader = None
         fragment_shader = None
@@ -699,8 +748,6 @@ class Renderer(object):
         else:
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
 
-        glClearColor(*scene.bg_color)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
         glViewport(0, 0, self.viewport_width, self.viewport_height)
         glEnable(GL_DEPTH_TEST)
         glDepthMask(GL_TRUE)
@@ -724,6 +771,7 @@ class Renderer(object):
         glDepthFunc(GL_LESS)
         glDepthRange(0.0, 1.0)
         glDisable(GL_CULL_FACE)
+        glDisable(GL_BLEND)
 
     ############################################################################
     # Framebuffer Management

@@ -22,7 +22,7 @@ if 'MESHRENDER_EGL_OFFSCREEN' in os.environ:
 
 import OpenGL
 
-from .constants import OPEN_GL_MAJOR, OPEN_GL_MINOR, RenderFlags
+from .constants import OPEN_GL_MAJOR, OPEN_GL_MINOR, RenderFlags, TextAlign
 from .light import DirectionalLight
 from .node import Node
 from .camera import PerspectiveCamera
@@ -113,6 +113,10 @@ class SceneViewer(pyglet.window.Window):
             self._registered_keys = {
                 ord(k.lower()) : registered_keys[k] for k in registered_keys
             }
+
+        self._message_text = None
+        self._ticks_till_fade = 2.0 / 3.0 * self.viewer_flags['refresh_rate']
+        self._message_opac = 1.0 + self._ticks_till_fade
 
         ########################################################################
         # Set up camera node
@@ -216,13 +220,17 @@ class SceneViewer(pyglet.window.Window):
         # Render the scene
         self.clear()
         self._render()
-        self.label = pyglet.text.Label('Hello, world',
-                          font_name='Times New Roman',
-                          font_size=60,
-                          x=self.width//2, y=self.height//2,
-                          anchor_x='center', anchor_y='center')
-        self.label.draw()
 
+        if self._message_text is not None:
+            self._renderer.render_text(
+                self.scene,
+                self._message_text,
+                self.viewport_size[0]-20,
+                20,
+                font_pt=20,
+                color=np.array([0.1,0.7,0.2,np.clip(self._message_opac, 0.0, 1.0)]),
+                align=TextAlign.BOTTOM_RIGHT
+            )
 
     def on_resize(self, width, height):
         """Resize the camera and trackball when the window is resized.
@@ -299,47 +307,67 @@ class SceneViewer(pyglet.window.Window):
         # Otherwise, use default key functions
 
         # W toggles through wireframe modes
+        self._message_text = None
         if symbol == pyglet.window.key.W:
             if self.render_flags['flip_wireframe']:
                 self.render_flags['flip_wireframe'] = False
                 self.render_flags['all_wireframe'] = True
                 self.render_flags['all_solid'] = False
+                self._message_text = 'All Wireframe'
             elif self.render_flags['all_wireframe']:
                 self.render_flags['flip_wireframe'] = False
                 self.render_flags['all_wireframe'] = False
                 self.render_flags['all_solid'] = True
+                self._message_text = 'All Solid'
             elif self.render_flags['all_solid']:
                 self.render_flags['flip_wireframe'] = False
                 self.render_flags['all_wireframe'] = False
                 self.render_flags['all_solid'] = False
+                self._message_text = 'Default Wireframe'
             else:
                 self.render_flags['flip_wireframe'] = True
                 self.render_flags['all_wireframe'] = False
                 self.render_flags['all_solid'] = False
+                self._message_text = 'Flip Wireframe'
 
         # L toggles the lighting mode
         elif symbol == pyglet.window.key.L:
             if self.viewer_flags['use_raymond_lighting']:
                 self.viewer_flags['use_raymond_lighting'] = False
                 self.viewer_flags['use_direct_lighting'] = True
+                self._message_text = 'Direct Lighting'
             elif self.viewer_flags['use_direct_lighting']:
                 self.viewer_flags['use_raymond_lighting'] = False
                 self.viewer_flags['use_direct_lighting'] = False
+                self._message_text = 'Default Lighting'
             else:
                 self.viewer_flags['use_raymond_lighting'] = True
                 self.viewer_flags['use_direct_lighting'] = False
+                self._message_text = 'Raymond Lighting'
 
         # S toggles shadows
         elif symbol == pyglet.window.key.H:
             self.render_flags['shadows'] = not self.render_flags['shadows']
+            if self.render_flags['shadows']:
+                self._message_text = 'Shadows On'
+            else:
+                self._message_text = 'Shadows Off'
 
         # N toggles vertex normals
         elif symbol == pyglet.window.key.N:
             self.render_flags['vertex_normals'] = not self.render_flags['vertex_normals']
+            if self.render_flags['vertex_normals']:
+                self._message_text = 'Vert Normals On'
+            else:
+                self._message_text = 'Vert Normals Off'
 
         # F toggles face normals
         elif symbol == pyglet.window.key.F:
             self.render_flags['face_normals'] = not self.render_flags['face_normals']
+            if self.render_flags['face_normals']:
+                self._message_text = 'Face Normals On'
+            else:
+                self._message_text = 'Face Normals Off'
 
         # Z resets the camera viewpoint
         elif symbol == pyglet.window.key.Z:
@@ -348,10 +376,18 @@ class SceneViewer(pyglet.window.Window):
         # A causes the frame to rotate
         elif symbol == pyglet.window.key.A:
             self.viewer_flags['rotate'] = not self.viewer_flags['rotate']
+            if self.viewer_flags['rotate']:
+                self._message_text = 'Rotation On'
+            else:
+                self._message_text = 'Rotation Off'
 
         # C toggles backface culling
         elif symbol == pyglet.window.key.C:
             self.render_flags['cull_faces'] = not self.render_flags['cull_faces']
+            if self.render_flags['cull_faces']:
+                self._message_text = 'Cull Faces On'
+            else:
+                self._message_text = 'Cull Faces Off'
 
         # S saves the current frame as an image
         elif symbol == pyglet.window.key.S:
@@ -369,6 +405,9 @@ class SceneViewer(pyglet.window.Window):
             else:
                 self.set_caption('{} (RECORDING)'.format(self.viewer_flags['window_title']))
             self.viewer_flags['record'] = not self.viewer_flags['record']
+
+        if self._message_text is not None:
+            self._message_opac = 1.0 + self._ticks_till_fade
 
     def _render(self):
         """Render the scene into the framebuffer and flip.
@@ -520,6 +559,16 @@ class SceneViewer(pyglet.window.Window):
             self._record()
         if self.viewer_flags['rotate'] and not self.viewer_flags['mouse_pressed']:
             self._rotate()
+
+        # Manage message opacity
+        if self._message_text is not None:
+            if self._message_opac > 1.0:
+                self._message_opac -= 1.0
+            else:
+                self._message_opac *= 0.90;
+            if self._message_opac < 0.05:
+                self._message_opac = 1.0 + self._ticks_till_fade
+                self._message_text = None
         self.on_draw()
 
     def _compute_initial_camera_pose(self):

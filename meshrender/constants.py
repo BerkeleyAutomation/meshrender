@@ -66,3 +66,13 @@ class ProgramFlags:
     USE_MATERIAL = 1
     VERTEX_NORMALS = 2
     FACE_NORMALS = 4
+
+class TextAlign:
+    NONE = 0
+    BOTTOM_LEFT = 1
+    BOTTOM_RIGHT = 2
+    BOTTOM_CENTER = 3
+    TOP_LEFT = 4
+    TOP_RIGHT = 5
+    TOP_CENTER = 6
+    CENTER = 7
