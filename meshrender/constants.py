@@ -1,8 +1,8 @@
 DEFAULT_Z_NEAR = 0.05     # Near clipping plane, in meters
 DEFAULT_Z_FAR = 100.0     # Far clipping plane, in meters
 MAX_N_LIGHTS = 4          # Maximum number of lights of each type allowed
-OPEN_GL_MAJOR = 4         # Target OpenGL Major Version
-OPEN_GL_MINOR = 1         # Target OpenGL Minor Version
+OPEN_GL_MAJOR = 3         # Target OpenGL Major Version
+OPEN_GL_MINOR = 0         # Target OpenGL Minor Version
 FLOAT_SZ = 4              # Byte size of GL float32
 UINT_SZ = 4               # Byte size of GL uint32
 SHADOW_TEX_SZ = 1024      # Width and Height of Shadow Textures

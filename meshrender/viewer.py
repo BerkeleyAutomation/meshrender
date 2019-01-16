@@ -70,6 +70,7 @@ class SceneViewer(pyglet.window.Window):
             viewport_size = (640, 480)
         self._scene = scene
         self._viewport_size = viewport_size
+        self._is_high_dpi = False
 
         self._default_render_flags = {
             'flip_wireframe' : False,
@@ -155,9 +156,11 @@ class SceneViewer(pyglet.window.Window):
         ########################################################################
         try:
             conf = gl.Config(sample_buffers=1, samples=4,
-                             depth_size=24, double_buffer=True,
-                             major_version=OPEN_GL_MAJOR,
-                             minor_version=OPEN_GL_MINOR)
+                             depth_size=24, double_buffer=True)
+            #conf = gl.Config(sample_buffers=1, samples=4,
+            #                 depth_size=24, double_buffer=True,
+            #                 major_version=OPEN_GL_MAJOR,
+            #                 minor_version=OPEN_GL_MINOR)
             super(SceneViewer, self).__init__(config=conf, resizable=True,
                                               width=self._viewport_size[0],
                                               height=self._viewport_size[1])
@@ -210,7 +213,16 @@ class SceneViewer(pyglet.window.Window):
     def on_draw(self):
         """Redraw the scene into the viewing window.
         """
+        # Render the scene
+        self.clear()
         self._render()
+        self.label = pyglet.text.Label('Hello, world',
+                          font_name='Times New Roman',
+                          font_size=60,
+                          x=self.width//2, y=self.height//2,
+                          anchor_x='center', anchor_y='center')
+        self.label.draw()
+
 
     def on_resize(self, width, height):
         """Resize the camera and trackball when the window is resized.
