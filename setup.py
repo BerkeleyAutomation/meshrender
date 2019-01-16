@@ -10,6 +10,7 @@ from setuptools import setup
 exec(open('meshrender/version.py').read())
 
 requirements = [
+    'freetype-py',
     'imageio',                      # For Image I/O
     'numpy',                        # Numpy
     'Pillow',                       # For Trimesh texture conversions

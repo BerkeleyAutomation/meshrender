@@ -315,6 +315,10 @@ class Renderer(object):
 
             for primitive in mesh.primitives:
 
+                # Skip objects that don't have normals
+                if not primitive.buf_flags & BufFlags.NORMAL:
+                    continue
+
                 # First, get and bind the appropriate program
                 pf = ProgramFlags.NONE
                 if flags & RenderFlags.VERTEX_NORMALS:

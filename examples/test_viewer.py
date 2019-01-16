@@ -16,13 +16,13 @@ scene = Scene()#ambient_light=np.ones(3)*0.02)#np.array([1.0, 0.0, 0.0]))
 #====================================
 
 # Begin by loading meshes
-pawn_mesh = trimesh.load_mesh('./models/fuze.obj', process=False)
-#s = trimesh.load('~/Downloads/WaterBottle.glb', process=False)
+#pawn_mesh = trimesh.load_mesh('./models/fuze.obj', process=False)
+s = trimesh.load('~/Downloads/WaterBottle.glb', process=False)
 #s = trimesh.load('~/Downloads/BoomBox.glb')
 #s = trimesh.load('~/Downloads/ReciprocatingSaw.glb')
 #s = trimesh.load('~/Downloads/Lantern.glb', process=False)
-#mesh_key = list(s.geometry.keys())[0]
-#pawn_mesh = s.geometry[mesh_key]
+mesh_key = list(s.geometry.keys())[0]
+pawn_mesh = s.geometry[mesh_key]
 pawn_pose = np.eye(4)
 #pawn_mesh = trimesh.creation.icosahedron()
 #colors = (255*np.random.uniform(size=pawn_mesh.vertices.shape)).astype(np.uint8)
@@ -53,6 +53,7 @@ pawn_pose = np.eye(4)
 
 # Create SceneObjects for each object
 pawn_obj = Mesh.from_trimesh(pawn_mesh)
+pawn_obj = Mesh.from_points(pawn_mesh.vertices, pawn_mesh.visual.to_color().vertex_colors)
 #Jbar_obj = MeshSceneObject.from_trimesh(bar_mesh, bar_material)
 
 # Add the SceneObjects to the scene

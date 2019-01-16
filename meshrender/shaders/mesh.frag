@@ -169,6 +169,7 @@ vec4 srgb_to_linear(vec4 srgb)
 vec3 get_normal()
 {
 #ifdef HAS_NORMAL_TEX
+
 #ifndef HAS_TANGENTS
     vec3 pos_dx = dFdx(frag_position);
     vec3 pos_dy = dFdy(frag_position);
@@ -185,18 +186,25 @@ vec3 get_normal()
     t = normalize(t - ng * dot(ng, t));
     vec3 b = normalize(cross(ng, t));
     mat3 tbn_n = mat3(t, b, ng);
+
 #else
+
     mat3 tbn_n = tbn;
+
 #endif
+
     vec3 n = texture(material.normal_texture, uv_0).rgb;
     n = normalize(tbn_n * ((2.0 * n - 1.0) * vec3(1.0, 1.0, 1.0)));
     return n; // TODO NORMAL MAPPING
+
 #else
+
 #ifdef NORMAL_LOC
     return frag_normal;
 #else
     return normalize(cam_pos - frag_position);
 #endif
+
 #endif
 }
 
@@ -309,7 +317,7 @@ float shadow_calc(mat4 light_matrix, sampler2D shadow_map, float nl)
 void main()
 {
 
-    vec3 color = vec3(0.0);
+    vec4 color = vec4(vec3(0.0), 1.0);
 ///////////////////////////////////////////////////////////////////////////////
 // Handle Metallic Materials
 ///////////////////////////////////////////////////////////////////////////////
@@ -339,10 +347,6 @@ void main()
     vec3 c_diff = mix(vec3(0.0), base_color.rgb * (1 - min_roughness), 1.0 - metallic);
     vec3 f0 = mix(dialectric_spec, base_color.rgb, metallic);
 
-    // Compute reflectance
-    // For typical incident reflectance range (between 4% to 100%) set the grazing reflectance to 100% for typical fresnel effect.
-    // For very low reflectance range on highly diffuse objects (below 4%), incrementally reduce grazing reflecance to 0%.
-
     // Compute normal
     vec3 n = normalize(get_normal());
 
@@ -370,7 +374,7 @@ void main()
         );
         res = res * (1.0 - shadow);
 #endif
-        color += res;
+        color.xyz += res;
         //color = vec3(shadow);
     }
 
@@ -387,7 +391,7 @@ void main()
         // Compute outbound color
         vec3 res = compute_brdf(n, v, l, roughness, metallic,
                                 f0, c_diff, base_color.rgb, radiance);
-        color += res;
+        color.xyz += res;
     }
     for (int i = 0; i < n_spot_lights; i++) {
         vec3 position = spot_lights[i].position;
@@ -417,12 +421,9 @@ void main()
         );
         res = res * (1.0 - shadow);
 #endif
-        color += res;
-//
-//        float tmp = clamp(cd * las + lao, 0.0, 1.0);
-//        color = vec3(0.0);
+        color.xyz += res;
     }
-    color += base_color.xyz * ambient_light;
+    color.xyz += base_color.xyz * ambient_light;
 
     // Calculate lighting from environment
 #ifdef USE_IBL
@@ -432,7 +433,7 @@ void main()
     // Apply occlusion
 #ifdef HAS_OCCLUSION_TEX
     float ao = texture(material.occlusion_texture, uv_0).r;
-    color = color * ao;
+    color.xyz *= ao;
 #endif
 
     // Apply emissive map
@@ -440,13 +441,13 @@ void main()
 #ifdef HAS_EMISSIVE_TEX
     emissive *= srgb_to_linear(texture(material.emissive_texture, uv_0)).rgb;
 #endif
-    color += emissive * material.emissive_factor;
+    color.xyz += emissive * material.emissive_factor;
 
 #ifdef COLOR_0_LOC
     color *= color_multiplier;
 #endif
 
-    frag_color = clamp(vec4(pow(color, vec3(1.0/2.2)), base_color.a), 0.0, 1.0);
+    frag_color = clamp(vec4(pow(color.xyz, vec3(1.0/2.2)), color.a * base_color.a), 0.0, 1.0);
 
 #else
     // TODO GLOSSY MATERIAL BRDF
