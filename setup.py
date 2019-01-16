@@ -1,6 +1,7 @@
 """
 Setup of meshrender Python codebase.
-Authors: Matthew Matl and Jeff Mahler
+
+Author: Matthew Matl
 """
 
 from setuptools import setup
@@ -9,24 +10,23 @@ from setuptools import setup
 exec(open('meshrender/version.py').read())
 
 requirements = [
-    'numpy',
-    'scipy',
-    'trimesh[easy]',
-    'PyOpenGL==3.1.0',
-    'PyOpenGL_accelerate==3.1.0',
-    'pyglet==1.4.0a1',
-    'imageio',
-    'autolab_core',
-    'autolab_perception'
+    'imageio',                      # For Image I/O
+    'numpy',                        # Numpy
+    'Pillow',                       # For Trimesh texture conversions
+    'pyglet==1.4.0a1',              # For the pyglet viewer
+    'PyOpenGL==3.1.0',              # For OpenGL
+    'PyOpenGL_accelerate==3.1.0',   # For OpenGL
+    'six',                          # For Python 2/3 interop
+    'trimesh',                      # For meshes
 ]
 
 setup(
     name = 'meshrender',
     version = __version__,
-    description = 'Python utilities for rendering scenes containing 3D meshes',
-    long_description = 'A set of Python utilities for rendering 3D scenes, based on PyOpenGL and target at OpenGL 3+.',
+    description = 'Python utilities for 3D PBR rendering and visualization.',
+    long_description = 'A set of Python utilities for easy physically-based rendering (PBR) of scenes. Compliant with the glTF 2.0 standard.',
     author = 'Matthew Matl',
-    author_email = 'mmatl@eecs.berkeley.edu',
+    author_email = 'matthewcmatl@gmail.com',
     license = "Apache Software License",
     url = 'https://github.com/BerkeleyAutomation/meshrender',
     classifiers = [
@@ -38,7 +38,7 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
-    keywords = 'rendering opengl 3d visualization',
+    keywords = 'rendering opengl 3d visualization pbr gltf',
     packages = ['meshrender'],
     setup_requires = requirements,
     install_requires = requirements,

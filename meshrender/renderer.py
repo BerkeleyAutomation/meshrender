@@ -1,3 +1,5 @@
+"""PBR renderer for Python.
+"""
 import numpy as np
 
 from .constants import *
@@ -10,17 +12,17 @@ from OpenGL.GL import *
 class Renderer(object):
     """Class for handling all rendering operations on a scene.
 
+    Note
+    ----
+    This renderer relies on the existence of an OpenGL context and
+    does not create one on its own.
+
     Attributes
     ----------
     viewport_width : int
         Width of the viewport in pixels.
     viewport_height : int
         Width of the viewport height in pixels.
-
-    Note
-    ----
-    This doesn't handle creating an OpenGL context -- it assumes that
-    the context has already been created.
     """
 
     def __init__(self, viewport_width, viewport_height):
@@ -43,6 +45,31 @@ class Renderer(object):
 
     def render(self, scene, flags):
         """Render a scene with the given set of flags.
+
+        Parameters
+        ----------
+        scene : :obj:`Scene`
+            A scene to render.
+        flags : int
+            A specification from `RenderFlags`. Valid flags include:
+                - `RenderFlags.NONE`: A normal PBR render
+                - `RenderFlags.DEPTH_ONLY`: Render the depth buffer alone.
+                - `RenderFlags.OFFSCREEN`: Render offscreen and return the color and depth buffers.
+                - `RenderFlags.FLIP_WIREFRAME`: Invert the status of wireframe rendering for each material.
+                - `RenderFlags.ALL_WIREFRAME`: Render all materials in wireframe mode.
+                - `RenderFlags.ALL_SOLID`: Render all meshes as solids
+                - `RenderFlags.SHADOWS_DIRECTIONAL`: Compute shadowing for directional lights.
+                - `RenderFlags.SHADOWS_POINT`: Compute shadowing for point lights.
+                - `RenderFlags.SHADOWS_SPOT`: Compute shadowing for spot lights.
+                - `RenderFlags.SHADOWS_ALL`: Compute shadowing for all lights.
+
+        Returns
+        -------
+        color_im : (h, w, 3) uint8
+            If `RenderFlags.OFFSCREEN` is set, the color buffer in RGB byte format.
+            the `RenderFlags.OFFSCREEN` flag.
+        depth_im : (h, w) float32
+            If `RenderFlags.OFFSCREEN` is set, the depth buffer in linear units.
         """
         # If using shadow maps, render scene into each light's shadow map
         # first.
@@ -51,18 +78,57 @@ class Renderer(object):
         self._update_context(scene, flags)
 
         # Render necessary shadow maps
-        if flags & RenderFlags.SHADOWS_DIRECTIONAL or flags & RenderFlags.SHADOWS_ALL:
-            for light_node in scene.directional_light_nodes:
-                self._shadow_mapping_pass(scene, light_node, flags)
-        if flags & RenderFlags.SHADOWS_SPOT or flags & RenderFlags.SHADOWS_ALL:
-            for light_node in scene.spot_light_nodes:
-                self._shadow_mapping_pass(scene, light_node, flags)
-        if flags & RenderFlags.SHADOWS_POINT or flags & RenderFlags.SHADOWS_ALL:
-            for light_node in scene.point_light_nodes:
-                self._shadow_mapping_pass(scene, light_node, flags)
+        if not bool(flags & RenderFlags.DEPTH_ONLY):
+            for ln in scene.light_nodes:
+                take_pass = False
+                if flags & RenderFlags.SHADOWS_ALL:
+                    take_pass = True
+                elif (isinstance(ln.light, DirectionalLight) and
+                      bool(flags & RenderFlags.SHADOWS_DIRECTIONAL)):
+                    take_pass = True
+                elif (isinstance(ln.light, SpotLight) and
+                      bool(flags & RenderFlags.SHADOWS_SPOT)):
+                    take_pass = True
+                elif (isinstance(ln.light, PointLight) and
+                      bool(flags & RenderFlags.SHADOWS_POINT)):
+                    take_pass = True
+                if take_pass:
+                    self._shadow_mapping_pass(scene, ln, flags)
 
         # Make forward pass
-        return self._forward_pass(scene, flags)
+        retval = self._forward_pass(scene, flags)
+
+        # If necessary, make normals pass
+        if flags & (RenderFlags.VERTEX_NORMALS | RenderFlags.FACE_NORMALS):
+            self._normals_pass(scene, flags)
+
+    def read_color_buf(self):
+        # Extract color image from frame buffer
+        width, height = self.viewport_width, self.viewport_height
+        glReadBuffer(GL_FRONT)
+        color_buf = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
+
+        # Re-format them into numpy arrays
+        color_im = np.frombuffer(color_buf, dtype=np.uint8).reshape((height, width, 3))
+        color_im = np.flip(color_im, axis=0)
+
+        return color_im
+
+    def read_depth_buf(self):
+        width, height = self.viewport_width, self.viewport_height
+        glReadBuffer(GL_FRONT)
+        depth_buf = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
+
+        depth_im = np.frombuffer(depth_buf, dtype=np.float32).reshape((height, width))
+        depth_im = np.flip(depth_im, axis=0)
+
+        inf_inds = (depth_im == 1.0)
+        depth_im = 2.0 * depth_im - 1.0
+        z_near, z_far = scene.main_camera_node.camera.znear, scene.main_camera_node.camera.zfar
+        depth_im = 2.0 * z_near * z_far / (z_far + z_near - depth_im * (z_far - z_near))
+        depth_im[inf_inds] = 0.0
+
+        return depth_im
 
     def delete(self):
         # Free shaders
@@ -117,7 +183,8 @@ class Renderer(object):
             for primitive in mesh.primitives:
 
                 # First, get and bind the appropriate program
-                program = self._get_primitive_program(primitive, flags)
+                program = self._get_primitive_program(primitive, flags,
+                                                      ProgramFlags.USE_MATERIAL)
                 program._bind()
 
                 # Set the camera uniforms
@@ -149,7 +216,7 @@ class Renderer(object):
                 return self._read_main_framebuffer(scene)[1]
             return self._read_main_framebuffer(scene)
         else:
-            return None, None
+            return
 
     def _shadow_mapping_pass(self, scene, light_node, flags):
         light = light_node.light
@@ -171,13 +238,59 @@ class Renderer(object):
             for primitive in mesh.primitives:
 
                 # First, get and bind the appropriate program
-                program = self._get_primitive_program(primitive, RenderFlags.DEPTH_ONLY)
+                program = self._get_primitive_program(primitive, flags, ProgramFlags.NONE)
                 program._bind()
 
                 # Set the camera uniforms
                 program.set_uniform('V', V)
                 program.set_uniform('P', P)
                 program.set_uniform('cam_pos', scene.get_pose(scene.main_camera_node)[:3,3])
+
+                # Finally, bind and draw the primitive
+                self._bind_and_draw_primitive(
+                    primitive=primitive,
+                    pose=scene.get_pose(node),
+                    program=program,
+                    flags=RenderFlags.DEPTH_ONLY
+                )
+                self._reset_active_textures()
+
+        # Unbind the shader and flush the output
+        if program is not None:
+            program._unbind()
+        glFlush()
+
+    def _normals_pass(self, scene, flags):
+        # Set up viewport for render
+        #self._configure_forward_pass_viewport(scene, flags)
+
+        # Set up camera matrices
+        V, P = self._get_camera_matrices(scene)
+
+        # Now, render each object in sorted order
+        for node in self._sorted_mesh_nodes(scene):
+            mesh = node.mesh
+
+            # Skip the mesh if it's not visible
+            if not mesh.is_visible:
+                continue
+
+            for primitive in mesh.primitives:
+
+                # First, get and bind the appropriate program
+                pf = ProgramFlags.NONE
+                if flags & RenderFlags.VERTEX_NORMALS:
+                    pf = pf | ProgramFlags.VERTEX_NORMALS
+                if flags & RenderFlags.FACE_NORMALS:
+                    pf = pf | ProgramFlags.FACE_NORMALS
+                program = self._get_primitive_program(primitive, flags, pf)
+                program._bind()
+
+                # Set the camera uniforms
+                program.set_uniform('V', V)
+                program.set_uniform('P', P)
+                program.set_uniform('normal_magnitude', 0.05 * primitive.scale)
+                program.set_uniform('normal_color', np.array([0.1, 0.1, 1.0, 1.0]))
 
                 # Finally, bind and draw the primitive
                 self._bind_and_draw_primitive(
@@ -212,25 +325,25 @@ class Renderer(object):
             tf = material.tex_flags
             if tf & TexFlags.NORMAL:
                 self._bind_texture(material.normalTexture,
-                                   'normal_texture', program)
+                                   'material.normal_texture', program)
             if tf & TexFlags.OCCLUSION:
                 self._bind_texture(material.occlusionTexture,
-                                   'occlusion_texture', program)
+                                   'material.occlusion_texture', program)
             if tf & TexFlags.EMISSIVE:
                 self._bind_texture(material.emissiveTexture,
-                                   'emissive_texture', program)
+                                   'material.emissive_texture', program)
             if tf & TexFlags.BASE_COLOR:
                 self._bind_texture(material.baseColorTexture,
-                                   'base_color_texture', program)
+                                   'material.base_color_texture', program)
             if tf & TexFlags.METALLIC_ROUGHNESS:
                 self._bind_texture(material.metallicRoughnessTexture,
-                                   'metallic_roughness_texture', program)
+                                   'material.metallic_roughness_texture', program)
             if tf & TexFlags.DIFFUSE:
                 self._bind_texture(material.diffuseTexture,
-                                   'diffuse_texture', program)
+                                   'material.diffuse_texture', program)
             if tf & TexFlags.SPECULAR_GLOSSINESS:
                 self._bind_texture(material.specularGlossinessTexture,
-                                   'specular_glossiness_texture', program)
+                                   'material.specular_glossiness_texture', program)
 
             # Bind other uniforms
             b = 'material.{}'
@@ -267,7 +380,7 @@ class Renderer(object):
                 glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
             # Set culling mode
-            if material.doubleSided:
+            if material.doubleSided or flags & RenderFlags.SKIP_CULL_FACES:
                 glDisable(GL_CULL_FACE)
             else:
                 glEnable(GL_CULL_FACE)
@@ -442,7 +555,7 @@ class Renderer(object):
         tex_id = self._get_next_active_texture()
         glActiveTexture(GL_TEXTURE0 + tex_id)
         texture._bind()
-        program.set_uniform('material.{}'.format(uniform_name), tex_id)
+        program.set_uniform(uniform_name, tex_id)
 
     def _get_next_active_texture(self):
         val = self._texture_alloc_idx
@@ -482,55 +595,66 @@ class Renderer(object):
     # Shader Program Management
     ############################################################################
 
-    def _get_shadow_program(self, light, flags):
-        if isinstance(light, DirectionalLight) or isinstance(light, SpotLight):
-            program = self._program_cache.get_program(
-                vertex_shader='shadow_depth_vert.glsl',
-                fragment_shader='shadow_depth_frag.glsl',
-            )
-            if not program._in_context():
-                program._add_to_context()
-            return program
-        else:
-            raise NotImplementedError('Point light shadows not yet implemented')
-
-    def _get_primitive_program(self, primitive, flags):
+    def _get_primitive_program(self, primitive, flags, program_flags):
         vertex_shader = None
         fragment_shader = None
         geometry_shader = None
         defines = {}
-        if flags & RenderFlags.DEPTH_ONLY:
-            vertex_shader = 'mesh_depth_vert.glsl'
-            fragment_shader = 'mesh_depth_frag.glsl'
-            bf = primitive.buf_flags
-            buf_idx = 1
-            if bf & BufFlags.NORMAL:
-                defines['NORMAL_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.TANGENT:
-                defines['TANGENT_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.TEXCOORD_0:
-                defines['TEXCOORD_0_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.TEXCOORD_1:
-                defines['TEXCOORD_1_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.COLOR_0:
-                defines['COLOR_0_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.JOINTS_0:
-                defines['JOINTS_0_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.WEIGHTS_0:
-                defines['WEIGHTS_0_LOC'] = buf_idx
-                buf_idx += 1
-            defines['INST_M_LOC'] = buf_idx
+
+        if bool(program_flags & ProgramFlags.USE_MATERIAL):
+            vertex_shader = 'mesh.vert'
+            fragment_shader = 'mesh.frag'
+        elif bool(program_flags & (ProgramFlags.VERTEX_NORMALS | ProgramFlags.FACE_NORMALS)):
+            vertex_shader = 'vertex_normals.vert'
+            geometry_shader = 'vertex_normals.geom'
+            fragment_shader = 'vertex_normals.frag'
         else:
-            vertex_shader = 'mesh_vert.glsl'
-            fragment_shader = 'mesh_frag.glsl'
+            vertex_shader = 'mesh_depth.vert'
+            fragment_shader = 'mesh_depth.frag'
+
+        # Set up vertex buffer DEFINES
+        bf = primitive.buf_flags
+        buf_idx = 1
+        if bf & BufFlags.NORMAL:
+            defines['NORMAL_LOC'] = buf_idx
+            buf_idx += 1
+        if bf & BufFlags.TANGENT:
+            defines['TANGENT_LOC'] = buf_idx
+            buf_idx += 1
+        if bf & BufFlags.TEXCOORD_0:
+            defines['TEXCOORD_0_LOC'] = buf_idx
+            buf_idx += 1
+        if bf & BufFlags.TEXCOORD_1:
+            defines['TEXCOORD_1_LOC'] = buf_idx
+            buf_idx += 1
+        if bf & BufFlags.COLOR_0:
+            defines['COLOR_0_LOC'] = buf_idx
+            buf_idx += 1
+        if bf & BufFlags.JOINTS_0:
+            defines['JOINTS_0_LOC'] = buf_idx
+            buf_idx += 1
+        if bf & BufFlags.WEIGHTS_0:
+            defines['WEIGHTS_0_LOC'] = buf_idx
+            buf_idx += 1
+        defines['INST_M_LOC'] = buf_idx
+
+        # Set up shadow mapping defines
+        if flags & RenderFlags.SHADOWS_SPOT:
+            defines['SPOT_LIGHT_SHADOWS'] = 1
+        if flags & RenderFlags.SHADOWS_DIRECTIONAL:
+            defines['DIRECTIONAL_LIGHT_SHADOWS'] = 1
+        if flags & RenderFlags.SHADOWS_POINT:
+            defines['POINT_LIGHT_SHADOWS'] = 1
+
+        # Set up vertex normal defines
+        if program_flags & ProgramFlags.VERTEX_NORMALS:
+            defines['VERTEX_NORMALS'] = 1
+        if program_flags & ProgramFlags.FACE_NORMALS:
+            defines['FACE_NORMALS'] = 1
+
+        # Set up material texture defines
+        if bool(program_flags & ProgramFlags.USE_MATERIAL):
             tf = primitive.material.tex_flags
-            bf = primitive.buf_flags
             if tf & TexFlags.NORMAL:
                 defines['HAS_NORMAL_TEX'] = 1
             if tf & TexFlags.OCCLUSION:
@@ -549,43 +673,17 @@ class Renderer(object):
                 defines['USE_METALLIC_MATERIAL'] = 1
             elif isinstance(material, SpecularGlossinessMaterial):
                 defines['USE_GLOSSY_MATERIAL'] = 1
-            buf_idx = 1
-            if bf & BufFlags.NORMAL:
-                defines['NORMAL_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.TANGENT:
-                defines['TANGENT_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.TEXCOORD_0:
-                defines['TEXCOORD_0_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.TEXCOORD_1:
-                defines['TEXCOORD_1_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.COLOR_0:
-                defines['COLOR_0_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.JOINTS_0:
-                defines['JOINTS_0_LOC'] = buf_idx
-                buf_idx += 1
-            if bf & BufFlags.WEIGHTS_0:
-                defines['WEIGHTS_0_LOC'] = buf_idx
-                buf_idx += 1
-            defines['INST_M_LOC'] = buf_idx
-            if flags & RenderFlags.SHADOWS_SPOT:
-                defines['SPOT_LIGHT_SHADOWS'] = 1
-            if flags & RenderFlags.SHADOWS_DIRECTIONAL:
-                defines['DIRECTIONAL_LIGHT_SHADOWS'] = 1
-            if flags & RenderFlags.SHADOWS_POINT:
-                defines['POINT_LIGHT_SHADOWS'] = 1
+
         program = self._program_cache.get_program(
             vertex_shader=vertex_shader,
             fragment_shader=fragment_shader,
             geometry_shader=geometry_shader,
             defines=defines
         )
+
         if not program._in_context():
             program._add_to_context()
+
         return program
 
     ############################################################################
@@ -696,21 +794,94 @@ class Renderer(object):
     # Shadowmap Debugging
     ############################################################################
 
-    def _render_light_shadowmap(self, scene, light):
-        if l.shadow_texture is None:
-            raise ValueError('Light does not have a shadow texture')
-        self._configure_forward_pass_viewport(scene, 0)
-        program = self._get_debug_quad_program()
-        program._bind()
-        self._bind_texture(l.shadow_texture, 'depthMap', program)
-        self._render_debug_quad()
-        self._reset_active_textures()
+    def _forward_pass_no_reset(self, scene, flags):
+        # Set up camera matrices
+        V, P = self._get_camera_matrices(scene)
+
+        # Now, render each object in sorted order
+        for node in self._sorted_mesh_nodes(scene):
+            mesh = node.mesh
+
+            # Skip the mesh if it's not visible
+            if not mesh.is_visible:
+                continue
+
+            for primitive in mesh.primitives:
+
+                # First, get and bind the appropriate program
+                program = self._get_primitive_program(primitive, flags,
+                                                      ProgramFlags.USE_MATERIAL)
+                program._bind()
+
+                # Set the camera uniforms
+                program.set_uniform('V', V)
+                program.set_uniform('P', P)
+                program.set_uniform('cam_pos', scene.get_pose(scene.main_camera_node)[:3,3])
+
+                # Next, bind the lighting
+                if not flags & RenderFlags.DEPTH_ONLY:
+                    self._bind_lighting(scene, program, flags)
+
+                # Finally, bind and draw the primitive
+                self._bind_and_draw_primitive(
+                    primitive=primitive,
+                    pose=scene.get_pose(node),
+                    program=program,
+                    flags=flags
+                )
+                self._reset_active_textures()
+
+        # Unbind the shader and flush the output
+        if program is not None:
+            program._unbind()
         glFlush()
+
+    def _render_light_shadowmaps(self, scene, light_nodes, flags):
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
+        glClearColor(*scene.bg_color)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glEnable(GL_DEPTH_TEST)
+        glDepthMask(GL_TRUE)
+        glDepthFunc(GL_LESS)
+        glDepthRange(0.0, 1.0)
+
+        w = self.viewport_width
+        h = self.viewport_height
+
+        num_nodes = len(light_nodes)
+        viewport_dims = {
+            (0,2) : [0,h//2,w//2,h],
+            (1,2) : [w//2,h//2,w,h],
+            (0,3) : [0,h//2,w//2,h],
+            (1,3) : [w//2,h//2,w,h],
+            (2,3) : [0,0,w//2,h//2],
+            (0,4) : [0,h//2,w//2,h],
+            (1,4) : [w//2,h//2,w,h],
+            (2,4) : [0,0,w//2,h//2],
+            (3,4) : [w//2,0,w,h//2]
+        }
+        for i, ln in enumerate(light_nodes):
+            light = ln.light
+
+            if light.shadow_texture is None:
+                raise ValueError('Light does not have a shadow texture')
+
+            glViewport(*viewport_dims[(i, num_nodes+1)])
+
+            program = self._get_debug_quad_program()
+            program._bind()
+            self._bind_texture(light.shadow_texture, 'depthMap', program)
+            self._render_debug_quad()
+            self._reset_active_textures()
+            glFlush()
+        i += 1
+        glViewport(*viewport_dims[(i, num_nodes+1)])
+        self._forward_pass_no_reset(scene, flags)
 
     def _get_debug_quad_program(self):
         program = self._program_cache.get_program(
-            vertex_shader='debug_quad_vert.glsl',
-            fragment_shader='debug_quad_frag.glsl'
+            vertex_shader='debug_quad.vert',
+            fragment_shader='debug_quad.frag'
         )
         if not program._in_context():
             program._add_to_context()
@@ -718,7 +889,7 @@ class Renderer(object):
 
     def _render_debug_quad(self):
         x = glGenVertexArrays(1)
-        glBindVertexArray(self._debug_quad_mesh)
+        glBindVertexArray(x)
         glDrawArrays(GL_TRIANGLES, 0, 6)
         glBindVertexArray(0)
         glDeleteVertexArrays(1, [x])

@@ -280,7 +280,7 @@ class Scene(object):
         if node.name is not None:
             if node.name not in self._name_to_nodes:
                 self._name_to_nodes[node.name] = set()
-            self._name_to_nodes.add(node)
+            self._name_to_nodes[node.name].add(node)
         for obj in [node.mesh, node.camera, node.light]:
             if obj is not None:
                 self._obj_to_nodes[obj] = node
@@ -347,9 +347,9 @@ class Scene(object):
 
         # Remove from maps
         if node.name in self._name_to_nodes:
-            self._name_to_nodes[name].remove(node)
-            if len(self._name_to_nodes[name]) == 0:
-                self._name_to_nodes.pop(name)
+            self._name_to_nodes[node.name].remove(node)
+            if len(self._name_to_nodes[node.name]) == 0:
+                self._name_to_nodes.pop(node.name)
         for obj in [node.mesh, node.camera, node.light]:
             if obj is None:
                 continue

@@ -245,6 +245,25 @@ class Primitive(object):
         return self._bounds
 
     @property
+    def centroid(self):
+        """(3,) float : The centroid of the primitive's axis-aligned bounding box
+        (AABB).
+        """
+        return np.mean(self.bounds, axis=0)
+
+    @property
+    def extents(self):
+        """(3,) float : The lengths of the axes of the primitive's AABB.
+        """
+        return np.diff(self.bounds, axis=0).reshape(-1)
+
+    @property
+    def scale(self):
+        """(3,) float : The length of the diagonal of the primitive's AABB.
+        """
+        return np.linalg.norm(self.extents)
+
+    @property
     def buf_flags(self):
         if self._buf_flags is None:
             self._buf_flags = self._compute_buf_flags()

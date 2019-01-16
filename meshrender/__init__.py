@@ -3,7 +3,7 @@ from .node import Node
 from .light import PointLight, DirectionalLight, SpotLight
 from .material import Material, MetallicRoughnessMaterial, SpecularGlossinessMaterial
 from .texture import Texture
-from .pyglet_viewer import SceneViewer
+from .viewer import SceneViewer
 from .scene import Scene
 from .mesh import Mesh
 from .primitive import Primitive

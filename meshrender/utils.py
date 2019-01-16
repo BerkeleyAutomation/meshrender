@@ -1,5 +1,5 @@
 import numpy as np
-import PIL
+from PIL import Image
 
 def format_color_vector(value, length):
     retval = value
@@ -42,7 +42,7 @@ def format_texture_source(texture, target_channels='RGB'):
         return None
 
     # Convert PIL images into numpy arrays
-    if isinstance(texture, PIL.Image.Image):
+    if isinstance(texture, Image.Image):
         texture = np.array(texture)
 
     # Format numpy arrays

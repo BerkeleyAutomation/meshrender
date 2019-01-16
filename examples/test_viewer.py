@@ -9,7 +9,7 @@ import os
 from meshrender import Scene, Material, Mesh, SceneViewer, DirectionalLight, MetallicRoughnessMaterial, SpotLight, PointLight
 
 # Start with an empty scene
-scene = Scene(ambient_light=np.ones(3)*0.1)#np.array([1.0, 0.0, 0.0]))
+scene = Scene()#ambient_light=np.ones(3)*0.02)#np.array([1.0, 0.0, 0.0]))
 
 #====================================
 # Add objects to the scene
@@ -93,7 +93,20 @@ y = np.cross(z, x)
 lm[:3,:3] = np.c_[x,y,z]
 #scene.add(DirectionalLight(color=np.ones(3), intensity=10.0), pose=lm)
 lm[:3,3] = np.array([0.0, 0.0, 0.1]) + z * 0.5
+
+lm2 = np.eye(4)
+z = np.array([0.0, 1.0, 1.0])
+z = z / np.linalg.norm(z)
+x = np.array([0.0, -z[2], z[2]])
+y = np.cross(z, x)
+lm2[:3,:3] = np.c_[x,y,z]
+#scene.add(DirectionalLight(color=np.ones(3), intensity=10.0), pose=lm)
+lm2[:3,3] = np.array([0.0, 0.0, 0.1]) + z * 0.5
+
 scene.add(SpotLight(color=np.ones(3), intensity=10.0, innerConeAngle=np.pi/16, outerConeAngle=np.pi/8), pose=lm)
+#scene.add(SpotLight(color=np.ones(3), intensity=10.0, innerConeAngle=np.pi/16, outerConeAngle=np.pi/8), pose=lm2)
+#scene.add(DirectionalLight(color=np.ones(3), intensity=10.0), pose=lm)
+#scene.add(DirectionalLight(color=np.ones(3), intensity=10.0), pose=lm2)
 #scene.add(PointLight(color=np.ones(3), intensity=1.0), pose=lm)
 #scene.add(bar_obj, pose=pawn_pose.matrix)
 
@@ -229,4 +242,4 @@ scene.add(SpotLight(color=np.ones(3), intensity=10.0, innerConeAngle=np.pi/16, o
 #    color = render.renders[RenderMode.COLOR]
 #    color.save('output/random_{}.jpg'.format(i))
 
-v = SceneViewer(scene, raymond_lighting=True)
+v = SceneViewer(scene, shadows=True, use_direct_lighting=True)

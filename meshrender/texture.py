@@ -17,7 +17,7 @@ class Texture(object):
     ----------
     sampler : :obj:`Sampler`
         The sampler used by this texture.
-    source : (w,h,c) uint8 or (w,h,c) float or :obj:`PIL.Image.Image`
+    source : (h,w,c) uint8 or (h,w,c) float or :obj:`PIL.Image.Image`
         The image used by this texture. If None, the texture is created
         empty and width and height must be specified.
     source_channels : str

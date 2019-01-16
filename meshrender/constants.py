@@ -57,3 +57,12 @@ class RenderFlags(object):
     SHADOWS_POINT = 64          # Perform shadow mapping for point lights
     SHADOWS_SPOT = 128          # Perform shadow mapping for spot lights
     SHADOWS_ALL = 256           # Perform shadow mapping for all lights
+    VERTEX_NORMALS = 512        # Show vertex normals
+    FACE_NORMALS = 1024         # Show face normals
+    SKIP_CULL_FACES = 2048      # Do not cull back faces
+
+class ProgramFlags:
+    NONE = 0
+    USE_MATERIAL = 1
+    VERTEX_NORMALS = 2
+    FACE_NORMALS = 4
