@@ -247,7 +247,6 @@ class Viewer(pyglet.window.Window):
         clock.set_fps_limit(self.viewer_flags['refresh_rate'])
         clock.schedule_interval(Viewer.time_event, 1.0/self.viewer_flags['refresh_rate'], self)
 
-        print self._renderer
         # Start the event loop
         pyglet.app.run()
 
