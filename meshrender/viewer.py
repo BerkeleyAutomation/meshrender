@@ -1,5 +1,16 @@
-import os
+"""A pyglet-based interactive 3D scene viewer.
+"""
 import copy
+import os
+
+import imageio
+import numpy as np
+import OpenGL
+import pyglet
+pyglet.options['shadow_window'] = False
+import pyglet.gl as gl
+from pyglet import clock
+
 try:
     from Tkinter import Tk, tkFileDialog as filedialog
 except ImportError:
@@ -8,16 +19,6 @@ except ImportError:
     except:
         pass
 
-import pyglet
-pyglet.options['shadow_window'] = False
-import pyglet.gl as gl
-from pyglet import clock
-
-import numpy as np
-import imageio
-
-import OpenGL
-
 from .constants import OPEN_GL_MAJOR, OPEN_GL_MINOR, RenderFlags, TextAlign
 from .light import DirectionalLight
 from .node import Node
@@ -25,34 +26,95 @@ from .camera import PerspectiveCamera
 from .trackball import Trackball
 from .renderer import Renderer
 
-class SceneViewer(pyglet.window.Window):
-    """An interactive viewer for a 3D scene.
+class Viewer(pyglet.window.Window):
+    """An interactive viewer for 3D scenes.
 
-    This doesn't use the scene's camera - instead, it uses one based on a trackball.
+    The viewer's camera is separate from the scene's, but will take on
+    the parameters of the scene's main view camera and start in the same pose.
+    If the scene does not have a camera, a suitable default will be provided.
 
     The basic commands for moving about the scene are given as follows:
 
     * To rotate the camera about the center of the scene, hold the left mouse button and drag the cursor.
-    * To rotate the camera about its viewing axis, hold CTRL and then hold the left mouse button and drag the cursor.
+    * To rotate the camera about its viewing axis, hold CTRL left mouse button and drag the cursor.
     * To pan the camera, do one of the following:
-
         * Hold SHIFT, then hold the left mouse button and drag the cursor.
         * Hold the middle mouse button and drag the cursor.
-
-    * To zoom the camera in or our, do one of the following:
-
+    * To zoom the camera in or out, do one of the following:
         * Scroll the mouse wheel.
         * Hold the right mouse button and drag the cursor.
 
     Other keyboard commands are as follows:
 
-    * z -- resets the view to the original view.
-    * w -- toggles wireframe mode for each mesh in the scene.
-    * a -- toggles rotational animation.
-    * l -- toggles two-sided lighting
-    * q -- quits the viewer
-    * s -- saves the current image
-    * r -- starts a recording session, pressing again stops (saves animation as .gif)
+    * `a`: Toggles rotational animation mode.
+    * `c`: Toggles backface culling.
+    * `f`: Toggles face normal visualization.
+    * `h`: Toggles shadow rendering.
+    * `l`: Toggles lighting mode (scene lighting, Raymond lighting, or direct lighting).
+    * `n`: Toggles vertex normal visualization.
+    * `q`: Quits the viewer.
+    * `r`: Starts recording a GIF, and pressing again stops recording and opens a file dialog.
+    * `s`: Opens a file dialog to save the current view as an image.
+    * 'w': Toggles wireframe mode (scene default, flip wireframes, all wireframe, or all solid).
+
+    Parameters
+    ----------
+    scene : :obj:`Scene`
+        The scene to visualize.
+    viewport_size : (2,) int
+        The width and height of the initial viewing window.
+    render_flags : dict
+        A set of flags for rendering the scene. Described in the note below.
+    viewer_flags : dict
+        A set of flags for controlling the viewer's behavior. Described in the note below.
+    registered_keys : dict
+        A map from ASCII key characters to tuples containing:
+            * A function to be called whenever the key is pressed, whose first argument
+              will be the viewer itself.
+            * (Optionally) A list of additional positional arguments to be passed to the function.
+            * (Optionally) A dict of keyword arguments to be passed to the function.
+    kwargs : dict
+        Any keyword arguments left over will be interpreted as belonging to either the
+        `render_flags` or `viewer_flags` dictionaries. Those flag sets will be updated
+        appropriately.
+
+    Note
+    ----
+    The valid keys for `render_flags` are as follows:
+        * `flip_wireframe`: `bool`, If `True`, all objects will have their wireframe modes flipped
+          from what their material indicates. Defaults to `False`.
+        * `all_wireframe`: `bool`, If `True`, all objects will be rendered in wireframe mode.
+          Defaults to `False`.
+        * `all_solid`: `bool`, If `True`, all objects will be rendered in solid mode. Defaults
+          to `False`.
+        * `shadows`: `bool`, If `True`, shadows will be rendered. Defaults to `False`.
+        * `vertex_normals`: `bool`, If `True`, vertex normals will be rendered as blue lines.
+          Defaults to `False`.
+        * `face_normals`: `bool`, If `True`, face normals will be rendered as blue lines.
+          Defaults to `False`.
+        * `cull_faces`: `bool`, If `True`, backfaces will be culled. Defaults to `True`.
+
+    Note
+    ----
+    The valid keys for `viewer_flags` are as follows:
+        * `rotate`: `bool`, If `True`, the scene's camera will rotate about an axis. Defaults to `False`.
+        * `rotate_rate`: `float`, The rate of rotation in radians per second. Defaults to `PI / 3.0`.
+        * `rotate_axis`: `(3,) float`, The axis in world coordinates to rotate about. Defaults
+          to `[0,0,1]`.
+        * `central_node`: :obj:`Node`, A scene node to start the camera pointing at. Defaults
+          to `None`.
+        * `use_raymond_lighting`: `bool`, If `True`, an additional set of three directional lights
+          that move with the camera will be added to the scene. Defaults to `False`.
+        * `use_directional_lighting`: `bool`, If `True`, an additional directional light that
+          moves with the camera and points out of it will be added to the scene. Defaults to `False`.
+        * `save_directory`: `str`, A directory to open the file dialogs in. Defaults to `None`.
+        * `window_title`: `str`, A title for the viewer's application window. Defaults to `"Scene Viewer"`.
+        * `refresh_rate`: `float`, A refresh rate for rendering, in Hertz. Defaults to `30.0`.
+
+    Note
+    ----
+    Animations can be accomplished by running the viewer in a separate thread and then
+    modifying the scene in the main thread.
     """
 
     def __init__(self, scene, viewport_size=None,
@@ -462,8 +524,13 @@ class SceneViewer(pyglet.window.Window):
 
         The view is initially along the positive x-axis a sufficient distance from the scene.
         """
-        centroid = self.scene.centroid
         scale = self.scene.scale
+        centroid = self.scene.centroid
+
+        if self.viewer_flags['central_node'] is not None:
+            node = self.viewer_flags['central_node']
+            if node in self.scene.nodes:
+                centroid = self.scene.get_pose(node)[:3,3]
 
         self._camera_node.matrix = self._default_camera_pose
         self._trackball = Trackball(self._default_camera_pose, self.viewport_size, scale, centroid)

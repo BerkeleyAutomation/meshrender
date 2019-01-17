@@ -25,7 +25,7 @@ class Scene(object):
     bg_color : (4,) float, optional
         Background color of scene.
     ambient_light : (3,) float, optional
-        Color of ambient light.
+        Color of ambient light. Defaults to no ambient light.
     """
 
     def __init__(self,

@@ -80,6 +80,8 @@ class OffscreenRenderer(object):
         return color, depth
 
     def delete(self):
+        """Free all OpenGL resources.
+        """
         self._renderer.delete()
         self._platform.delete_context()
 

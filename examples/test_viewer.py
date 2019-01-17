@@ -1,12 +1,99 @@
-import pyglet
-pyglet.options['shadow_window'] = False
-
+"""Examples of using meshrender for viewing and offscreen rendering.
+"""
+import os
 import numpy as np
 import trimesh
 
-import os
-#os.environ['MESHRENDER_EGL_OFFSCREEN'] = 't'
-from meshrender import Scene, Material, Mesh, SceneViewer, DirectionalLight, MetallicRoughnessMaterial, SpotLight, PointLight, OffscreenRenderer, PerspectiveCamera
+from meshrender import PerspectiveCamera,\
+                       DirectionalLight, SpotLight,\
+                       MetallicRoughnessMaterial,\
+                       Primitive, Mesh, Node, Scene,\
+                       Viewer, OffscreenRenderer
+
+#==============================================================================
+# Mesh creation
+#==============================================================================
+
+#------------------------------------------------------------------------------
+# Creating textured meshes from trimeshes
+#------------------------------------------------------------------------------
+
+# Fuze trimesh
+fuze_trimesh = trimesh.load('./models/fuze.obj', process=False)
+fuze_mesh = Mesh.from_trimesh(fuze_trimesh)
+
+# Drill trimesh
+drill_trimesh = trimesh.load('./models/drill.obj', process=False)
+drill_mesh = Mesh.from_trimesh(drill_trimesh)
+
+# Water bottle trimesh
+bottle_gltf = trimesh.load('./models/WaterBottle.glb', process=False)
+bottle_trimesh = bottle_gltf.geometry[list(bottle_gltf.geometry.keys())[0]]
+bottle_mesh = Mesh.from_trimesh(bottle_trimesh)
+
+#------------------------------------------------------------------------------
+# Creating meshes with per-vertex colors
+#------------------------------------------------------------------------------
+boxv_trimesh = trimesh.creation.boxv(extents=0.05*np.ones(3))
+boxv_vertex_colors = np.random.uniform(size=(boxv_trimesh.vertices.shape))
+boxv_trimesh.visual.vertex_colors = boxv_vertex_colors
+boxv_mesh = Mesh.from_trimesh(boxv_trimesh)
+
+#------------------------------------------------------------------------------
+# Creating meshes with per-face colors
+#------------------------------------------------------------------------------
+boxf_trimesh = trimesh.creation.box(extents=0.05*np.ones(3))
+boxf_face_colors = np.random.uniform(size=(boxf_trimesh.vertices.shape[0]*3,3))
+boxf_trimesh.visual.face_colors = boxf_face_colors
+boxf_mesh = Mesh.from_trimesh(boxf_trimesh)
+
+#------------------------------------------------------------------------------
+# Creating meshes from point clouds
+#------------------------------------------------------------------------------
+points = trimesh.creation.icosphere(radius=0.05).vertices
+points_mesh = Mesh.from_points(points)
+
+#==============================================================================
+# Light creation
+#==============================================================================
+
+direc_l = DirectionalLight(color=np.ones(3), intensity=10.0)
+spot_l = SpotLight(color=np.ones(3), intensity=10.0,
+                   innerConeAngle=np.pi/16, outerConeAngle=np.pi/8)
+point_l = PointLight(color=np.ones(3), intensity=10.0)
+
+#==============================================================================
+# Camera creation
+#==============================================================================
+
+cam = PerspectiveCamera(yfov=(np.pi / 2.0))
+
+#==============================================================================
+# Scene creation
+#==============================================================================
+
+scene = Scene(ambient_light=np.array([0.02, 0.02, 0.02]))
+
+#==============================================================================
+# Adding objects to the scene
+#==============================================================================
+
+#------------------------------------------------------------------------------
+# By manually creating nodes
+#------------------------------------------------------------------------------
+fuze_node = Node(mesh=fuze_mesh, translation=np.array([0.1, 0.0, 0.0]))
+scene.add_node(fuze_node)
+
+#------------------------------------------------------------------------------
+# By using the add() utility function
+#------------------------------------------------------------------------------
+scene.add(drill_mesh, pose=np.eye(4))
+scene.add(cam)
+
+
+
+
+scene.add(SpotLight(color=np.ones(3), intensity=10.0,
 
 # Start with an empty scene
 scene = Scene(ambient_light=np.ones(3)*0.02)#np.array([1.0, 0.0, 0.0]))
@@ -116,140 +203,6 @@ cm[:3,3] = np.array([0.0, 0.0, 0.25])
 scene.add(PerspectiveCamera(yfov=np.pi/2.0), pose=cm)
 
 
-
-#====================================
-# Add lighting to the scene
-#====================================
-
-## Create an ambient light
-#ambient = AmbientLight(
-#    color=np.array([1.0, 1.0, 1.0]),
-#    strength=1.0
-#)
-#
-## Create a point light
-#
-#points = []
-##for i in range(6):
-##    points.append(
-##        PointLight(
-##            location=np.array([-3.0, 3.0-i, 3.0]),
-##            color=np.array([1.0, 1.0, 1.0]),
-##            strength=4.0
-##        )
-##    )
-##
-##for i, point in enumerate(points):
-##    scene.add_light('point_{}'.format(i), point)
-#
-## Add the lights to the scene
-#scene.ambient_light = ambient # only one ambient light per scene
-#
-#dl = DirectionalLight(
-#    direction=np.array([0.0, 0.0, -1.0]),
-#    color=np.array([1.0, 1.0, 1.0]),
-#    strength=2.0
-#)
-#scene.add_light('direc', dl)
-
-#====================================
-# Add a camera to the scene
-#====================================
-
-## Set up camera intrinsics
-#ci = CameraIntrinsics(
-#    frame = 'camera',
-#    fx = 525.0,
-#    fy = 525.0,
-#    cx = 320.0,
-#    cy = 240.0,
-#    skew=0.0,
-#    height=480,
-#    width=640
-#)
-#
-## Set up the camera pose (z axis faces away from scene, x to right, y up)
-#cp = RigidTransform(
-#    rotation = np.array([
-#        [0.0, 0.0, 1.0],
-#        [0.0, -1.0,  0.0],
-#        [1.0, 0.0,  0.0]
-#    ]),
-#    translation = np.array([-0.3, 0.0, 0.0]),
-#    from_frame='camera',
-#    to_frame='world'
-#)
-#
-## Create a VirtualCamera
-#camera = VirtualCamera(ci, cp)
-#
-## Add the camera to the scene
-#scene.camera = camera
-
-#====================================
-# Render images
-#====================================
-
-## Render raw numpy arrays containing color and depth
-#color_image_raw, depth_image_raw = scene.render(render_color=True)
-#
-## Alternatively, just render a depth image
-#depth_image_raw = scene.render(render_color=False)
-#
-## Alternatively, collect wrapped images
-#wrapped_color, wrapped_depth, wrapped_segmask = scene.wrapped_render(
-#    [RenderMode.COLOR, RenderMode.DEPTH, RenderMode.SEGMASK]
-#)
-#
-#wrapped_color.save('output/color.jpg')
-#wrapped_depth.save('output/depth.jpg')
-#
-## Test random variables
-#cfg = {
-#    'focal_length': {
-#        'min' : 520,
-#        'max' : 530,
-#    },
-#    'delta_optical_center': {
-#        'min' : 0.0,
-#        'max' : 0.0,
-#    },
-#    'radius': {
-#        'min' : 0.5,
-#        'max' : 0.7,
-#    },
-#    'azimuth': {
-#        'min' : 0.0,
-#        'max' : 360.0,
-#    },
-#    'elevation': {
-#        'min' : 0.10,
-#        'max' : 10.0,
-#    },
-#    'roll': {
-#        'min' : -0.2,
-#        'max' : 0.2,
-#    },
-#    'x': {
-#        'min' : -0.01,
-#        'max' : 0.01,
-#    },
-#    'y': {
-#        'min' : -0.01,
-#        'max' : 0.01,
-#    },
-#    'im_width': 600,
-#    'im_height': 600
-#}
-#
-#urv = UniformPlanarWorksurfaceImageRandomVariable('pawn', scene, [RenderMode.COLOR], 'camera', cfg)
-#renders = urv.sample(10, front_and_back=True)
-#
-#for i, render in enumerate(renders):
-#    color = render.renders[RenderMode.COLOR]
-#    color.save('output/random_{}.jpg'.format(i))
-
-#v = SceneViewer(scene, shadows=True, use_direct_lighting=True)
 
 r = OffscreenRenderer(640, 480)
 color, depth = r.render(scene)

@@ -135,11 +135,12 @@ class Renderer(object):
         y : int
             Vertical pixel location of text.
         font_name : str
-            Name of font, from `meshrender/fonts`.
+            Name of font, from the `meshrender/fonts` folder, or
+            a path to a `.ttf` file.
         font_pt : int
-            Size of text.
+            Height of the text, in font points.
         color : (4,) float
-            The color of the text.
+            The color of the text. Default is black.
         scale : int
             Scaling factor for text.
         align : int
@@ -178,6 +179,13 @@ class Renderer(object):
         font.render_string(text, x, y, scale, align)
 
     def read_color_buf(self):
+        """Read and return the current viewport's color buffer.
+
+        Returns
+        -------
+        color_im : (h, w, 3) uint8
+            The color buffer in RGB byte format.
+        """
         # Extract color image from frame buffer
         width, height = self.viewport_width, self.viewport_height
         glReadBuffer(GL_FRONT)
@@ -190,6 +198,13 @@ class Renderer(object):
         return color_im
 
     def read_depth_buf(self):
+        """Read and return the current viewport's color buffer.
+
+        Returns
+        -------
+        depth_im : (h, w) float32
+            The depth buffer in linear units.
+        """
         width, height = self.viewport_width, self.viewport_height
         glReadBuffer(GL_FRONT)
         depth_buf = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
@@ -206,6 +221,8 @@ class Renderer(object):
         return depth_im
 
     def delete(self):
+        """Free all allocated OpenGL resources.
+        """
         # Free shaders
         self._program_cache.clear()
 

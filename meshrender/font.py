@@ -150,7 +150,18 @@ class Font(object):
         Parameters
         ----------
         text : str
-        TODO HERE
+            The text to render.
+        x : int
+            Horizontal pixel location of text.
+        y : int
+            Vertical pixel location of text.
+        scale : int
+            Scaling factor for text.
+        align : int
+            One of the TextAlign options which specifies where the `x` and `y`
+            parameters lie on the text. For example, `TextAlign.BOTTOM_LEFT`
+            means that `x` and `y` indicate the position of the bottom-left corner
+            of the textbox.
         """
         glActiveTexture(GL_TEXTURE0)
         glEnable(GL_BLEND)
