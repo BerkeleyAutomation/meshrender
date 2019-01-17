@@ -1,3 +1,7 @@
+"""Font texture loader and processor.
+
+Author: Matthew Matl
+"""
 import freetype
 import numpy as np
 import os
@@ -20,12 +24,17 @@ class FontCache(object):
             self.font_dir = os.path.join(base_dir, 'fonts')
 
     def get_font(self, font_name, font_pt):
+        # If it's a file, load it directly, else, try to load from font dir.
+        if os.path.isfile(font_name):
+            font_filename = font_name
+            _, font_name = os.path.split(font_name)
+            font_name, _ = os.path.split(font_name)
+        else:
+            font_filename = os.path.join(self.font_dir, font_name) + '.ttf'
+
         key = (font_name, int(font_pt))
 
         if key not in self._font_cache:
-            font_filename = os.path.join(self.font_dir, font_name)
-            if font_name[-4:] != '.ttf':
-                font_filename += '.ttf'
             self._font_cache[key] = Font(font_filename, font_pt)
         return self._font_cache[key]
 
@@ -35,6 +44,8 @@ class FontCache(object):
         self._font_cache = {}
 
 class Character(object):
+    """A single character, with its texture and attributes.
+    """
 
     def __init__(self, texture, size, bearing, advance):
         self.texture = texture
@@ -43,6 +54,15 @@ class Character(object):
         self.advance = advance
 
 class Font(object):
+    """A font object.
+
+    Attributes
+    ----------
+    font_file : str
+        The file to load the font from.
+    font_pt : int
+        The height of the font in pixels.
+    """
 
     def __init__(self, font_file, font_pt=40):
         self.font_file = font_file
@@ -121,7 +141,16 @@ class Font(object):
         self._remove_from_context()
 
     def render_string(self, text, x, y, scale=1.0, align=TextAlign.BOTTOM_LEFT):
-        """Assumes correct shader program already bound w/ uniforms set.
+        """Render a string to the current view buffer.
+
+        Note
+        ----
+        Assumes correct shader program already bound w/ uniforms set.
+
+        Parameters
+        ----------
+        text : str
+        TODO HERE
         """
         glActiveTexture(GL_TEXTURE0)
         glEnable(GL_BLEND)
