@@ -170,7 +170,7 @@ class Mesh(object):
                         reshape(3*len(mesh.faces), mesh.visual.vertex_colors.shape[1])
                     material = default_material
                 elif mesh.visual.kind == 'face':
-                    color_0 = np.repeat(mesh.face_colors, 3, axis=0)
+                    color_0 = np.repeat(mesh.visual.face_colors, 3, axis=0)
                     material = default_material
                 elif mesh.visual.kind == 'texture':
                     texcoord_0 = mesh.visual.uv[mesh.faces].reshape((3*len(mesh.faces), mesh.visual.uv.shape[1]))

@@ -38,6 +38,9 @@ class Renderer(object):
         self._main_fb = None
         self._main_cb = None
         self._main_db = None
+        self._main_fb_ms = None
+        self._main_cb_ms = None
+        self._main_db_ms = None
         self._main_fb_dims = (None, None)
         self._shadow_fb = None
         self._latest_znear = DEFAULT_Z_NEAR
@@ -81,9 +84,6 @@ class Renderer(object):
         depth_im : (h, w) float32
             If `RenderFlags.OFFSCREEN` is set, the depth buffer in linear units.
         """
-        glClearColor(*scene.bg_color)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-
         # Update context with meshes and textures
         self._update_context(scene, flags)
 
@@ -260,9 +260,13 @@ class Renderer(object):
     ############################################################################
 
     def _forward_pass(self, scene, flags):
-
         # Set up viewport for render
         self._configure_forward_pass_viewport(flags)
+
+        # Clear it
+        glClearColor(*scene.bg_color)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glEnable(GL_MULTISAMPLE)
 
         # Set up camera matrices
         V, P = self._get_camera_matrices(scene)
@@ -805,7 +809,7 @@ class Renderer(object):
         # If using offscreen render, bind main framebuffer
         if flags & RenderFlags.OFFSCREEN:
             self._configure_main_framebuffer()
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._main_fb)
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._main_fb_ms)
         else:
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
 
@@ -855,32 +859,55 @@ class Renderer(object):
 
         # If framebuffer doesn't exist, create it
         if self._main_fb is None:
+            # Generate standard buffer
             self._main_cb, self._main_db = glGenRenderbuffers(2)
             glBindRenderbuffer(GL_RENDERBUFFER, self._main_cb)
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, self.viewport_width, self.viewport_height)
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA,
+                    self.viewport_width, self.viewport_height)
             glBindRenderbuffer(GL_RENDERBUFFER, self._main_db)
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, self.viewport_width, self.viewport_height)
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24,
+                    self.viewport_width, self.viewport_height)
             self._main_fb = glGenFramebuffers(1)
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._main_fb)
             glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, self._main_cb)
             glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, self._main_db)
+            # Generate multisample buffer
+            self._main_cb_ms, self._main_db_ms = glGenRenderbuffers(2)
+            glBindRenderbuffer(GL_RENDERBUFFER, self._main_cb_ms)
+            glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_RGBA,
+                    self.viewport_width, self.viewport_height)
+            glBindRenderbuffer(GL_RENDERBUFFER, self._main_db_ms)
+            glRenderbufferStorageMultisample(GL_RENDERBUFFER, 4, GL_DEPTH_COMPONENT24,
+                    self.viewport_width, self.viewport_height)
+            self._main_fb_ms = glGenFramebuffers(1)
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._main_fb_ms)
+            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, self._main_cb_ms)
+            glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, self._main_db_ms)
+
             self._main_fb_dims = (self.viewport_width, self.viewport_height)
 
     def _delete_main_framebuffer(self):
         if self._main_fb is not None:
-            glDeleteFramebuffers(1, [self._main_fb])
+            glDeleteFramebuffers(2, [self._main_fb, self._main_fb_ms])
         if self._main_cb is not None:
-            glDeleteRenderbuffers(1, [self._main_cb])
+            glDeleteRenderbuffers(2, [self._main_cb, self._main_cb_ms])
         if self._main_db is not None:
-            glDeleteRenderbuffers(1, [self._main_db])
+            glDeleteRenderbuffers(2, [self._main_db, self._main_db_ms])
 
         self._main_fb = None
         self._main_cb = None
         self._main_db = None
+        self._main_fb_ms = None
+        self._main_cb_ms = None
+        self._main_db_ms = None
         self._main_fb_dims = (None, None)
 
     def _read_main_framebuffer(self, scene):
         width, height = self._main_fb_dims[0], self._main_fb_dims[1]
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, self._main_fb_ms)
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._main_fb)
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR)
+        glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_DEPTH_BUFFER_BIT, GL_NEAREST)
         glBindFramebuffer(GL_READ_FRAMEBUFFER, self._main_fb)
         color_buf = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
         depth_buf = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
@@ -945,7 +972,7 @@ class Renderer(object):
             program._unbind()
         glFlush()
 
-    def _render_light_shadowmaps(self, scene, light_nodes, flags):
+    def _render_light_shadowmaps(self, scene, light_nodes, flags, tile=False):
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0)
         glClearColor(*scene.bg_color)
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -969,23 +996,42 @@ class Renderer(object):
             (2,4) : [0,0,w//2,h//2],
             (3,4) : [w//2,0,w,h//2]
         }
-        for i, ln in enumerate(light_nodes):
-            light = ln.light
 
-            if light.shadow_texture is None:
-                raise ValueError('Light does not have a shadow texture')
+        if tile:
+            for i, ln in enumerate(light_nodes):
+                light = ln.light
 
+                if light.shadow_texture is None:
+                    raise ValueError('Light does not have a shadow texture')
+
+                glViewport(*viewport_dims[(i, num_nodes+1)])
+
+                program = self._get_debug_quad_program()
+                program._bind()
+                self._bind_texture(light.shadow_texture, 'depthMap', program)
+                self._render_debug_quad()
+                self._reset_active_textures()
+                glFlush()
+            i += 1
             glViewport(*viewport_dims[(i, num_nodes+1)])
+            self._forward_pass_no_reset(scene, flags)
+        else:
+            for i, ln in enumerate(light_nodes):
+                light = ln.light
 
-            program = self._get_debug_quad_program()
-            program._bind()
-            self._bind_texture(light.shadow_texture, 'depthMap', program)
-            self._render_debug_quad()
-            self._reset_active_textures()
-            glFlush()
-        i += 1
-        glViewport(*viewport_dims[(i, num_nodes+1)])
-        self._forward_pass_no_reset(scene, flags)
+                if light.shadow_texture is None:
+                    raise ValueError('Light does not have a shadow texture')
+
+                glViewport(0, 0, self.viewport_width, self.viewport_height)
+
+                program = self._get_debug_quad_program()
+                program._bind()
+                self._bind_texture(light.shadow_texture, 'depthMap', program)
+                self._render_debug_quad()
+                self._reset_active_textures()
+                glFlush()
+                return
+
 
     def _get_debug_quad_program(self):
         program = self._program_cache.get_program(

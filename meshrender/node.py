@@ -55,7 +55,6 @@ class Node(object):
             children = []
 
         if matrix is None:
-            self._matrix = np.eye(4)
             if rotation is None:
                 rotation = np.array([0.0, 0.0, 0.0, 1.0])
             if translation is None:
@@ -65,6 +64,7 @@ class Node(object):
             self._rotation = rotation
             self._translation = translation
             self._scale = scale
+            self._matrix = self._matrix_from_trs()
         else:
             self.matrix = matrix
 

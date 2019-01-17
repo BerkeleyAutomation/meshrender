@@ -101,8 +101,8 @@ class Viewer(pyglet.window.Window):
         * `rotate_rate`: `float`, The rate of rotation in radians per second. Defaults to `PI / 3.0`.
         * `rotate_axis`: `(3,) float`, The axis in world coordinates to rotate about. Defaults
           to `[0,0,1]`.
-        * `central_node`: :obj:`Node`, A scene node to start the camera pointing at. Defaults
-          to `None`.
+        * `view_center`: `(3,) float`, The position to rotate the scene about. Defaults
+          to the scene's centroid.
         * `use_raymond_lighting`: `bool`, If `True`, an additional set of three directional lights
           that move with the camera will be added to the scene. Defaults to `False`.
         * `use_directional_lighting`: `bool`, If `True`, an additional directional light that
@@ -144,7 +144,7 @@ class Viewer(pyglet.window.Window):
             'rotate' : False,
             'rotate_rate' : np.pi / 3.0,
             'rotate_axis' : np.array([0.0, 0.0, 1.0]),
-            'central_node' : None,
+            'view_center' : None,
             'record' : False,
             'use_raymond_lighting' : False,
             'use_direct_lighting' : False,
@@ -203,7 +203,7 @@ class Viewer(pyglet.window.Window):
             self._camera_node = Node(
                 name='__viewer_camera__',
                 matrix=self._default_camera_pose,
-                camera = PerspectiveCamera(yfov=np.pi / 6.0),
+                camera = PerspectiveCamera(yfov=np.pi / 3.0),
             )
             scene.add_node(self._camera_node)
             scene.main_camera_node = self._camera_node
@@ -216,6 +216,7 @@ class Viewer(pyglet.window.Window):
         ########################################################################
         # Initialize OpenGL context and renderer
         ########################################################################
+        self._renderer = Renderer(self._viewport_size[0], self._viewport_size[1])
         try:
             conf = gl.Config(sample_buffers=1, samples=4,
                              depth_size=24, double_buffer=True)
@@ -223,9 +224,9 @@ class Viewer(pyglet.window.Window):
             #                 depth_size=24, double_buffer=True,
             #                 major_version=OPEN_GL_MAJOR,
             #                 minor_version=OPEN_GL_MINOR)
-            super(SceneViewer, self).__init__(config=conf, resizable=True,
-                                              width=self._viewport_size[0],
-                                              height=self._viewport_size[1])
+            super(Viewer, self).__init__(config=conf, resizable=True,
+                                         width=self._viewport_size[0],
+                                         height=self._viewport_size[1])
         except Exception as e:
             raise ValueError('Failed to initialize Pyglet window with an OpenGL 3+ context. ' \
                              'If you\'re logged in via SSH, ensure that you\'re running your script ' \
@@ -237,15 +238,16 @@ class Viewer(pyglet.window.Window):
             self._is_high_dpi = True
 
         if self._is_high_dpi:
-            self._renderer = Renderer(2 * self._viewport_size[0], 2*self._viewport_size[1])
-        else:
-            self._renderer = Renderer(self._viewport_size[0], self._viewport_size[1])
+            self._renderer.viewport_width = 2*self._viewport_size[0]
+            self._renderer.viewport_height = 2*self._viewport_size[0]
+
+        self.set_caption(self.viewer_flags['window_title'])
 
         # Start timing event
         clock.set_fps_limit(self.viewer_flags['refresh_rate'])
-        clock.schedule_interval(SceneViewer.time_event, 1.0/self.viewer_flags['refresh_rate'], self)
-        self.set_caption(self.viewer_flags['window_title'])
+        clock.schedule_interval(Viewer.time_event, 1.0/self.viewer_flags['refresh_rate'], self)
 
+        print self._renderer
         # Start the event loop
         pyglet.app.run()
 
@@ -276,16 +278,21 @@ class Viewer(pyglet.window.Window):
                 self.scene.remove_node(self._direct_light)
 
         # Delete renderer
-        self._renderer.delete()
+        if self._renderer is not None:
+            self._renderer.delete()
+        self._renderer = None
 
         # Force clean-up of OpenGL context data
         OpenGL.contextdata.cleanupContext()
-
+        self.close()
         pyglet.app.exit()
 
     def on_draw(self):
         """Redraw the scene into the viewing window.
         """
+        if self._renderer is None:
+            return
+
         # Render the scene
         self.clear()
         self._render()
@@ -303,6 +310,9 @@ class Viewer(pyglet.window.Window):
     def on_resize(self, width, height):
         """Resize the camera and trackball when the window is resized.
         """
+        if self._renderer is None:
+            return
+
         self._viewport_size = (width, height)
         self._trackball.resize(self._viewport_size)
         if self._is_high_dpi:
@@ -527,10 +537,8 @@ class Viewer(pyglet.window.Window):
         scale = self.scene.scale
         centroid = self.scene.centroid
 
-        if self.viewer_flags['central_node'] is not None:
-            node = self.viewer_flags['central_node']
-            if node in self.scene.nodes:
-                centroid = self.scene.get_pose(node)[:3,3]
+        if self.viewer_flags['view_center'] is not None:
+            centroid = self.viewer_flags['view_center']
 
         self._camera_node.matrix = self._default_camera_pose
         self._trackball = Trackball(self._default_camera_pose, self.viewport_size, scale, centroid)
@@ -655,7 +663,7 @@ class Viewer(pyglet.window.Window):
             [1.0, 0.0, 0.0],
             [0.0, s2, s2]
         ])
-        cp[:3,3] = np.sqrt(2.0)*np.array([scale, 0.0, scale]) + centroid
+        cp[:3,3] = 0.7*np.array([scale, 0.0, scale]) + centroid
 
         return cp
 
