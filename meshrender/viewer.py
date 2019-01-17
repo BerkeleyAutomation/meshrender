@@ -16,10 +16,6 @@ from pyglet import clock
 import numpy as np
 import imageio
 
-_USE_EGL_OFFSCREEN = False
-if 'MESHRENDER_EGL_OFFSCREEN' in os.environ:
-    _USE_EGL_OFFSCREEN = True
-
 import OpenGL
 
 from .constants import OPEN_GL_MAJOR, OPEN_GL_MINOR, RenderFlags, TextAlign
@@ -208,8 +204,19 @@ class SceneViewer(pyglet.window.Window):
         if self._prior_main_camera_node is not None:
             self.scene.main_camera_node = self._prior_main_camera_node
 
-        # Delete renderer and clean up OpenGL context data
+        # Delete any lighting nodes that we've attached
+        if self.viewer_flags['use_raymond_lighting']:
+            for n in self._raymond_lights:
+                if self.scene.has_node(n):
+                    self.scene.remove_node(n)
+        if self.viewer_flags['use_direct_lighting']:
+            if self.scene.has_node(self._direct_light):
+                self.scene.remove_node(self._direct_light)
+
+        # Delete renderer
         self._renderer.delete()
+
+        # Force clean-up of OpenGL context data
         OpenGL.contextdata.cleanupContext()
 
         pyglet.app.exit()
@@ -223,7 +230,6 @@ class SceneViewer(pyglet.window.Window):
 
         if self._message_text is not None:
             self._renderer.render_text(
-                self.scene,
                 self._message_text,
                 self.viewport_size[0]-20,
                 20,
@@ -419,7 +425,7 @@ class SceneViewer(pyglet.window.Window):
         if self.viewer_flags['use_raymond_lighting']:
             for n in self._raymond_lights:
                 if not self.scene.has_node(n):
-                    scene.add_node(n, parent_node=self._camera_node)
+                    self.scene.add_node(n, parent_node=self._camera_node)
         else:
             for n in self._raymond_lights:
                 if self.scene.has_node(n):
@@ -427,7 +433,7 @@ class SceneViewer(pyglet.window.Window):
 
         if self.viewer_flags['use_direct_lighting']:
             if not self.scene.has_node(self._direct_light):
-                scene.add_node(self._direct_light, parent_node=self._camera_node)
+                self.scene.add_node(self._direct_light, parent_node=self._camera_node)
         else:
             if self.scene.has_node(self._direct_light):
                 self.scene.remove_node(self._direct_light)

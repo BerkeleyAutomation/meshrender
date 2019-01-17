@@ -6,10 +6,10 @@ import trimesh
 
 import os
 #os.environ['MESHRENDER_EGL_OFFSCREEN'] = 't'
-from meshrender import Scene, Material, Mesh, SceneViewer, DirectionalLight, MetallicRoughnessMaterial, SpotLight, PointLight
+from meshrender import Scene, Material, Mesh, SceneViewer, DirectionalLight, MetallicRoughnessMaterial, SpotLight, PointLight, OffscreenRenderer, PerspectiveCamera
 
 # Start with an empty scene
-scene = Scene()#ambient_light=np.ones(3)*0.02)#np.array([1.0, 0.0, 0.0]))
+scene = Scene(ambient_light=np.ones(3)*0.02)#np.array([1.0, 0.0, 0.0]))
 
 #====================================
 # Add objects to the scene
@@ -17,12 +17,13 @@ scene = Scene()#ambient_light=np.ones(3)*0.02)#np.array([1.0, 0.0, 0.0]))
 
 # Begin by loading meshes
 #pawn_mesh = trimesh.load_mesh('./models/fuze.obj', process=False)
-s = trimesh.load('~/Downloads/WaterBottle.glb', process=False)
-#s = trimesh.load('~/Downloads/BoomBox.glb')
+#s = trimesh.load('~/Downloads/WaterBottle.glb', process=False)
+s = trimesh.load('~/Downloads/BoomBox.glb')
 #s = trimesh.load('~/Downloads/ReciprocatingSaw.glb')
 #s = trimesh.load('~/Downloads/Lantern.glb', process=False)
 mesh_key = list(s.geometry.keys())[0]
 pawn_mesh = s.geometry[mesh_key]
+pawn_mesh.apply_scale(10.0)
 pawn_pose = np.eye(4)
 #pawn_mesh = trimesh.creation.icosahedron()
 #colors = (255*np.random.uniform(size=pawn_mesh.vertices.shape)).astype(np.uint8)
@@ -53,7 +54,7 @@ pawn_pose = np.eye(4)
 
 # Create SceneObjects for each object
 pawn_obj = Mesh.from_trimesh(pawn_mesh)
-pawn_obj = Mesh.from_points(pawn_mesh.vertices, pawn_mesh.visual.to_color().vertex_colors)
+#pawn_obj = Mesh.from_points(pawn_mesh.vertices, pawn_mesh.visual.to_color().vertex_colors)
 #Jbar_obj = MeshSceneObject.from_trimesh(bar_mesh, bar_material)
 
 # Add the SceneObjects to the scene
@@ -110,6 +111,11 @@ scene.add(SpotLight(color=np.ones(3), intensity=10.0, innerConeAngle=np.pi/16, o
 #scene.add(DirectionalLight(color=np.ones(3), intensity=10.0), pose=lm2)
 #scene.add(PointLight(color=np.ones(3), intensity=1.0), pose=lm)
 #scene.add(bar_obj, pose=pawn_pose.matrix)
+cm = np.eye(4)
+cm[:3,3] = np.array([0.0, 0.0, 0.25])
+scene.add(PerspectiveCamera(yfov=np.pi/2.0), pose=cm)
+
+
 
 #====================================
 # Add lighting to the scene
@@ -243,4 +249,14 @@ scene.add(SpotLight(color=np.ones(3), intensity=10.0, innerConeAngle=np.pi/16, o
 #    color = render.renders[RenderMode.COLOR]
 #    color.save('output/random_{}.jpg'.format(i))
 
-v = SceneViewer(scene, shadows=True, use_direct_lighting=True)
+#v = SceneViewer(scene, shadows=True, use_direct_lighting=True)
+
+r = OffscreenRenderer(640, 480)
+color, depth = r.render(scene)
+
+import matplotlib.pyplot as plt
+plt.figure()
+plt.imshow(color)
+plt.show()
+
+r.delete()

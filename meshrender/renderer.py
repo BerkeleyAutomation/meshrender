@@ -1,4 +1,6 @@
 """PBR renderer for Python.
+
+Author: Matthew Matl
 """
 import numpy as np
 
@@ -38,6 +40,8 @@ class Renderer(object):
         self._main_db = None
         self._main_fb_dims = (None, None)
         self._shadow_fb = None
+        self._latest_znear = DEFAULT_Z_NEAR
+        self._latest_zfar = DEFAULT_Z_FAR
 
         # Shader Program Cache
         self._program_cache = ShaderProgramCache()
@@ -66,12 +70,14 @@ class Renderer(object):
                 - `RenderFlags.SHADOWS_POINT`: Compute shadowing for point lights.
                 - `RenderFlags.SHADOWS_SPOT`: Compute shadowing for spot lights.
                 - `RenderFlags.SHADOWS_ALL`: Compute shadowing for all lights.
+                - `RenderFlags.VERTEX_NORMALS`: Show vertex normals as blue lines.
+                - `RenderFlags.FACE_NORMALS`: Show face normals as blue lines.
+                - `RenderFlags.SKIP_CULL_FACES`: Do not cull back faces.
 
         Returns
         -------
         color_im : (h, w, 3) uint8
             If `RenderFlags.OFFSCREEN` is set, the color buffer in RGB byte format.
-            the `RenderFlags.OFFSCREEN` flag.
         depth_im : (h, w) float32
             If `RenderFlags.OFFSCREEN` is set, the depth buffer in linear units.
         """
@@ -106,15 +112,49 @@ class Renderer(object):
         if flags & (RenderFlags.VERTEX_NORMALS | RenderFlags.FACE_NORMALS):
             self._normals_pass(scene, flags)
 
-    def render_text(self, scene, text, x, y, font_name='OpenSans-Regular',
+        # Update camera settings for retrieving depth buffers
+        self._latest_znear = scene.main_camera_node.camera.znear
+        self._latest_zfar = scene.main_camera_node.camera.zfar
+
+        return retval
+
+    def render_text(self, text, x, y, font_name='OpenSans-Regular',
                     font_pt=40, color=None, scale=1.0, align=TextAlign.BOTTOM_LEFT):
+        """Render text into the current viewport.
+
+        Note
+        ----
+        This cannot be done into an offscreen buffer.
+
+        Parameters
+        ----------
+        text : str
+            The text to render.
+        x : int
+            Horizontal pixel location of text.
+        y : int
+            Vertical pixel location of text.
+        font_name : str
+            Name of font, from `meshrender/fonts`.
+        font_pt : int
+            Size of text.
+        color : (4,) float
+            The color of the text.
+        scale : int
+            Scaling factor for text.
+        align : int
+            One of the TextAlign options which specifies where the `x` and `y`
+            parameters lie on the text. For example, `TextAlign.BOTTOM_LEFT`
+            means that `x` and `y` indicate the position of the bottom-left corner
+            of the textbox.
+        """
         if color is None:
             color = np.array([0.0, 0.0, 0.0, 1.0])
         else:
             color = format_color_vector(color, 4)
 
         # Set up viewport for render
-        self._configure_forward_pass_viewport(scene, 0)
+        self._configure_forward_pass_viewport(0)
 
         # Load font
         font = self._font_cache.get_font(font_name, font_pt)
@@ -159,7 +199,7 @@ class Renderer(object):
 
         inf_inds = (depth_im == 1.0)
         depth_im = 2.0 * depth_im - 1.0
-        z_near, z_far = scene.main_camera_node.camera.znear, scene.main_camera_node.camera.zfar
+        z_near, z_far = self._latest_znear, self._latest_zfar
         depth_im = 2.0 * z_near * z_far / (z_far + z_near - depth_im * (z_far - z_near))
         depth_im[inf_inds] = 0.0
 
@@ -205,7 +245,7 @@ class Renderer(object):
     def _forward_pass(self, scene, flags):
 
         # Set up viewport for render
-        self._configure_forward_pass_viewport(scene, flags)
+        self._configure_forward_pass_viewport(flags)
 
         # Set up camera matrices
         V, P = self._get_camera_matrices(scene)
@@ -300,7 +340,7 @@ class Renderer(object):
 
     def _normals_pass(self, scene, flags):
         # Set up viewport for render
-        #self._configure_forward_pass_viewport(scene, flags)
+        self._configure_forward_pass_viewport(flags)
 
         # Set up camera matrices
         V, P = self._get_camera_matrices(scene)
@@ -743,7 +783,7 @@ class Renderer(object):
     # Viewport Management
     ############################################################################
 
-    def _configure_forward_pass_viewport(self, scene, flags):
+    def _configure_forward_pass_viewport(self, flags):
 
         # If using offscreen render, bind main framebuffer
         if flags & RenderFlags.OFFSCREEN:
@@ -800,9 +840,9 @@ class Renderer(object):
         if self._main_fb is None:
             self._main_cb, self._main_db = glGenRenderbuffers(2)
             glBindRenderbuffer(GL_RENDERBUFFER, self._main_cb)
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, self.width, self.height)
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA, self.viewport_width, self.viewport_height)
             glBindRenderbuffer(GL_RENDERBUFFER, self._main_db)
-            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, self.width, self.height)
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, self.viewport_width, self.viewport_height)
             self._main_fb = glGenFramebuffers(1)
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, self._main_fb)
             glFramebufferRenderbuffer(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, self._main_cb)

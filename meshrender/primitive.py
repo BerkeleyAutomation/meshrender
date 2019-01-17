@@ -361,7 +361,7 @@ class Primitive(object):
             idx = i + len(attr_sizes)
             glEnableVertexAttribArray(idx)
             glVertexAttribPointer(idx, 4, GL_FLOAT, GL_FALSE, FLOAT_SZ*4, ctypes.c_void_p(4*FLOAT_SZ*i))
-            glVertexAttribDivisor(idx, 1);
+            glVertexAttribDivisor(idx, 1)
 
         ########################################################################
         # Fill element buffer
