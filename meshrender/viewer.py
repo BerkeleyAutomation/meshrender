@@ -2,6 +2,7 @@
 """
 import copy
 import os
+import sys
 
 import imageio
 import numpy as np
@@ -128,7 +129,6 @@ class Viewer(pyglet.window.Window):
             viewport_size = (640, 480)
         self._scene = scene
         self._viewport_size = viewport_size
-        self._is_high_dpi = False
 
         self._default_render_flags = {
             'flip_wireframe' : False,
@@ -165,6 +165,9 @@ class Viewer(pyglet.window.Window):
                 self.render_flags[key] = kwargs[key]
             elif key in self.viewer_flags:
                 self.viewer_flags[key] = kwargs[key]
+
+        if sys.platform == 'darwin':
+            self.render_flags['shadows'] = False
 
         self._registered_keys = {}
         if registered_keys is not None:
@@ -230,14 +233,6 @@ class Viewer(pyglet.window.Window):
                              'If you\'re logged in via SSH, ensure that you\'re running your script ' \
                              'with vglrun (i.e. VirtualGL). Otherwise, the internal error message was: ' \
                              '"{}"'.format(e.message))
-
-        self._is_high_dpi = False
-        if hasattr(self.context, '_nscontext'):
-            self._is_high_dpi = True
-
-        if self._is_high_dpi:
-            self._renderer.viewport_width = 2*self._viewport_size[0]
-            self._renderer.viewport_height = 2*self._viewport_size[0]
 
         self.set_caption(self.viewer_flags['window_title'])
 
@@ -311,12 +306,8 @@ class Viewer(pyglet.window.Window):
 
         self._viewport_size = (width, height)
         self._trackball.resize(self._viewport_size)
-        if self._is_high_dpi:
-            self._renderer.viewport_width = 2 * self._viewport_size[0]
-            self._renderer.viewport_height = 2 * self._viewport_size[1]
-        else:
-            self._renderer.viewport_width = self._viewport_size[0]
-            self._renderer.viewport_height = self._viewport_size[1]
+        self._renderer.viewport_width = self._viewport_size[0]
+        self._renderer.viewport_height = self._viewport_size[1]
         self.on_draw()
 
     def on_mouse_press(self, x, y, buttons, modifiers):
@@ -341,7 +332,6 @@ class Viewer(pyglet.window.Window):
 
         # Stop animating while using the mouse
         self.viewer_flags['mouse_pressed'] = True
-
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         """Record a mouse drag.
@@ -420,7 +410,7 @@ class Viewer(pyglet.window.Window):
                 self._message_text = 'Raymond Lighting'
 
         # S toggles shadows
-        elif symbol == pyglet.window.key.H:
+        elif symbol == pyglet.window.key.H and sys.platform != 'darwin':
             self.render_flags['shadows'] = not self.render_flags['shadows']
             if self.render_flags['shadows']:
                 self._message_text = 'Shadows On'

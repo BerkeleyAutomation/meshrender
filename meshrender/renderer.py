@@ -2,6 +2,8 @@
 
 Author: Matthew Matl
 """
+import sys
+
 import numpy as np
 
 from .constants import *
@@ -31,6 +33,11 @@ class Renderer(object):
     """
 
     def __init__(self, viewport_width, viewport_height):
+        self.dpscale = 1
+        # Scaling needed on retina displays
+        if sys.platform == 'darwin':
+            self.dpscale = 2
+
         self.viewport_width = viewport_width
         self.viewport_height = viewport_height
 
@@ -53,6 +60,22 @@ class Renderer(object):
         self._mesh_textures = set()
         self._shadow_textures = set()
         self._texture_alloc_idx = 0
+
+    @property
+    def viewport_width(self):
+        return self._viewport_width
+
+    @property
+    def viewport_height(self):
+        return self._viewport_height
+
+    @viewport_width.setter
+    def viewport_width(self, value):
+        self._viewport_width = self.dpscale * value
+
+    @viewport_height.setter
+    def viewport_height(self, value):
+        self._viewport_height = self.dpscale * value
 
     def render(self, scene, flags):
         """Render a scene with the given set of flags.
@@ -149,6 +172,10 @@ class Renderer(object):
             means that `x` and `y` indicate the position of the bottom-left corner
             of the textbox.
         """
+        x *= self.dpscale
+        y *= self.dpscale
+        font_pt *= self.dpscale
+
         if color is None:
             color = np.array([0.0, 0.0, 0.0, 1.0])
         else:
@@ -891,7 +918,7 @@ class Renderer(object):
         glReadBuffer(GL_NONE)
 
         glClear(GL_DEPTH_BUFFER_BIT)
-        glViewport(0, 0, SHADOW_TEX_SZ, SHADOW_TEX_SZ)
+        glViewport(0, 0, self.dpscale * SHADOW_TEX_SZ, self.dpscale * SHADOW_TEX_SZ)
         glEnable(GL_DEPTH_TEST)
         glDepthMask(GL_TRUE)
         glDepthFunc(GL_LESS)
