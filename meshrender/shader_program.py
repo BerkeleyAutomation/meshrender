@@ -104,13 +104,6 @@ class ShaderProgram(object):
         # Compile program
         self._program_id = gl_shader_utils.compileProgram(*shader_ids)
 
-        # Free shaders
-        for sid in shader_ids:
-            try:
-                glDeleteShader(sid)
-            except:
-                pass
-
         # Unbind empty VAO (PYOPENGL BUG)
         glBindVertexArray(0)
 

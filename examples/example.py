@@ -1,5 +1,7 @@
 """Examples of using meshrender for viewing and offscreen rendering.
 """
+import pyglet
+pyglet.options['shadow_window'] = False
 import os
 import numpy as np
 import trimesh

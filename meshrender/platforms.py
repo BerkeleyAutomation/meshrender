@@ -7,6 +7,8 @@ import ctypes
 import os
 import six
 
+from .constants import OPEN_GL_MAJOR, OPEN_GL_MINOR
+
 @six.add_metaclass(abc.ABCMeta)
 class Platform(object):
     """Base class for all OpenGL platforms.
@@ -150,7 +152,9 @@ class PygletPlatform(Platform):
         conf = pyglet.gl.Config(
             sample_buffers=1, samples=4,
             depth_size=24,
-            double_buffer=True
+            double_buffer=True,
+            major_version=OPEN_GL_MAJOR,
+            minor_version=OPEN_GL_MINOR
         )
         try:
             self._window = pyglet.window.Window(config=conf, visible=False,

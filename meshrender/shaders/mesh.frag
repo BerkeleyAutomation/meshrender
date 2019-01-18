@@ -2,9 +2,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 // Structs
 ///////////////////////////////////////////////////////////////////////////////
-#define MAX_SPOT_LIGHTS 8
-#define MAX_DIRECTIONAL_LIGHTS 8
-#define MAX_POINT_LIGHTS 8
+#define MAX_SPOT_LIGHTS 4
+#define MAX_DIRECTIONAL_LIGHTS 4
+#define MAX_POINT_LIGHTS 3
 
 struct SpotLight {
     vec3 color;

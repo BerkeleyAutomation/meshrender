@@ -219,11 +219,9 @@ class Viewer(pyglet.window.Window):
         self._renderer = Renderer(self._viewport_size[0], self._viewport_size[1])
         try:
             conf = gl.Config(sample_buffers=1, samples=4,
-                             depth_size=24, double_buffer=True)
-            #conf = gl.Config(sample_buffers=1, samples=4,
-            #                 depth_size=24, double_buffer=True,
-            #                 major_version=OPEN_GL_MAJOR,
-            #                 minor_version=OPEN_GL_MINOR)
+                             depth_size=24, double_buffer=True,
+                             major_version=OPEN_GL_MAJOR,
+                             minor_version=OPEN_GL_MINOR)
             super(Viewer, self).__init__(config=conf, resizable=True,
                                          width=self._viewport_size[0],
                                          height=self._viewport_size[1])
@@ -244,7 +242,6 @@ class Viewer(pyglet.window.Window):
         self.set_caption(self.viewer_flags['window_title'])
 
         # Start timing event
-        clock.set_fps_limit(self.viewer_flags['refresh_rate'])
         clock.schedule_interval(Viewer.time_event, 1.0/self.viewer_flags['refresh_rate'], self)
 
         # Start the event loop
