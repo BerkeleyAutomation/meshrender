@@ -293,7 +293,7 @@ class Renderer(object):
 
                 # Next, bind the lighting
                 if not flags & RenderFlags.DEPTH_ONLY:
-                    self._bind_lighting(scene, program, flags)
+                    self._bind_lighting(scene, program, node, flags)
 
                 # Finally, bind and draw the primitive
                 self._bind_and_draw_primitive(
@@ -469,8 +469,10 @@ class Renderer(object):
 
             # Set blending options
             if material.alphaMode == 'BLEND':
+                glEnable(GL_BLEND)
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
             else:
+                glEnable(GL_BLEND)
                 glBlendFunc(GL_ONE, GL_ZERO)
 
             # Set wireframe mode
@@ -490,6 +492,7 @@ class Renderer(object):
                 glCullFace(GL_BACK)
         else:
             glEnable(GL_CULL_FACE)
+            glEnable(GL_BLEND)
             glCullFace(GL_BACK)
             glBlendFunc(GL_ONE, GL_ZERO)
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
@@ -508,29 +511,35 @@ class Renderer(object):
         # Unbind mesh buffers
         primitive._unbind()
 
-    def _bind_lighting(self, scene, program, flags):
+    def _bind_lighting(self, scene, program, node, flags):
         """Bind all lighting uniform values for a scene.
         """
+        max_n_lights = self._compute_max_n_lights(flags)
+
         program.set_uniform('ambient_light', scene.ambient_light)
-        program.set_uniform('n_point_lights', len(scene.point_light_nodes))
-        program.set_uniform('n_spot_lights', len(scene.spot_light_nodes))
-        program.set_uniform('n_directional_lights', len(scene.directional_light_nodes))
+        program.set_uniform('n_directional_lights', min(len(scene.directional_light_nodes), max_n_lights[0]))
+        program.set_uniform('n_spot_lights', min(len(scene.spot_light_nodes), max_n_lights[1]))
+        program.set_uniform('n_point_lights', min(len(scene.point_light_nodes), max_n_lights[2]))
         plc = 0
         slc = 0
         dlc = 0
 
-        for n in scene.light_nodes:
+        for n in self._sorted_nodes_by_distance(scene, scene.light_nodes, node):
             l = n.light
             position = scene.get_pose(n)[:3,3]
             direction = -scene.get_pose(n)[:3,2]
             shadow = bool(flags & RenderFlags.SHADOWS_ALL)
 
             if isinstance(l, PointLight):
+                if plc == max_n_lights[2]:
+                    continue
                 b = 'point_lights[{}].'.format(plc)
                 plc += 1
                 shadow = shadow or bool(flags & RenderFlags.SHADOWS_POINT)
                 program.set_uniform(b + 'position', position)
             elif isinstance(l, SpotLight):
+                if slc == max_n_lights[1]:
+                    continue
                 b = 'spot_lights[{}].'.format(slc)
                 slc += 1
                 shadow = shadow or bool(flags & RenderFlags.SHADOWS_SPOT)
@@ -541,6 +550,8 @@ class Renderer(object):
                 program.set_uniform(b + 'light_angle_scale', las)
                 program.set_uniform(b + 'light_angle_offset', lao)
             else:
+                if dlc == max_n_lights[0]:
+                    continue
                 b = 'directional_lights[{}].'.format(dlc)
                 dlc += 1
                 shadow = shadow or bool(flags & RenderFlags.SHADOWS_DIRECTIONAL)
@@ -581,6 +592,12 @@ class Renderer(object):
         )
 
         return solid_nodes + trans_nodes
+
+    def _sorted_nodes_by_distance(self, scene, nodes, compare_node):
+        nodes = list(nodes)
+        compare_posn = scene.get_pose(compare_node)[:3,3]
+        nodes.sort(key = lambda n : -np.linalg.norm(scene.get_pose(n)[:3,3] - compare_posn))
+        return nodes
 
     ############################################################################
     # Context Management
@@ -709,6 +726,46 @@ class Renderer(object):
 
         return program
 
+    def _compute_max_n_lights(self, flags):
+        max_n_lights = [8, 8, 8]
+        n_tex_units = glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS)
+
+        # Reserved texture units: 6
+        #   Normal Map
+        #   Occlusion Map
+        #   Emissive Map
+        #   Base Color or Diffuse Map
+        #   MR or SG Map
+        #   Environment cubemap
+
+        n_reserved_textures = 6
+        n_available_textures = 10
+
+        # Distribute textures evenly among lights with shadows, with
+        # a preference for directional lights
+        n_shadow_types = 0
+        if flags & RenderFlags.SHADOWS_ALL:
+            n_shadow_types = 3
+        else:
+            if flags & RenderFlags.SHADOWS_DIRECTIONAL:
+                n_shadow_types += 1
+            if flags & RenderFlags.SHADOWS_SPOT:
+                n_shadow_types += 1
+            if flags & RenderFlags.SHADOWS_POINT:
+                n_shadow_types += 1
+
+        if n_shadow_types > 0:
+            tex_per_light = n_available_textures // n_shadow_types
+
+            if flags & RenderFlags.SHADOWS_DIRECTIONAL:
+                max_n_lights[0] = tex_per_light + (n_available_textures - tex_per_light * n_shadow_types)
+            if flags & RenderFlags.SHADOWS_SPOT:
+                max_n_lights[1] = tex_per_light
+            if flags & RenderFlags.SHADOWS_POINT:
+                max_n_lights[2] = tex_per_light
+
+        return max_n_lights
+
     def _get_primitive_program(self, primitive, flags, program_flags):
         vertex_shader = None
         fragment_shader = None
@@ -753,12 +810,16 @@ class Renderer(object):
         defines['INST_M_LOC'] = buf_idx
 
         # Set up shadow mapping defines
-        if flags & RenderFlags.SHADOWS_SPOT:
-            defines['SPOT_LIGHT_SHADOWS'] = 1
         if flags & RenderFlags.SHADOWS_DIRECTIONAL:
             defines['DIRECTIONAL_LIGHT_SHADOWS'] = 1
+        if flags & RenderFlags.SHADOWS_SPOT:
+            defines['SPOT_LIGHT_SHADOWS'] = 1
         if flags & RenderFlags.SHADOWS_POINT:
             defines['POINT_LIGHT_SHADOWS'] = 1
+        max_n_lights = self._compute_max_n_lights(flags)
+        defines['MAX_DIRECTIONAL_LIGHTS'] = max_n_lights[0]
+        defines['MAX_SPOT_LIGHTS'] = max_n_lights[1]
+        defines['MAX_POINT_LIGHTS'] = max_n_lights[2]
 
         # Set up vertex normal defines
         if program_flags & ProgramFlags.VERTEX_NORMALS:
@@ -956,7 +1017,7 @@ class Renderer(object):
 
                 # Next, bind the lighting
                 if not flags & RenderFlags.DEPTH_ONLY:
-                    self._bind_lighting(scene, program, flags)
+                    self._bind_lighting(scene, program, node, flags)
 
                 # Finally, bind and draw the primitive
                 self._bind_and_draw_primitive(
