@@ -1,7 +1,7 @@
 Python Installation
 ~~~~~~~~~~~~~~~~~~~
 
-This package is installable via `pip` ::
+This package is available via `pip` ::
 
     $ pip install meshrender
 

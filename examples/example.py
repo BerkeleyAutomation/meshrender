@@ -66,7 +66,8 @@ boxf_mesh = Mesh.from_trimesh(boxf_trimesh, smooth=False)
 # Creating meshes from point clouds
 #------------------------------------------------------------------------------
 points = trimesh.creation.icosphere(radius=0.05).vertices
-points_mesh = Mesh.from_points(points)
+point_colors = np.random.uniform(size=points.shape)
+points_mesh = Mesh.from_points(points, colors=point_colors)
 
 #==============================================================================
 # Light creation
@@ -138,7 +139,7 @@ r = OffscreenRenderer(viewport_width=640*2, viewport_height=480*2)
 color, depth = r.render(scene)
 r.delete()
 
-#import matplotlib.pyplot as plt
-#plt.figure()
-#plt.imshow(color)
-#plt.show()
+import matplotlib.pyplot as plt
+plt.figure()
+plt.imshow(color)
+plt.show()

@@ -215,6 +215,7 @@ class Renderer(object):
         """
         # Extract color image from frame buffer
         width, height = self.viewport_width, self.viewport_height
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0)
         glReadBuffer(GL_FRONT)
         color_buf = glReadPixels(0, 0, width, height, GL_RGB, GL_UNSIGNED_BYTE)
 
@@ -233,6 +234,7 @@ class Renderer(object):
             The depth buffer in linear units.
         """
         width, height = self.viewport_width, self.viewport_height
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0)
         glReadBuffer(GL_FRONT)
         depth_buf = glReadPixels(0, 0, width, height, GL_DEPTH_COMPONENT, GL_FLOAT)
 

@@ -5,11 +5,17 @@
 
 Meshrender Documentation
 ========================
-Welcome to the documentation for meshrender!
-This module, which is build on top of PyOpenGL, is designed to make it easy
-to render images of 3D scenes in pure Python.
-It supports a scene abstraction and allows users to specify material properties,
-camera intrinsics, and lighting.
+Meshrender is a Python 2/3 implementation of Physically-Based Rendering (PBR).
+If is mostly compliant with the glTF 2.0 specification, and it makes it easy
+to render 3D scenes in pure Python. Dependencies are light and all
+pip-installable.
+
+.. image:: scene.png
+
+Meshrender supports rendering objects with metallic-roughness textures,
+normal maps, ambient occlusion textures, emission textures, and shadows.
+
+.. image:: damaged_helmet.png
 
 .. toctree::
    :maxdepth: 2

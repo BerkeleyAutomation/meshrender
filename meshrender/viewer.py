@@ -56,7 +56,7 @@ class Viewer(pyglet.window.Window):
     * `q`: Quits the viewer.
     * `r`: Starts recording a GIF, and pressing again stops recording and opens a file dialog.
     * `s`: Opens a file dialog to save the current view as an image.
-    * 'w': Toggles wireframe mode (scene default, flip wireframes, all wireframe, or all solid).
+    * `w`: Toggles wireframe mode (scene default, flip wireframes, all wireframe, or all solid).
 
     Parameters
     ----------

@@ -1,141 +1,194 @@
 Example Usage
 =============
 
-Everything in the `meshrender` model revolves around the `Scene` object,
-which manages the lights, objects, and camera in the world.
+Here is an example of rendering a few objects in a scene.
 
-Simple Example
---------------
+Preamble
+~~~~~~~~
 
-In this example, we will render a pair of triangular meshes, illuminated by a point light source.
+Simple imports, nothing special here.
 
 .. code-block:: python
 
-    import numpy as np
-    import trimesh
-    from autolab_core import RigidTransform
-    from perception import CameraIntrinsics, RenderMode
+   import os
+   import numpy as np
+   import trimesh
 
-    from meshrender import Scene, MaterialProperties, AmbientLight, PointLight, SceneObject, VirtualCamera
+   from meshrender import PerspectiveCamera,\
+                        DirectionalLight, SpotLight, PointLight,\
+                        MetallicRoughnessMaterial,\
+                        Primitive, Mesh, Node, Scene,\
+                        Viewer, OffscreenRenderer
 
-    # Start with an empty scene
-    scene = Scene()
+Creating Meshes from Trimeshes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+You can create `Mesh` objects from `trimesh.Trimesh` objects using
+the `Mesh.from_trimesh` function.
 
-    #====================================
-    # Add objects to the scene
-    #====================================
+.. code-block:: python
 
-    # Begin by loading meshes
-    cube_mesh = trimesh.load_mesh('cube.obj')
-    sphere_mesh = trimesh.load_mesh('sphere.obj')
+   # Fuze trimesh
+   fuze_trimesh = trimesh.load('./models/fuze.obj', process=False)
+   fuze_mesh = Mesh.from_trimesh(fuze_trimesh)
 
-    # Set up each object's pose in the world
-    cube_pose = RigidTransform(
-        rotation=np.eye(3),
-        translation=np.array([0.0, 0.0, 0.0]),
-        from_frame='obj',
-        to_frame='world'
-    )
-    sphere_pose = RigidTransform(
-        rotation=np.eye(3),
-        translation=np.array([1.0, 1.0, 0.0]),
-        from_frame='obj',
-        to_frame='world'
-    )
+   # Drill trimesh
+   drill_trimesh = trimesh.load('./models/drill.obj', process=False)
+   drill_mesh = Mesh.from_trimesh(drill_trimesh)
+   drill_pose = np.eye(4)
+   drill_pose[0,3] = 0.1
+   drill_pose[2,3] = -np.min(drill_trimesh.vertices[:,2])
 
-    # Set up each object's material properties
-    cube_material = MaterialProperties(
-        color = np.array([0.1, 0.1, 0.5]),
-        k_a = 0.3,
-        k_d = 1.0,
-        k_s = 1.0,
-        alpha = 10.0,
-        smooth=False
-    )
-    sphere_material = MaterialProperties(
-        color = np.array([0.1, 0.1, 0.5]),
-        k_a = 0.3,
-        k_d = 1.0,
-        k_s = 1.0,
-        alpha = 10.0,
-        smooth=True
-    )
+   # Wood trimesh
+   wood_trimesh = trimesh.load('./models/wood.obj', process=False)
+   wood_mesh = Mesh.from_trimesh(wood_trimesh)
 
-    # Create SceneObjects for each object
-    cube_obj = SceneObject(cube_mesh, cube_pose, cube_material)
-    sphere_obj = SceneObject(sphere_mesh, sphere_pose, sphere_material)
+   # Water bottle trimesh
+   bottle_gltf = trimesh.load('./models/WaterBottle.glb', process=False)
+   bottle_trimesh = bottle_gltf.geometry[list(bottle_gltf.geometry.keys())[0]]
+   bottle_mesh = Mesh.from_trimesh(bottle_trimesh)
+   bottle_pose = np.array([
+      [1.0, 0.0,  0.0, 0.1],
+      [0.0, 0.0, -1.0, -0.16],
+      [0.0, 1.0,  0.0, 0.13],
+      [0.0, 0.0,  0.0, 1.0],
+   ])
 
-    # Add the SceneObjects to the scene
-    scene.add_object('cube', cube_obj)
-    scene.add_object('sphere', sphere_obj)
+Creating Meshes with Per-Vertex or Per-Face Colors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+You can also create meshes with per-face or per-vertex coloration.
 
-    #====================================
-    # Add lighting to the scene
-    #====================================
+.. code-block:: python
 
-    # Create an ambient light
-    ambient = AmbientLight(
-        color=np.array([1.0, 1.0, 1.0]),
-        strength=1.0
-    )
+   #------------------------------------------------------------------------------
+   # Creating meshes with per-vertex colors
+   #------------------------------------------------------------------------------
+   boxv_trimesh = trimesh.creation.box(extents=0.1*np.ones(3))
+   boxv_vertex_colors = np.random.uniform(size=(boxv_trimesh.vertices.shape))
+   boxv_trimesh.visual.vertex_colors = boxv_vertex_colors
+   boxv_mesh = Mesh.from_trimesh(boxv_trimesh, smooth=False)
 
-    # Create a point light
-    point = PointLight(
-        location=np.array([1.0, 2.0, 3.0]),
-        color=np.array([1.0, 1.0, 1.0]),
-        strength=10.0
-    )
+   #------------------------------------------------------------------------------
+   # Creating meshes with per-face colors
+   #------------------------------------------------------------------------------
+   boxf_trimesh = trimesh.creation.box(extents=0.1*np.ones(3))
+   boxf_face_colors = np.random.uniform(size=boxf_trimesh.faces.shape)
+   boxf_trimesh.visual.face_colors = boxf_face_colors
+   boxf_mesh = Mesh.from_trimesh(boxf_trimesh, smooth=False)
 
-    # Add the lights to the scene
-    scene.ambient_light = ambient # only one ambient light per scene
-    scene.add_light('point_light_one', point)
+Creating Meshes from Point Clouds
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+You can also create meshes from point clouds, with per-point colors optionally
+specified.
 
-    #====================================
-    # Add a camera to the scene
-    #====================================
+.. code-block:: python
 
-    # Set up camera intrinsics
-    ci = CameraIntrinsics(
-        frame = 'camera',
-        fx = 525.0,
-        fy = 525.0,
-        cx = 319.5,
-        cy = 239.5,
-        skew=0.0,
-        height=480,
-        width=640
-    )
+   points = trimesh.creation.icosphere(radius=0.05).vertices
+   points_mesh = Mesh.from_points(points)
 
-    # Set up the camera pose (z axis faces away from scene, x to right, y up)
-    cp = RigidTransform(
-        rotation = np.array([
-            [0.0, 0.0, -1.0],
-            [0.0, 1.0,  0.0],
-            [1.0, 0.0,  0.0]
-        ]),
-        translation = np.array([-0.3, 0.0, 0.0]),
-        from_frame='camera',
-        to_frame='world'
-    )
+Creating Lights
+~~~~~~~~~~~~~~~
+Creating lights is easy! Read the API documentation for more details.
 
-    # Create a VirtualCamera
-    camera = VirtualCamera(ci, cp)
+.. code-block:: python
 
-    # Add the camera to the scene
-    scene.camera = camera
+   direc_l = DirectionalLight(color=np.ones(3), intensity=1.0)
+   spot_l = SpotLight(color=np.ones(3), intensity=10.0,
+                     innerConeAngle=np.pi/16, outerConeAngle=np.pi/6)
+   point_l = PointLight(color=np.ones(3), intensity=10.0)
 
-    #====================================
-    # Render images
-    #====================================
+Creating Cameras
+~~~~~~~~~~~~~~~~
+Creating cameras is also easy! Perspective cameras are typical for viewing
+applications.
 
-    # Render raw numpy arrays containing color and depth
-    color_image_raw, depth_image_raw = scene.render(render_color=True)
+.. code-block:: python
 
-    # Alternatively, just render a depth image
-    depth_image_raw = scene.render(render_color=False)
+   cam = PerspectiveCamera(yfov=(np.pi / 3.0))
+   cam_pose = np.array([
+      [0.0,  -np.sqrt(2)/2, np.sqrt(2)/2, 0.5],
+      [1.0, 0.0,           0.0,           0.0],
+      [0.0,  np.sqrt(2)/2,  np.sqrt(2)/2, 0.4],
+      [0.0,  0.0,           0.0,          1.0]
+   ])
 
-    # Alternatively, collect wrapped images
-    wrapped_color, wrapped_depth, wrapped_segmask = scene.wrapped_render(
-        [RenderMode.COLOR, RenderMode.DEPTH, RenderMode.SEGMASK]
-    )
+Creating a Scene
+~~~~~~~~~~~~~~~~
+Once you've created all your meshes, cameras, and lights, you can create a scene
+and add objects to it.
+
+.. code-block:: python
+
+   scene = Scene(ambient_light=np.array([0.02, 0.02, 0.02]))
+
+Adding Objects to a Scene
+~~~~~~~~~~~~~~~~~~~~~~~~~
+You can add objects either by creating a `Node` for each and then adding that or
+by using the scene's `add()` utility function directly.
+
+.. code-block:: python
+
+   #------------------------------------------------------------------------------
+   # Manually creating nodes
+   #------------------------------------------------------------------------------
+   fuze_node = Node(mesh=fuze_mesh, translation=np.array([0.1, 0.15, -np.min(fuze_trimesh.vertices[:,2])]))
+   scene.add_node(fuze_node)
+   boxv_node = Node(mesh=boxv_mesh, translation=np.array([-0.1, 0.10, 0.05]))
+   scene.add_node(boxv_node)
+   boxf_node = Node(mesh=boxf_mesh, translation=np.array([-0.1, -0.10, 0.05]))
+   scene.add_node(boxf_node)
+
+   #------------------------------------------------------------------------------
+   # Using the add() utility function
+   #------------------------------------------------------------------------------
+   drill_node = scene.add(drill_mesh, pose=drill_pose)
+   bottle_node = scene.add(bottle_mesh, pose=bottle_pose)
+   wood_node = scene.add(wood_mesh)
+   direc_l_node = scene.add(direc_l, pose=cam_pose)
+   spot_l_node = scene.add(spot_l, pose=cam_pose)
+
+
+Using Viewer with Default Camera
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If the scene doesn't have a camera, a default one will be provided.
+Calling the `Viewer()` constructor automatically pops a viewer window.
+
+.. code-block:: python
+
+   v = Viewer(scene, shadows=True)
+
+.. image:: v1.png
+
+Using Viewer with Scene Camera
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If the scene has a camera, that camera will be initially used by the viewer.
+
+.. code-block:: python
+
+   cam_node = scene.add(cam, pose=cam_pose)
+   v = Viewer(scene, central_node=drill_node)
+
+.. image:: v2.png
+
+Offscreen Rendering
+~~~~~~~~~~~~~~~~~~~
+Finally, you have the option to render things offscreen.
+Note that doing so without a display manager and a screen
+requires you to install `OSMesa` and prepend any Python execution
+with `PYOPENGL_PLATFORM=osmesa`. For example,
+`PYOPENGL_PLATFORM=osmesa python my_script.py`.
+If you have a screen, you can omit this step, and `meshrender` will just
+pop an invisible window to render into.
+
+.. code-block:: python
+
+   r = OffscreenRenderer(viewport_width=640*2, viewport_height=480*2)
+   color, depth = r.render(scene)
+   r.delete()
+
+   import matplotlib.pyplot as plt
+   plt.figure()
+   plt.imshow(color)
+   plt.show()
+
+.. image:: v3.png
 

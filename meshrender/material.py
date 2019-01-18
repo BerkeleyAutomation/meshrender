@@ -336,7 +336,7 @@ class MetallicRoughnessMaterial(Material):
         completely rough. A value of 0.0 means the material is completely
         smooth. This value is linear. If a metallicRoughnessTexture is
         specified, this value is multiplied with the roughness texel values.
-    metallicRoughnessTexture : (n,n,2) or :obj:`Texture`, optional
+    metallicRoughnessTexture : (n,n,2) float or :obj:`Texture`, optional
         The metallic-roughness texture. The metalness values are sampled from
         the B channel. The roughness values are sampled from the G channel.
         These values are linear. If other channels are present (R or A), they
