@@ -1,4 +1,7 @@
 # meshrender
+### NOTE: SUPPORT FOR THIS REPOSITORY IS BEING ENDED SOON.
+I've written a much better GLTF 2.0 compliant renderer that can do shadows, textures, and physically-based rendering. Check it out here: https://github.com/mmatl/pyrender
+
 ### A simple, OpenGL 3+ based Python scene renderer
 
 [![Build Status](https://travis-ci.org/BerkeleyAutomation/meshrender.svg?branch=master)](https://travis-ci.org/BerkeleyAutomation/meshrender)
