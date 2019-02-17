@@ -14,7 +14,7 @@ requirements = [
     'trimesh[easy]',
     'PyOpenGL==3.1.0',
     'PyOpenGL_accelerate==3.1.0',
-    'pyglet==1.4.0a1',
+    'pyglet==1.4.0b1',
     'imageio',
     'autolab_core',
     'autolab_perception'
