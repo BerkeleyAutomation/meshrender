@@ -1,5 +1,5 @@
 # meshrender
-### NOTE: SUPPORT FOR THIS REPOSITORY IS BEING ENDED SOON.
+### NOTE: SUPPORT FOR THIS REPOSITORY IS BEING ENDED SOON. BUT FEAR NOT, THERE IS A (MUCH BETTER) REPLACEMENT!
 I've written a much better GLTF 2.0 compliant renderer that can do shadows, textures, and physically-based rendering. Check it out here: https://github.com/mmatl/pyrender
 
 ### A simple, OpenGL 3+ based Python scene renderer
