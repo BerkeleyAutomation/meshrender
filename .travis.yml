@@ -8,6 +8,7 @@ python:
 before_install:
 - pip install --upgrade pip setuptools wheel
 - pip install --only-binary=numpy,scipy numpy scipy
+- pip install matplotlib==2.2.3
 - pip install PyOpenGL
 install:
 - pip install .
