@@ -8,10 +8,6 @@ except ImportError:
     except:
         pass
 
-import pyglet
-pyglet.options['shadow_window'] = False
-import pyglet.gl as gl
-from pyglet import clock
 
 import numpy as np
 import imageio
@@ -21,10 +17,18 @@ _USE_EGL_OFFSCREEN = False
 if 'MESHRENDER_EGL_OFFSCREEN' in os.environ:
     _USE_EGL_OFFSCREEN = True
 
-import OpenGL
-from OpenGL.GL import *
-from OpenGL.GL import shaders
-from OpenGL.arrays import *
+try:
+    import pyglet
+    pyglet.options['shadow_window'] = False
+    import pyglet.gl as gl
+    from pyglet import clock
+
+    import OpenGL
+    from OpenGL.GL import *
+    from OpenGL.GL import shaders
+    from OpenGL.arrays import *
+except:
+    logging.warning('Cannot import OpenGL -- rendering will be broken!')
 
 from .constants import MAX_N_LIGHTS, OPEN_GL_MAJOR, OPEN_GL_MINOR
 from .light import AmbientLight, PointLight, DirectionalLight

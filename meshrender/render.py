@@ -8,10 +8,14 @@ if 'MESHRENDER_EGL_OFFSCREEN' in os.environ:
     os.environ['PYOPENGL_PLATFORM'] = 'egl'
     _USE_EGL_OFFSCREEN = True
 
-import OpenGL
-from OpenGL.GL import *
-from OpenGL.GL import shaders
-from OpenGL.arrays import *
+try:
+    import OpenGL
+    from OpenGL.GL import *
+    from OpenGL.GL import shaders
+    from OpenGL.arrays import *
+except Exception:
+    import logging
+    logging.warning('Cannot import OpenGL -- rendering will be broken!')
 
 from .constants import MAX_N_LIGHTS
 from .light import AmbientLight, PointLight, DirectionalLight
