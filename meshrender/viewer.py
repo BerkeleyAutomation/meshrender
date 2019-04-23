@@ -322,7 +322,6 @@ class SceneViewer(pyglet.window.Window):
     def _update_flags(self):
         """Update OpenGL state based on the current flags.
         """
-        clock.set_fps_limit(self._animate_rate)
         glLineWidth(float(self._line_width))
         clock.unschedule(SceneViewer.time_event)
         if self._flags['animate'] or self._flags['record']:
